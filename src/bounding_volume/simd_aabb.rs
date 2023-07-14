@@ -4,6 +4,7 @@ use crate::query::SimdRay;
 use crate::utils::{self, IsometryOps};
 use num::{One, Zero};
 use simba::simd::{SimdPartialOrd, SimdValue};
+use ad_trait::AD;
 
 /// Four Aabb represented as a single SoA Aabb with SIMD components.
 #[derive(Debug, Copy, Clone)]
@@ -13,27 +14,27 @@ use simba::simd::{SimdPartialOrd, SimdValue};
     archive(check_bytes)
 )]
 #[cfg_attr(feature = "cuda", derive(cust_core::DeviceCopy))]
-pub struct SimdAabb {
+pub struct SimdAabb<T: AD> {
     /// The min coordinates of the Aabbs.
-    pub mins: Point<SimdReal>,
+    pub mins: Point<T>,
     /// The max coordinates the Aabbs.
-    pub maxs: Point<SimdReal>,
+    pub maxs: Point<T>,
 }
 
 #[cfg(feature = "serde-serialize")]
-impl serde::Serialize for SimdAabb {
+impl<T: AD> serde::Serialize for SimdAabb<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         use serde::ser::SerializeStruct;
 
-        let mins: Point<[Real; SIMD_WIDTH]> = Point::from(
+        let mins: Point<[T; SIMD_WIDTH]> = Point::from(
             self.mins
                 .coords
                 .map(|e| array![|ii| e.extract(ii); SIMD_WIDTH]),
         );
-        let maxs: Point<[Real; SIMD_WIDTH]> = Point::from(
+        let maxs: Point<[T; SIMD_WIDTH]> = Point::from(
             self.maxs
                 .coords
                 .map(|e| array![|ii| e.extract(ii); SIMD_WIDTH]),
@@ -47,7 +48,7 @@ impl serde::Serialize for SimdAabb {
 }
 
 #[cfg(feature = "serde-serialize")]
-impl<'de> serde::Deserialize<'de> for SimdAabb {
+impl<'de, T: AD> serde::Deserialize<'de> for SimdAabb<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -61,8 +62,8 @@ impl<'de> serde::Deserialize<'de> for SimdAabb {
             Maxs,
         }
 
-        impl<'de> serde::de::Visitor<'de> for Visitor {
-            type Value = SimdAabb;
+        impl<'de, T: AD> serde::de::Visitor<'de> for Visitor {
+            type Value = SimdAabb<T>;
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
                 write!(
                     formatter,
@@ -75,8 +76,8 @@ impl<'de> serde::Deserialize<'de> for SimdAabb {
             where
                 A: serde::de::MapAccess<'de>,
             {
-                let mut mins: Option<Point<[Real; SIMD_WIDTH]>> = None;
-                let mut maxs: Option<Point<[Real; SIMD_WIDTH]>> = None;
+                let mut mins: Option<Point<[T; SIMD_WIDTH]>> = None;
+                let mut maxs: Option<Point<[T; SIMD_WIDTH]>> = None;
 
                 while let Some(key) = map.next_key()? {
                     match key {
@@ -97,8 +98,8 @@ impl<'de> serde::Deserialize<'de> for SimdAabb {
 
                 let mins = mins.ok_or_else(|| serde::de::Error::missing_field("mins"))?;
                 let maxs = maxs.ok_or_else(|| serde::de::Error::missing_field("maxs"))?;
-                let mins = mins.map(SimdReal::from);
-                let maxs = maxs.map(SimdReal::from);
+                let mins = mins; // mins.map(SimdReal::from);
+                let maxs = maxs; // maxs.map(SimdReal::from);
                 Ok(SimdAabb { mins, maxs })
             }
 
@@ -106,14 +107,14 @@ impl<'de> serde::Deserialize<'de> for SimdAabb {
             where
                 A: serde::de::SeqAccess<'de>,
             {
-                let mins: Point<[Real; SIMD_WIDTH]> = seq
+                let mins: Point<[T; SIMD_WIDTH]> = seq
                     .next_element()?
                     .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
-                let maxs: Point<[Real; SIMD_WIDTH]> = seq
+                let maxs: Point<[T; SIMD_WIDTH]> = seq
                     .next_element()?
                     .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-                let mins = mins.map(SimdReal::from);
-                let maxs = maxs.map(SimdReal::from);
+                // let mins = mins.map(SimdReal::from);
+                // let maxs = maxs.map(SimdReal::from);
                 Ok(SimdAabb { mins, maxs })
             }
         }
@@ -122,7 +123,7 @@ impl<'de> serde::Deserialize<'de> for SimdAabb {
     }
 }
 
-impl SimdAabb {
+impl<T: AD> SimdAabb<T> {
     /// An invalid Aabb.
     pub fn new_invalid() -> Self {
         Self::splat(Aabb::new_invalid())
@@ -286,7 +287,7 @@ impl SimdAabb {
     /// Lanewise check which Aabb represented by `self` contains the given set of `other` aabbs.
     /// The check is performed lane-wise.
     #[cfg(feature = "dim3")]
-    pub fn contains(&self, other: &SimdAabb) -> SimdBool {
+    pub fn contains(&self, other: &SimdAabb<T>) -> SimdBool {
         self.mins.x.simd_le(other.mins.x)
             & self.mins.y.simd_le(other.mins.y)
             & self.mins.z.simd_le(other.mins.z)
@@ -298,7 +299,7 @@ impl SimdAabb {
     /// Lanewise check which Aabb represented by `self` intersects the given set of `other` aabbs.
     /// The check is performed lane-wise.
     #[cfg(feature = "dim2")]
-    pub fn intersects(&self, other: &SimdAabb) -> SimdBool {
+    pub fn intersects(&self, other: &SimdAabb<T>) -> SimdBool {
         self.mins.x.simd_le(other.maxs.x)
             & other.mins.x.simd_le(self.maxs.x)
             & self.mins.y.simd_le(other.maxs.y)
@@ -308,7 +309,7 @@ impl SimdAabb {
     /// Check which Aabb represented by `self` contains the given set of `other` aabbs.
     /// The check is performed lane-wise.
     #[cfg(feature = "dim3")]
-    pub fn intersects(&self, other: &SimdAabb) -> SimdBool {
+    pub fn intersects(&self, other: &SimdAabb<T>) -> SimdBool {
         self.mins.x.simd_le(other.maxs.x)
             & other.mins.x.simd_le(self.maxs.x)
             & self.mins.y.simd_le(other.maxs.y)
@@ -321,7 +322,7 @@ impl SimdAabb {
     ///
     /// The result is an array such that `result[i].extract(j)` contains the intersection
     /// result between `self.extract(i)` and `other.extract(j)`.
-    pub fn intersects_permutations(&self, other: &SimdAabb) -> [SimdBool; SIMD_WIDTH] {
+    pub fn intersects_permutations(&self, other: &SimdAabb<T>) -> [SimdBool; SIMD_WIDTH] {
         let mut result = [SimdBool::splat(false); SIMD_WIDTH];
         for ii in 0..SIMD_WIDTH {
             // TODO: use SIMD-accelerated shuffling?
@@ -346,7 +347,7 @@ impl SimdAabb {
     }
 }
 
-impl From<[Aabb; SIMD_WIDTH]> for SimdAabb {
+impl<T: AD> From<[Aabb; SIMD_WIDTH]> for SimdAabb<T> {
     fn from(aabbs: [Aabb; SIMD_WIDTH]) -> Self {
         let mins = array![|ii| aabbs[ii].mins; SIMD_WIDTH];
         let maxs = array![|ii| aabbs[ii].maxs; SIMD_WIDTH];

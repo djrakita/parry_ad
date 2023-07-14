@@ -3,6 +3,8 @@ use crate::shape::{FeatureId, PackedFeatureId, PolygonalFeature, PolygonalFeatur
 use crate::utils;
 use na::{self, ComplexField, RealField, Unit};
 
+use ad_trait::AD;
+
 /// A 2D convex polygon.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(
@@ -11,17 +13,17 @@ use na::{self, ComplexField, RealField, Unit};
     archive(check_bytes)
 )]
 #[derive(Clone, Debug)]
-pub struct ConvexPolygon {
-    points: Vec<Point<Real>>,
-    normals: Vec<Unit<Vector<Real>>>,
+pub struct ConvexPolygon<T: AD> {
+    points: Vec<Point<T>>,
+    normals: Vec<Unit<Vector<T>>>,
 }
 
-impl ConvexPolygon {
+impl<T: AD> ConvexPolygon<T> {
     /// Creates a new 2D convex polygon from an arbitrary set of points.
     ///
     /// This explicitly computes the convex hull of the given set of points.
     /// Returns `None` if the convex hull computation failed.
-    pub fn from_convex_hull(points: &[Point<Real>]) -> Option<Self> {
+    pub fn from_convex_hull(points: &[Point<T>]) -> Option<Self> {
         let vertices = crate::transformation::convex_hull(points);
         Self::from_convex_polyline(vertices)
     }
@@ -31,7 +33,7 @@ impl ConvexPolygon {
     ///
     /// Convexity of the input polyline is not checked.
     /// Returns `None` if all points form an almost flat line.
-    pub fn from_convex_polyline(mut points: Vec<Point<Real>>) -> Option<Self> {
+    pub fn from_convex_polyline(mut points: Vec<Point<T>>) -> Option<Self> {
         let eps = ComplexField::sqrt(crate::math::DEFAULT_EPSILON);
         let mut normals = Vec::with_capacity(points.len());
 
@@ -73,13 +75,13 @@ impl ConvexPolygon {
 
     /// The vertices of this convex polygon.
     #[inline]
-    pub fn points(&self) -> &[Point<Real>] {
+    pub fn points(&self) -> &[Point<T>] {
         &self.points
     }
 
     /// The normals of the edges of this convex polygon.
     #[inline]
-    pub fn normals(&self) -> &[Unit<Vector<Real>>] {
+    pub fn normals(&self) -> &[Unit<Vector<T>>] {
         &self.normals
     }
 
@@ -87,7 +89,7 @@ impl ConvexPolygon {
     ///
     /// Returns `None` if the result had degenerate normals (for example if
     /// the scaling factor along one axis is zero).
-    pub fn scaled(mut self, scale: &Vector<Real>) -> Option<Self> {
+    pub fn scaled(mut self, scale: &Vector<T>) -> Option<Self> {
         self.points
             .iter_mut()
             .for_each(|pt| pt.coords.component_mul_assign(scale));
@@ -109,7 +111,7 @@ impl ConvexPolygon {
     /// # Panics
     ///
     /// Panics if `amount` is not a non-negative finite number.
-    pub fn offsetted(&self, amount: Real) -> Self {
+    pub fn offsetted(&self, amount: T) -> Self {
         if !amount.is_finite() || amount < 0. {
             panic!(
                 "Offset amount must be a non-negative finite number, got {}.",
@@ -135,8 +137,8 @@ impl ConvexPolygon {
     }
 
     /// Get the ID of the feature with a normal that maximizes the dot product with `local_dir`.
-    pub fn support_feature_id_toward(&self, local_dir: &Unit<Vector<Real>>) -> FeatureId {
-        let eps: Real = Real::pi() / 180.0;
+    pub fn support_feature_id_toward(&self, local_dir: &Unit<Vector<T>>) -> FeatureId {
+        let eps: T = T::constant(f64::pi() / 180.0);
         let ceps = ComplexField::cos(eps);
 
         // Check faces.
@@ -155,7 +157,7 @@ impl ConvexPolygon {
     }
 
     /// The normal of the given feature.
-    pub fn feature_normal(&self, feature: FeatureId) -> Option<Unit<Vector<Real>>> {
+    pub fn feature_normal(&self, feature: FeatureId) -> Option<Unit<Vector<T>>> {
         match feature {
             FeatureId::Face(id) => Some(self.normals[id as usize]),
             FeatureId::Vertex(id2) => {
@@ -173,15 +175,15 @@ impl ConvexPolygon {
     }
 }
 
-impl SupportMap for ConvexPolygon {
+impl<T: AD> SupportMap for ConvexPolygon<T> {
     #[inline]
-    fn local_support_point(&self, dir: &Vector<Real>) -> Point<Real> {
+    fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         utils::point_cloud_support_point(dir, self.points())
     }
 }
 
-impl PolygonalFeatureMap for ConvexPolygon {
-    fn local_support_feature(&self, dir: &Unit<Vector<Real>>, out_feature: &mut PolygonalFeature) {
+impl<T: AD> PolygonalFeatureMap for ConvexPolygon<T> {
+    fn local_support_feature(&self, dir: &Unit<Vector<T>>, out_feature: &mut PolygonalFeature) {
         let cuboid = crate::shape::Cuboid::new(self.points[2].coords);
         cuboid.local_support_feature(dir, out_feature);
         let mut best_face = 0;
@@ -201,6 +203,7 @@ impl PolygonalFeatureMap for ConvexPolygon {
         *out_feature = PolygonalFeature {
             vertices: [self.points[i1], self.points[i2]],
             vids: PackedFeatureId::vertices([i1 as u32 * 2, i2 as u32 * 2]),
+            eids: [],
             fid: PackedFeatureId::face(i1 as u32 * 2 + 1),
             num_vertices: 2,
         };

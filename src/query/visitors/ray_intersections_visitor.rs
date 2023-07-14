@@ -4,6 +4,7 @@ use crate::partitioning::{SimdVisitStatus, SimdVisitor};
 use crate::query::{Ray, SimdRay};
 use simba::simd::{SimdBool as _, SimdValue};
 use std::marker::PhantomData;
+use ad_trait::AD;
 
 /// Bounding Volume Tree visitor collecting intersections with a given ray.
 pub struct RayIntersectionsVisitor<'a, T, F> {
@@ -29,12 +30,12 @@ where
     }
 }
 
-impl<'a, T, F> SimdVisitor<T, SimdAabb> for RayIntersectionsVisitor<'a, T, F>
+impl<'a, T, F, A: AD> SimdVisitor<T, SimdAabb<A>> for RayIntersectionsVisitor<'a, T, F>
 where
     F: FnMut(&T) -> bool,
 {
     #[inline]
-    fn visit(&mut self, bv: &SimdAabb, b: Option<[Option<&T>; SIMD_WIDTH]>) -> SimdVisitStatus {
+    fn visit(&mut self, bv: &SimdAabb<A>, b: Option<[Option<&T>; SIMD_WIDTH]>) -> SimdVisitStatus {
         let mask = bv.cast_local_ray(&self.simd_ray, self.max_toi).0;
 
         if let Some(data) = b {

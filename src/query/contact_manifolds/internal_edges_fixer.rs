@@ -2,8 +2,7 @@ use crate::query::ContactManifold;
 use crate::shape::Triangle;
 use crate::utils::hashmap::HashMap;
 
-#[cfg(feature = "dim3")]
-use crate::math::Real;
+use ad_trait::AD;
 
 #[cfg_attr(feature = "serde-serialize", derive(Serialize, Deserialize))]
 #[cfg_attr(
@@ -34,11 +33,11 @@ impl InternalEdgesFixer {
     }
 
     #[cfg(feature = "dim3")]
-    pub fn remove_invalid_contacts<ManifoldData, ContactData>(
+    pub fn remove_invalid_contacts<ManifoldData, ContactData, T: AD>(
         &mut self,
         manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
         flipped: bool,
-        get_triangle: impl Fn(u32) -> Triangle,
+        get_triangle: impl Fn(u32) -> Triangle<T>,
         get_triangle_indices: impl Fn(u32) -> [u32; 3],
     ) where
         ManifoldData: Default,
@@ -98,11 +97,11 @@ impl InternalEdgesFixer {
             let dist_a = a
                 .find_deepest_contact()
                 .map(|c| c.dist)
-                .unwrap_or(Real::MAX);
+                .unwrap_or(T::constant(f64::MAX));
             let dist_b = b
                 .find_deepest_contact()
                 .map(|c| c.dist)
-                .unwrap_or(Real::MAX);
+                .unwrap_or(T::constant(f64::MAX));
 
             dist_a.partial_cmp(&dist_b).unwrap_or(Ordering::Equal)
         });

@@ -1,3 +1,4 @@
+use ad_trait::AD;
 use crate::math::{Real, SimdBool, SimdReal, SIMD_WIDTH};
 use crate::partitioning::qbvh::QbvhNode;
 use crate::partitioning::SimdNodeIndex;
@@ -100,7 +101,7 @@ pub trait SimdSimultaneousVisitor<T1, T2, SimdBV> {
  */
 
 /// Trait implemented by visitor called during the parallel traversal of a spatial partitioning data structure.
-pub trait ParallelSimdVisitor<LeafData>: Sync {
+pub trait ParallelSimdVisitor<LeafData, T: AD>: Sync {
     /// Execute an operation on the content of a node of the spatial partitioning structure.
     ///
     /// Returns whether the traversal should continue on the node's children, if it should not continue
@@ -108,19 +109,19 @@ pub trait ParallelSimdVisitor<LeafData>: Sync {
     fn visit(
         &self,
         node_id: SimdNodeIndex,
-        bv: &QbvhNode,
+        bv: &QbvhNode<T>,
         data: Option<[Option<&LeafData>; SIMD_WIDTH]>,
     ) -> SimdVisitStatus;
 }
 
-impl<F, LeafData> ParallelSimdVisitor<LeafData> for F
+impl<F, LeafData, T: AD> ParallelSimdVisitor<LeafData, T> for F
 where
-    F: Sync + Fn(&QbvhNode, Option<[Option<&LeafData>; SIMD_WIDTH]>) -> SimdVisitStatus,
+    F: Sync + Fn(&QbvhNode<T>, Option<[Option<&LeafData>; SIMD_WIDTH]>) -> SimdVisitStatus,
 {
     fn visit(
         &self,
         _node_id: SimdNodeIndex,
-        node: &QbvhNode,
+        node: &QbvhNode<T>,
         data: Option<[Option<&LeafData>; SIMD_WIDTH]>,
     ) -> SimdVisitStatus {
         (self)(node, data)
@@ -130,7 +131,7 @@ where
 /// Trait implemented by visitor called during a parallel simultaneous spatial partitioning
 /// data structure traversal.
 #[cfg(feature = "parallel")]
-pub trait ParallelSimdSimultaneousVisitor<LeafData1, LeafData2>: Sync {
+pub trait ParallelSimdSimultaneousVisitor<LeafData1, LeafData2, T: AD>: Sync {
     /// Visitor state data that will be passed down the recursion.
     type Data: Copy + Sync + Default;
 
@@ -141,10 +142,10 @@ pub trait ParallelSimdSimultaneousVisitor<LeafData1, LeafData2>: Sync {
     fn visit(
         &self,
         left_node_id: SimdNodeIndex,
-        left_node: &QbvhNode,
+        left_node: &QbvhNode<T>,
         left_data: Option<[Option<&LeafData1>; SIMD_WIDTH]>,
         right_node_id: SimdNodeIndex,
-        right_node: &QbvhNode,
+        right_node: &QbvhNode<T>,
         right_data: Option<[Option<&LeafData2>; SIMD_WIDTH]>,
         visitor_data: Self::Data,
     ) -> (SimdSimultaneousVisitStatus, Self::Data);

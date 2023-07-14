@@ -1,5 +1,6 @@
 //! Support mapping based Cone shape.
 
+use ad_trait::AD;
 use crate::math::{Point, Real, Vector};
 use crate::shape::SupportMap;
 use na;
@@ -23,20 +24,20 @@ use na::RealField; // for .copysign()
 #[cfg_attr(feature = "cuda", derive(cust_core::DeviceCopy))]
 #[derive(PartialEq, Debug, Copy, Clone)]
 #[repr(C)]
-pub struct Cone {
+pub struct Cone<T: AD> {
     /// The half-height of the cone.
-    pub half_height: Real,
+    pub half_height: T,
     /// The base radius of the cone.
-    pub radius: Real,
+    pub radius: T,
 }
 
-impl Cone {
+impl<T: AD> Cone<T> {
     /// Creates a new cone.
     ///
     /// # Arguments:
     /// * `half_height` - the half length of the cone along the `y` axis.
     /// * `radius` - the length of the cone along all other axis.
-    pub fn new(half_height: Real, radius: Real) -> Cone {
+    pub fn new(half_height: T, radius: T) -> Cone<T> {
         Cone {
             half_height,
             radius,
@@ -53,12 +54,12 @@ impl Cone {
     #[inline]
     pub fn scaled(
         self,
-        scale: &Vector<Real>,
+        scale: &Vector<T>,
         nsubdivs: u32,
     ) -> Option<Either<Self, super::ConvexPolyhedron>> {
         // NOTE: if the y scale is negative, the result cone points downwards,
         //       which can’t be represented with this Cone (without a transform).
-        if scale.x != scale.z || scale.y < 0.0 {
+        if scale.x != scale.z || scale.y < T::zero() {
             // The scaled shape isn’t a cone.
             let (mut vtx, idx) = self.to_trimesh(nsubdivs);
             vtx.iter_mut()
@@ -75,12 +76,12 @@ impl Cone {
     }
 }
 
-impl SupportMap for Cone {
+impl<T: AD> SupportMap for Cone<T> {
     #[inline]
-    fn local_support_point(&self, dir: &Vector<Real>) -> Point<Real> {
+    fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         let mut vres = *dir;
 
-        vres[1] = 0.0;
+        vres[1] = T::zero();
 
         if vres.normalize_mut().is_zero() {
             vres = na::zero();

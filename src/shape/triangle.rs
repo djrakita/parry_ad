@@ -10,6 +10,7 @@ use num::Zero;
 #[cfg(feature = "dim3")]
 use std::f64;
 use std::mem;
+use ad_trait::AD;
 
 #[cfg(feature = "dim2")]
 use crate::shape::PackedFeatureId;
@@ -26,18 +27,18 @@ use crate::shape::PackedFeatureId;
 #[cfg_attr(feature = "cuda", derive(cust_core::DeviceCopy))]
 #[derive(PartialEq, Debug, Copy, Clone, Default)]
 #[repr(C)]
-pub struct Triangle {
+pub struct Triangle<T: AD> {
     /// The triangle first point.
-    pub a: Point<Real>,
+    pub a: Point<T>,
     /// The triangle second point.
-    pub b: Point<Real>,
+    pub b: Point<T>,
     /// The triangle third point.
-    pub c: Point<Real>,
+    pub c: Point<T>,
 }
 
 /// Description of the location of a point on a triangle.
 #[derive(Copy, Clone, Debug)]
-pub enum TrianglePointLocation {
+pub enum TrianglePointLocation<T: AD> {
     /// The point lies on a vertex.
     OnVertex(u32),
     /// The point lies on an edge.
@@ -47,26 +48,26 @@ pub enum TrianglePointLocation {
     /// The 2-nd edge is the segment AC.
     // XXX: it appears the conversion of edge indexing here does not match the
     // convension of edge indexing for the `fn edge` method (from the ConvexPolyhedron impl).
-    OnEdge(u32, [Real; 2]),
+    OnEdge(u32, [T; 2]),
     /// The point lies on the triangle interior.
     ///
     /// The integer indicates on which side of the face the point is. 0 indicates the point
     /// is on the half-space toward the CW normal of the triangle. 1 indicates the point is on the other
     /// half-space. This is always set to 0 in 2D.
-    OnFace(u32, [Real; 3]),
+    OnFace(u32, [T; 3]),
     /// The point lies on the triangle interior (for "solid" point queries).
     OnSolid,
 }
 
-impl TrianglePointLocation {
+impl<T: AD> TrianglePointLocation<T> {
     /// The barycentric coordinates corresponding to this point location.
     ///
     /// Returns `None` if the location is `TrianglePointLocation::OnSolid`.
-    pub fn barycentric_coordinates(&self) -> Option<[Real; 3]> {
+    pub fn barycentric_coordinates(&self) -> Option<[T; 3]> {
         let mut bcoords = [0.0; 3];
 
         match self {
-            TrianglePointLocation::OnVertex(i) => bcoords[*i as usize] = 1.0,
+            TrianglePointLocation::OnVertex(i) => bcoords[*i as usize] = T::constant(1.0),
             TrianglePointLocation::OnEdge(i, uv) => {
                 let idx = match i {
                     0 => (0, 1),
@@ -112,27 +113,27 @@ pub enum TriangleOrientation {
     Degenerate,
 }
 
-impl From<[Point<Real>; 3]> for Triangle {
-    fn from(arr: [Point<Real>; 3]) -> Self {
+impl<T:AD> From<[Point<T>; 3]> for Triangle<T> {
+    fn from(arr: [Point<T>; 3]) -> Self {
         *Self::from_array(&arr)
     }
 }
 
-impl Triangle {
+impl<T: AD> Triangle<T> {
     /// Creates a triangle from three points.
     #[inline]
-    pub fn new(a: Point<Real>, b: Point<Real>, c: Point<Real>) -> Triangle {
+    pub fn new(a: Point<T>, b: Point<T>, c: Point<T>) -> Triangle<T> {
         Triangle { a, b, c }
     }
 
     /// Creates the reference to a triangle from the reference to an array of three points.
-    pub fn from_array(arr: &[Point<Real>; 3]) -> &Triangle {
+    pub fn from_array(arr: &[Point<T>; 3]) -> &Triangle<T> {
         unsafe { mem::transmute(arr) }
     }
 
     /// Reference to an array containing the three vertices of this triangle.
     #[inline]
-    pub fn vertices(&self) -> &[Point<Real>; 3] {
+    pub fn vertices(&self) -> &[Point<T>; 3] {
         unsafe { mem::transmute(self) }
     }
 
@@ -141,8 +142,8 @@ impl Triangle {
     /// The normal points such that it is collinear to `AB × AC` (where `×` denotes the cross
     /// product).
     #[inline]
-    pub fn normal(&self) -> Option<Unit<Vector<Real>>> {
-        Unit::try_new(self.scaled_normal(), crate::math::DEFAULT_EPSILON)
+    pub fn normal(&self) -> Option<Unit<Vector<T>>> {
+        Unit::try_new(self.scaled_normal(), T::constant(crate::math::DEFAULT_EPSILON))
     }
 
     /// The three edges of this triangle: [AB, BC, CA].
@@ -156,7 +157,7 @@ impl Triangle {
     }
 
     /// Computes a scaled version of this triangle.
-    pub fn scaled(self, scale: &Vector<Real>) -> Self {
+    pub fn scaled(self, scale: &Vector<T>) -> Self {
         Self::new(
             na::Scale::from(*scale) * self.a,
             na::Scale::from(*scale) * self.b,
@@ -166,19 +167,19 @@ impl Triangle {
 
     /// Returns a new triangle with vertices transformed by `m`.
     #[inline]
-    pub fn transformed(&self, m: &Isometry<Real>) -> Self {
+    pub fn transformed(&self, m: &Isometry<T>) -> Self {
         Triangle::new(m * self.a, m * self.b, m * self.c)
     }
 
     /// The three edges scaled directions of this triangle: [B - A, C - B, A - C].
     #[inline]
-    pub fn edges_scaled_directions(&self) -> [Vector<Real>; 3] {
+    pub fn edges_scaled_directions(&self) -> [Vector<T>; 3] {
         [self.b - self.a, self.c - self.b, self.a - self.c]
     }
 
     /// Return the edge segment of this cuboid with a normal cone containing
     /// a direction that that maximizes the dot product with `local_dir`.
-    pub fn local_support_edge_segment(&self, dir: Vector<Real>) -> Segment {
+    pub fn local_support_edge_segment(&self, dir: Vector<T>) -> Segment {
         let dots = na::Vector3::new(
             dir.dot(&self.a.coords),
             dir.dot(&self.b.coords),
@@ -195,16 +196,16 @@ impl Triangle {
     /// Return the face of this triangle with a normal that maximizes
     /// the dot product with `dir`.
     #[cfg(feature = "dim3")]
-    pub fn support_face(&self, _dir: Vector<Real>) -> PolygonalFeature {
+    pub fn support_face(&self, _dir: Vector<T>) -> PolygonalFeature {
         PolygonalFeature::from(*self)
     }
 
     /// Return the face of this triangle with a normal that maximizes
     /// the dot product with `dir`.
     #[cfg(feature = "dim2")]
-    pub fn support_face(&self, dir: Vector<Real>) -> PolygonalFeature {
+    pub fn support_face(&self, dir: Vector<T>) -> PolygonalFeature {
         let mut best = 0;
-        let mut best_dot = -Real::MAX;
+        let mut best_dot = T::constant(-Real::MAX);
 
         for (i, tangent) in self.edges_scaled_directions().iter().enumerate() {
             let normal = Vector::new(tangent.y, -tangent.x);
@@ -234,7 +235,7 @@ impl Triangle {
     /// The vector points such that it is collinear to `AB × AC` (where `×` denotes the cross
     /// product).
     #[inline]
-    pub fn scaled_normal(&self) -> Vector<Real> {
+    pub fn scaled_normal(&self) -> Vector<T> {
         let ab = self.b - self.a;
         let ac = self.c - self.a;
         ab.cross(&ac)
@@ -245,7 +246,7 @@ impl Triangle {
     /// This computes the min and max values of the dot products between each
     /// vertex of this triangle and `dir`.
     #[inline]
-    pub fn extents_on_dir(&self, dir: &Unit<Vector<Real>>) -> (Real, Real) {
+    pub fn extents_on_dir(&self, dir: &Unit<Vector<T>>) -> (T, T) {
         let a = self.a.coords.dot(dir);
         let b = self.b.coords.dot(dir);
         let c = self.c.coords.dot(dir);
@@ -326,7 +327,7 @@ impl Triangle {
 
     /// The area of this triangle.
     #[inline]
-    pub fn area(&self) -> Real {
+    pub fn area(&self) -> T {
         // Kahan's formula.
         let mut a = na::distance(&self.a, &self.b);
         let mut b = na::distance(&self.b, &self.c);
@@ -346,8 +347,8 @@ impl Triangle {
 
     /// Computes the unit angular inertia of this triangle.
     #[cfg(feature = "dim2")]
-    pub fn unit_angular_inertia(&self) -> Real {
-        let factor = 1.0 / 6.0;
+    pub fn unit_angular_inertia(&self) -> T {
+        let factor = T::constant(1.0 / 6.0);
 
         // Algorithm adapted from Box2D
         let e1 = self.b - self.a;
@@ -360,20 +361,20 @@ impl Triangle {
 
     /// The geometric center of this triangle.
     #[inline]
-    pub fn center(&self) -> Point<Real> {
+    pub fn center(&self) -> Point<T> {
         utils::center(&[self.a, self.b, self.c])
     }
 
     /// The perimeter of this triangle.
     #[inline]
-    pub fn perimeter(&self) -> Real {
+    pub fn perimeter(&self) -> T {
         na::distance(&self.a, &self.b)
             + na::distance(&self.b, &self.c)
             + na::distance(&self.c, &self.a)
     }
 
     /// The circumcircle of this triangle.
-    pub fn circumcircle(&self) -> (Point<Real>, Real) {
+    pub fn circumcircle(&self) -> (Point<T>, T) {
         let a = self.a - self.c;
         let b = self.b - self.c;
 
@@ -382,7 +383,8 @@ impl Triangle {
 
         let dab = a.dot(&b);
 
-        let _2: Real = na::convert::<f64, Real>(2.0);
+        // let _2: Real = na::convert::<f64, Real>(2.0);
+        let _2 = T::constant(2.0);
         let denom = _2 * (na * nb - dab * dab);
 
         if denom.is_zero() {
@@ -423,11 +425,11 @@ impl Triangle {
     /// Tests if this triangle is affinely dependent, i.e., its points are almost aligned.
     #[cfg(feature = "dim3")]
     pub fn is_affinely_dependent(&self) -> bool {
-        const EPS: Real = crate::math::DEFAULT_EPSILON * 100.0;
+        let eps = T::constant(crate::math::DEFAULT_EPSILON * 100.0);
 
         let p1p2 = self.b - self.a;
         let p1p3 = self.c - self.a;
-        relative_eq!(p1p2.cross(&p1p3).norm_squared(), 0.0, epsilon = EPS * EPS)
+        relative_eq!(p1p2.cross(&p1p3).norm_squared(), T::constant(0.0), epsilon = T::constant(eps * eps))
 
         // relative_eq!(
         //     self.area(),
@@ -438,13 +440,13 @@ impl Triangle {
 
     /// Is this triangle degenerate or almost degenerate?
     #[cfg(feature = "dim3")]
-    pub fn is_affinely_dependent_eps(&self, eps: Real) -> bool {
+    pub fn is_affinely_dependent_eps(&self, eps: T) -> bool {
         let p1p2 = self.b - self.a;
         let p1p3 = self.c - self.a;
         relative_eq!(
             p1p2.cross(&p1p3).norm(),
-            0.0,
-            epsilon = eps * p1p2.norm().max(p1p3.norm())
+            T::constant(0.0),
+            epsilon = T::constant(eps * p1p2.norm().max(p1p3.norm()))
         )
 
         // relative_eq!(
@@ -456,7 +458,7 @@ impl Triangle {
 
     /// Tests if a point is inside of this triangle.
     #[cfg(feature = "dim2")]
-    pub fn contains_point(&self, p: &Point<Real>) -> bool {
+    pub fn contains_point(&self, p: &Point<T>) -> bool {
         let ab = self.b - self.a;
         let bc = self.c - self.b;
         let ca = self.a - self.c;
@@ -470,8 +472,8 @@ impl Triangle {
 
     /// Tests if a point is inside of this triangle.
     #[cfg(feature = "dim3")]
-    pub fn contains_point(&self, p: &Point<Real>) -> bool {
-        const EPS: Real = crate::math::DEFAULT_EPSILON;
+    pub fn contains_point(&self, p: &Point<T>) -> bool {
+        let eps = T::constant(crate::math::DEFAULT_EPSILON);
 
         let vb = self.b - self.a;
         let vc = self.c - self.a;
@@ -479,7 +481,7 @@ impl Triangle {
 
         let n = vc.cross(&vb);
         let n_norm = n.norm_squared();
-        if n_norm < EPS || vp.dot(&n).abs() > EPS * n_norm {
+        if n_norm < eps || vp.dot(&n).abs() > eps * n_norm {
             // the triangle is degenerate or the
             // point does not lie on the same plane as the triangle.
             return false;
@@ -509,15 +511,15 @@ impl Triangle {
         let c = vp.dot(&nb) * signed_clim.signum();
         let clim = signed_clim.abs();
 
-        return c >= 0.0
+        return c >= T::constant(0.0)
             && c <= clim
-            && b >= 0.0
+            && b >= T::constant(0.0)
             && b <= blim
             && c * blim + b * clim <= blim * clim;
     }
 
     /// The normal of the given feature of this shape.
-    pub fn feature_normal(&self, _: FeatureId) -> Option<Unit<Vector<Real>>> {
+    pub fn feature_normal(&self, _: FeatureId) -> Option<Unit<Vector<T>>> {
         self.normal()
     }
 
@@ -526,7 +528,7 @@ impl Triangle {
     /// Returns `TriangleOrientation::Degenerate` if the triangle’s area is
     /// smaller than `epsilon`.
     #[cfg(feature = "dim2")]
-    pub fn orientation(&self, epsilon: Real) -> TriangleOrientation {
+    pub fn orientation(&self, epsilon: T) -> TriangleOrientation {
         let area2 = (self.b - self.a).perp(&(self.c - self.a));
         // println!("area2: {}", area2);
         if area2 > epsilon {
@@ -543,10 +545,10 @@ impl Triangle {
     /// Returns `TriangleOrientation::Degenerate` if the triangle’s area is
     /// smaller than `epsilon`.
     pub fn orientation2d(
-        a: &na::Point2<Real>,
-        b: &na::Point2<Real>,
-        c: &na::Point2<Real>,
-        epsilon: Real,
+        a: &na::Point2<T>,
+        b: &na::Point2<T>,
+        c: &na::Point2<T>,
+        epsilon: T,
     ) -> TriangleOrientation {
         let area2 = (b - a).perp(&(c - a));
         // println!("area2: {}", area2);
@@ -565,9 +567,9 @@ impl Triangle {
     }
 }
 
-impl SupportMap for Triangle {
+impl<T: AD> SupportMap for Triangle<T> {
     #[inline]
-    fn local_support_point(&self, dir: &Vector<Real>) -> Point<Real> {
+    fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         let d1 = self.a.coords.dot(dir);
         let d2 = self.b.coords.dot(dir);
         let d3 = self.c.coords.dot(dir);
@@ -590,8 +592,8 @@ impl SupportMap for Triangle {
 
 /*
 #[cfg(feature = "dim3")]
-impl ConvexPolyhedron for Triangle {
-    fn vertex(&self, id: FeatureId) -> Point<Real> {
+impl<T: AD> ConvexPolyhedron for Triangle<T> {
+    fn vertex(&self, id: FeatureId) -> Point<T> {
         match id.unwrap_vertex() {
             0 => self.a,
             1 => self.b,
@@ -599,7 +601,7 @@ impl ConvexPolyhedron for Triangle {
             _ => panic!("Triangle vertex index out of bounds."),
         }
     }
-    fn edge(&self, id: FeatureId) -> (Point<Real>, Point<Real>, FeatureId, FeatureId) {
+    fn edge(&self, id: FeatureId) -> (Point<T>, Point<T>, FeatureId, FeatureId) {
         match id.unwrap_edge() {
             0 => (self.a, self.b, FeatureId::Vertex(0), FeatureId::Vertex(1)),
             1 => (self.b, self.c, FeatureId::Vertex(1), FeatureId::Vertex(2)),
@@ -651,7 +653,7 @@ impl ConvexPolyhedron for Triangle {
     ) {
         let normal = self.scaled_normal();
 
-        if normal.dot(&*dir) >= 0.0 {
+        if normal.dot(&*dir) >= T::constant(0.0) {
             ConvexPolyhedron::face(self, FeatureId::Face(0), face);
         } else {
             ConvexPolyhedron::face(self, FeatureId::Face(1), face);

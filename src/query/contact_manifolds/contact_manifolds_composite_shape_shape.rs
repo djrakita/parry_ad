@@ -10,6 +10,7 @@ use crate::query::ContactManifold;
 use crate::shape::{Shape, SimdCompositeShape};
 use crate::utils::hashmap::{Entry, HashMap};
 use crate::utils::IsometryOpt;
+use ad_trait::AD;
 
 #[cfg_attr(feature = "serde-serialize", derive(Serialize, Deserialize))]
 #[cfg_attr(
@@ -56,10 +57,10 @@ fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
 }
 
 /// Computes the contact manifolds between a composite shape and an abstract shape.
-pub fn contact_manifolds_composite_shape_shape<ManifoldData, ContactData>(
+pub fn contact_manifolds_composite_shape_shape<ManifoldData, ContactData, T: AD>(
     dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
     pos12: &Isometry<Real>,
-    composite1: &dyn SimdCompositeShape,
+    composite1: &dyn SimdCompositeShape<T>,
     shape2: &dyn Shape,
     prediction: Real,
     manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,

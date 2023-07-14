@@ -1,20 +1,20 @@
 use super::InitialMesh;
 use super::{ConvexHullError, TriangleFacet};
-use crate::math::Real;
+use ad_trait::AD;
 use crate::transformation::convex_hull_utils::indexed_support_point_nth;
 use crate::transformation::convex_hull_utils::{indexed_support_point_id, normalize};
 use crate::utils;
 use na::{self, Point3};
 
 /// Computes the convex hull of a set of 3d points.
-pub fn convex_hull(points: &[Point3<Real>]) -> (Vec<Point3<Real>>, Vec<[u32; 3]>) {
+pub fn convex_hull<T: AD>(points: &[Point3<T>]) -> (Vec<Point3<T>>, Vec<[u32; 3]>) {
     try_convex_hull(points).unwrap()
 }
 
 /// Computes the convex hull of a set of 3d points.
-pub fn try_convex_hull(
-    points: &[Point3<Real>],
-) -> Result<(Vec<Point3<Real>>, Vec<[u32; 3]>), ConvexHullError> {
+pub fn try_convex_hull<T: AD>(
+    points: &[Point3<T>],
+) -> Result<(Vec<Point3<T>>, Vec<[u32; 3]>), ConvexHullError> {
     if points.is_empty() {
         return Ok((Vec::new(), Vec::new()));
     }
@@ -154,14 +154,14 @@ pub fn try_convex_hull(
     Ok((points, idx))
 }
 
-fn compute_silhouette(
+fn compute_silhouette<T: AD>(
     facet: usize,
     indirect_id: usize,
     point: usize,
     out_facets_and_idx: &mut Vec<(usize, usize)>,
-    points: &[Point3<Real>],
+    points: &[Point3<T>],
     removed_facets: &mut Vec<usize>,
-    triangles: &mut [TriangleFacet],
+    triangles: &mut [TriangleFacet<T>],
 ) {
     if triangles[facet].valid {
         if !triangles[facet].order_independent_can_be_seen_by_point(point, points) {
@@ -202,11 +202,11 @@ fn compute_silhouette(
     }
 }
 
-fn fix_silhouette_topology(
-    points: &[Point3<Real>],
+fn fix_silhouette_topology<T: AD>(
+    points: &[Point3<T>],
     out_facets_and_idx: &mut Vec<(usize, usize)>,
     removed_facets: &mut Vec<usize>,
-    triangles: &mut [TriangleFacet],
+    triangles: &mut [TriangleFacet<T>],
 ) -> Result<(), ConvexHullError> {
     // FIXME: don't allocate this everytime.
     let mut workspace = vec![0; points.len()];
@@ -298,11 +298,11 @@ fn fix_silhouette_topology(
     Ok(())
 }
 
-fn attach_and_push_facets(
+fn attach_and_push_facets<T: AD>(
     silhouette_loop_facets_and_idx: &[(usize, usize)],
     point: usize,
-    points: &[Point3<Real>],
-    triangles: &mut Vec<TriangleFacet>,
+    points: &[Point3<T>],
+    triangles: &mut Vec<TriangleFacet<T>>,
     removed_facets: &[usize],
     undecidable: &mut Vec<usize>,
 ) {
@@ -361,7 +361,7 @@ fn attach_and_push_facets(
             }
 
             let mut furthest = usize::max_value();
-            let mut furthest_dist = 0.0;
+            let mut furthest_dist = T::zero();
 
             for (i, curr_facet) in new_facets.iter_mut().enumerate() {
                 if !curr_facet.affinely_dependent {
@@ -390,7 +390,7 @@ fn attach_and_push_facets(
 
     while i != undecidable.len() {
         let mut furthest = usize::max_value();
-        let mut furthest_dist = 0.0;
+        let mut furthest_dist = T::zero();
         let undecidable_point = undecidable[i];
 
         for (j, curr_facet) in new_facets.iter_mut().enumerate() {

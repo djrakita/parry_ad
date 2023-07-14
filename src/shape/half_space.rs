@@ -2,6 +2,8 @@
 use crate::math::{Real, Vector};
 use na::Unit;
 
+use ad_trait::AD;
+
 /// A half-space delimited by an infinite plane.
 #[derive(PartialEq, Debug, Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -13,15 +15,15 @@ use na::Unit;
 )]
 #[cfg_attr(feature = "cuda", derive(cust_core::DeviceCopy))]
 #[repr(C)]
-pub struct HalfSpace {
+pub struct HalfSpace<T: AD> {
     /// The halfspace planar boundary's outward normal.
-    pub normal: Unit<Vector<Real>>,
+    pub normal: Unit<Vector<T>>,
 }
 
-impl HalfSpace {
+impl<T: AD> HalfSpace<T> {
     /// Builds a new halfspace from its center and its normal.
     #[inline]
-    pub fn new(normal: Unit<Vector<Real>>) -> HalfSpace {
+    pub fn new(normal: Unit<Vector<T>>) -> HalfSpace<T> {
         HalfSpace { normal }
     }
 
@@ -29,7 +31,7 @@ impl HalfSpace {
     ///
     /// Returns `None` if `self.normal` scaled by `scale` is zero (the scaled half-space
     /// degenerates to a single point).
-    pub fn scaled(self, scale: &Vector<Real>) -> Option<Self> {
-        Unit::try_new(self.normal.component_mul(scale), 0.0).map(|normal| Self { normal })
+    pub fn scaled(self, scale: &Vector<T>) -> Option<Self> {
+        Unit::try_new(self.normal.component_mul(scale), T::zero()).map(|normal| Self { normal })
     }
 }

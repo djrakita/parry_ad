@@ -5,6 +5,8 @@ use na::Unit;
 use crate::math::{Isometry, Point, Real, Vector};
 use crate::shape::SupportMap;
 
+use ad_trait::AD;
+
 /// A Ball shape.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
@@ -16,15 +18,15 @@ use crate::shape::SupportMap;
 #[cfg_attr(feature = "cuda", derive(cust_core::DeviceCopy))]
 #[derive(PartialEq, Debug, Copy, Clone)]
 #[repr(C)]
-pub struct Ball {
+pub struct Ball<T: AD> {
     /// The radius of the ball.
-    pub radius: Real,
+    pub radius: T,
 }
 
-impl Ball {
+impl<T: AD> Ball<T> {
     /// Creates a new ball from its radius and center.
     #[inline]
-    pub fn new(radius: Real) -> Ball {
+    pub fn new(radius: T) -> Ball<T> {
         Ball { radius }
     }
 
@@ -38,7 +40,7 @@ impl Ball {
     #[inline]
     pub fn scaled(
         self,
-        scale: &Vector<Real>,
+        scale: &Vector<T>,
         nsubdivs: u32,
     ) -> Option<Either<Self, super::ConvexPolygon>> {
         if scale.x != scale.y {
@@ -65,7 +67,7 @@ impl Ball {
     #[inline]
     pub fn scaled(
         self,
-        scale: &Vector<Real>,
+        scale: &Vector<T>,
         nsubdivs: u32,
     ) -> Option<Either<Self, super::ConvexPolyhedron>> {
         if scale.x != scale.y || scale.x != scale.z || scale.y != scale.z {
@@ -83,24 +85,24 @@ impl Ball {
     }
 }
 
-impl SupportMap for Ball {
+impl<T: AD> SupportMap for Ball<T> {
     #[inline]
-    fn support_point(&self, m: &Isometry<Real>, dir: &Vector<Real>) -> Point<Real> {
+    fn support_point(&self, m: &Isometry<T>, dir: &Vector<T>) -> Point<T> {
         self.support_point_toward(m, &Unit::new_normalize(*dir))
     }
 
     #[inline]
-    fn support_point_toward(&self, m: &Isometry<Real>, dir: &Unit<Vector<Real>>) -> Point<Real> {
+    fn support_point_toward(&self, m: &Isometry<T>, dir: &Unit<Vector<T>>) -> Point<T> {
         Point::from(m.translation.vector) + **dir * self.radius
     }
 
     #[inline]
-    fn local_support_point(&self, dir: &Vector<Real>) -> Point<Real> {
+    fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         self.local_support_point_toward(&Unit::new_normalize(*dir))
     }
 
     #[inline]
-    fn local_support_point_toward(&self, dir: &Unit<Vector<Real>>) -> Point<Real> {
+    fn local_support_point_toward(&self, dir: &Unit<Vector<T>>) -> Point<T> {
         Point::from(**dir * self.radius)
     }
 }

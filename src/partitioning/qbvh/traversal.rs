@@ -20,14 +20,15 @@ use {
 };
 
 use super::{IndexedData, NodeIndex, Qbvh};
+use ad_trait::AD;
 
-impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData, Storage> {
+impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbvh<LeafData, Storage, T> {
     /// Performs a depth-first traversal on the BVH.
     ///
     /// # Return
     ///
     /// Returns `false` if the traversal exitted early, and `true` otherwise.
-    pub fn traverse_depth_first(&self, visitor: &mut impl SimdVisitor<LeafData, SimdAabb>) -> bool {
+    pub fn traverse_depth_first(&self, visitor: &mut impl SimdVisitor<LeafData, SimdAabb<T>>) -> bool {
         self.traverse_depth_first_node(visitor, 0)
     }
 
@@ -38,7 +39,7 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
     /// Returns `false` if the traversal exitted early, and `true` otherwise.
     pub fn traverse_depth_first_node(
         &self,
-        visitor: &mut impl SimdVisitor<LeafData, SimdAabb>,
+        visitor: &mut impl SimdVisitor<LeafData, SimdAabb<T>>,
         start_node: u32,
     ) -> bool {
         self.traverse_depth_first_node_with_stack(visitor, &mut Vec::new(), start_node)
@@ -51,7 +52,7 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
     /// Returns `false` if the traversal exited early, and `true` otherwise.
     pub fn traverse_depth_first_with_stack(
         &self,
-        visitor: &mut impl SimdVisitor<LeafData, SimdAabb>,
+        visitor: &mut impl SimdVisitor<LeafData, SimdAabb<T>>,
         stack: &mut Vec<u32>,
     ) -> bool {
         self.traverse_depth_first_node_with_stack(visitor, stack, 0)
@@ -64,7 +65,7 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
     /// Returns `false` if the traversal exited early, and `true` otherwise.
     pub fn traverse_depth_first_node_with_stack(
         &self,
-        visitor: &mut impl SimdVisitor<LeafData, SimdAabb>,
+        visitor: &mut impl SimdVisitor<LeafData, SimdAabb<T>>,
         stack: &mut Vec<u32>,
         start_node: u32,
     ) -> bool {
@@ -115,7 +116,7 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
     /// user-defined type.
     pub fn traverse_best_first<BFS>(&self, visitor: &mut BFS) -> Option<(NodeIndex, BFS::Result)>
     where
-        BFS: SimdBestFirstVisitor<LeafData, SimdAabb>,
+        BFS: SimdBestFirstVisitor<LeafData, SimdAabb<T>>,
         BFS::Result: Clone, // Because we cannot move out of an array…
     {
         self.traverse_best_first_node(visitor, 0, Real::max_value())
@@ -132,14 +133,14 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
         init_cost: Real,
     ) -> Option<(NodeIndex, BFS::Result)>
     where
-        BFS: SimdBestFirstVisitor<LeafData, SimdAabb>,
+        BFS: SimdBestFirstVisitor<LeafData, SimdAabb<T>>,
         BFS::Result: Clone, // Because we cannot move out of an array…
     {
         if self.nodes.is_empty() {
             return None;
         }
 
-        let mut queue: BinaryHeap<WeightedValue<u32>> = BinaryHeap::new();
+        let mut queue: BinaryHeap<WeightedValue<u32, T>> = BinaryHeap::new();
 
         let mut best_cost = init_cost;
         let mut best_result = None;
@@ -243,8 +244,8 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
     /// Performs a simultaneous traversal of two Qbvh.
     pub fn traverse_bvtt<LeafData2: IndexedData>(
         &self,
-        qbvh2: &Qbvh<LeafData2>,
-        visitor: &mut impl SimdSimultaneousVisitor<LeafData, LeafData2, SimdAabb>,
+        qbvh2: &Qbvh<LeafData2, T>,
+        visitor: &mut impl SimdSimultaneousVisitor<LeafData, LeafData2, SimdAabb<T>>,
     ) {
         self.traverse_bvtt_with_stack(qbvh2, visitor, &mut Vec::new())
     }
@@ -252,8 +253,8 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
     /// Performs a simultaneous traversal of two Qbvh.
     pub fn traverse_bvtt_with_stack<LeafData2: IndexedData>(
         &self,
-        qbvh2: &Qbvh<LeafData2>,
-        visitor: &mut impl SimdSimultaneousVisitor<LeafData, LeafData2, SimdAabb>,
+        qbvh2: &Qbvh<LeafData2, T>,
+        visitor: &mut impl SimdSimultaneousVisitor<LeafData, LeafData2, SimdAabb<T>>,
         stack: &mut Vec<(u32, u32)>,
     ) {
         let qbvh1 = self;
@@ -339,8 +340,8 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
     /// Performs a simultaneous traversal of two Qbvh.
     pub fn traverse_modified_bvtt<LeafData2: IndexedData>(
         &self,
-        qbvh2: &Qbvh<LeafData2>,
-        visitor: &mut impl SimdSimultaneousVisitor<LeafData, LeafData2, SimdAabb>,
+        qbvh2: &Qbvh<LeafData2, T>,
+        visitor: &mut impl SimdSimultaneousVisitor<LeafData, LeafData2, SimdAabb<T>>,
     ) {
         self.traverse_modified_bvtt_with_stack(qbvh2, visitor, &mut Vec::new())
     }
@@ -348,8 +349,8 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
     /// Performs a simultaneous traversal of two Qbvh.
     pub fn traverse_modified_bvtt_with_stack<LeafData2: IndexedData>(
         &self,
-        qbvh2: &Qbvh<LeafData2>,
-        visitor: &mut impl SimdSimultaneousVisitor<LeafData, LeafData2, SimdAabb>,
+        qbvh2: &Qbvh<LeafData2, T>,
+        visitor: &mut impl SimdSimultaneousVisitor<LeafData, LeafData2, SimdAabb<T>>,
         stack: &mut Vec<(u32, u32)>,
     ) {
         let qbvh1 = self;
@@ -438,7 +439,7 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
 }
 
 #[cfg(feature = "parallel")]
-impl<LeafData: IndexedData + Sync> Qbvh<LeafData> {
+impl<LeafData: IndexedData + Sync, T: AD> Qbvh<LeafData, T> {
     /// Performs a depth-first traversal of two Qbvh using
     /// parallelism internally for better performances with large tree.
     pub fn traverse_depth_first_parallel(&self, visitor: &impl ParallelSimdVisitor<LeafData>) {

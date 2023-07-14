@@ -6,17 +6,18 @@ use crate::shape::{Cuboid, FeatureId, Polyline, Segment, Shape, TriMesh, TriMesh
 use crate::transformation;
 use crate::utils::{hashmap::HashMap, SortedPair, WBasis};
 use spade::{handles::FixedVertexHandle, ConstrainedDelaunayTriangulation, Triangulation as _};
+use ad_trait::AD;
 
-struct Triangulation {
-    delaunay: ConstrainedDelaunayTriangulation<spade::Point2<Real>>,
-    basis: [Vector<Real>; 2],
-    basis_origin: Point<Real>,
+struct Triangulation<T: AD> {
+    delaunay: ConstrainedDelaunayTriangulation<spade::Point2<T>>,
+    basis: [Vector<T>; 2],
+    basis_origin: Point<T>,
     spade2index: HashMap<FixedVertexHandle, u32>,
     index2spade: HashMap<u32, FixedVertexHandle>,
 }
 
-impl Triangulation {
-    fn new(axis: UnitVector<Real>, basis_origin: Point<Real>) -> Self {
+impl<T: AD> Triangulation<T> {
+    fn new(axis: UnitVector<T>, basis_origin: Point<T>) -> Self {
         Triangulation {
             delaunay: ConstrainedDelaunayTriangulation::new(),
             basis: axis.orthonormal_basis(),
@@ -26,12 +27,12 @@ impl Triangulation {
         }
     }
 
-    fn project(&self, pt: Point<Real>) -> spade::Point2<Real> {
+    fn project(&self, pt: Point<T>) -> spade::Point2<T> {
         let dpt = pt - self.basis_origin;
         spade::Point2::new(dpt.dot(&self.basis[0]), dpt.dot(&self.basis[1]))
     }
 
-    fn add_edge(&mut self, id1: u32, id2: u32, points: &[Point<Real>]) {
+    fn add_edge(&mut self, id1: u32, id2: u32, points: &[Point<T>]) {
         let proj1 = self.project(points[id1 as usize]);
         let proj2 = self.project(points[id2 as usize]);
 
@@ -54,7 +55,7 @@ impl Triangulation {
     }
 }
 
-impl TriMesh {
+impl<T: AD> TriMesh<T> {
     /// Splits this `TriMesh` along the given canonical axis.
     ///
     /// This will split the Aabb by a plane with a normal with it’s `axis`-th component set to 1.
@@ -65,7 +66,7 @@ impl TriMesh {
     /// Returns the result of the split. The first mesh returned is the piece lying on the negative
     /// half-space delimited by the splitting plane. The second mesh returned is the piece lying on the
     /// positive half-space delimited by the splitting plane.
-    pub fn canonical_split(&self, axis: usize, bias: Real, epsilon: Real) -> SplitResult<Self> {
+    pub fn canonical_split(&self, axis: usize, bias: T, epsilon: T) -> SplitResult<Self> {
         // TODO: optimize this.
         self.local_split(&Vector::ith_axis(axis), bias, epsilon)
     }
@@ -74,10 +75,10 @@ impl TriMesh {
     /// and the `bias` (i.e. the plane passes through the point equal to `normal * bias`).
     pub fn split(
         &self,
-        position: &Isometry<Real>,
-        axis: &UnitVector<Real>,
-        bias: Real,
-        epsilon: Real,
+        position: &Isometry<T>,
+        axis: &UnitVector<T>,
+        bias: T,
+        epsilon: T,
     ) -> SplitResult<Self> {
         let local_axis = position.inverse_transform_unit_vector(axis);
         let added_bias = -position.translation.vector.dot(&axis);
@@ -88,9 +89,9 @@ impl TriMesh {
     /// and the `bias` (i.e. the plane passes through the point equal to `normal * bias`).
     pub fn local_split(
         &self,
-        local_axis: &UnitVector<Real>,
-        bias: Real,
-        epsilon: Real,
+        local_axis: &UnitVector<T>,
+        bias: T,
+        epsilon: T,
     ) -> SplitResult<Self> {
         let mut triangulation = if self.pseudo_normals().is_some() {
             Some(Triangulation::new(*local_axis, self.vertices()[0]))
@@ -355,9 +356,9 @@ impl TriMesh {
     pub fn canonical_intersection_with_plane(
         &self,
         axis: usize,
-        bias: Real,
-        epsilon: Real,
-    ) -> IntersectResult<Polyline> {
+        bias: T,
+        epsilon: T,
+    ) -> IntersectResult<Polyline<T>> {
         self.intersection_with_local_plane(&Vector::ith_axis(axis), bias, epsilon)
     }
 
@@ -366,11 +367,11 @@ impl TriMesh {
     /// (i.e. the plane passes through the point equal to `normal * bias`).
     pub fn intersection_with_plane(
         &self,
-        position: &Isometry<Real>,
-        axis: &UnitVector<Real>,
+        position: &Isometry<T>,
+        axis: &UnitVector<T>,
         bias: Real,
         epsilon: Real,
-    ) -> IntersectResult<Polyline> {
+    ) -> IntersectResult<Polyline<T>> {
         let local_axis = position.inverse_transform_unit_vector(axis);
         let added_bias = -position.translation.vector.dot(&axis);
         self.intersection_with_local_plane(&local_axis, bias + added_bias, epsilon)
@@ -381,10 +382,10 @@ impl TriMesh {
     /// and the `bias` (i.e. the plane passes through the point equal to `normal * bias`).
     pub fn intersection_with_local_plane(
         &self,
-        local_axis: &UnitVector<Real>,
-        bias: Real,
-        epsilon: Real,
-    ) -> IntersectResult<Polyline> {
+        local_axis: &UnitVector<T>,
+        bias: T,
+        epsilon: T,
+    ) -> IntersectResult<Polyline<T>> {
         // 1. Partition the vertices.
         let vertices = self.vertices();
         let indices = self.indices();
@@ -601,11 +602,11 @@ impl TriMesh {
     /// Computes the intersection mesh between an Aabb and this mesh.
     pub fn intersection_with_aabb(
         &self,
-        position: &Isometry<Real>,
+        position: &Isometry<T>,
         flip_mesh: bool,
         aabb: &Aabb,
         flip_cuboid: bool,
-        epsilon: Real,
+        epsilon: T,
     ) -> Option<Self> {
         let cuboid = Cuboid::new(aabb.half_extents());
         let cuboid_pos = Isometry::from(aabb.center());
@@ -622,12 +623,12 @@ impl TriMesh {
     /// Computes the intersection mesh between a cuboid and this mesh transformed by `position`.
     pub fn intersection_with_cuboid(
         &self,
-        position: &Isometry<Real>,
+        position: &Isometry<T>,
         flip_mesh: bool,
         cuboid: &Cuboid,
-        cuboid_position: &Isometry<Real>,
+        cuboid_position: &Isometry<T>,
         flip_cuboid: bool,
-        epsilon: Real,
+        epsilon: T,
     ) -> Option<Self> {
         self.intersection_with_local_cuboid(
             flip_mesh,
@@ -643,9 +644,9 @@ impl TriMesh {
         &self,
         flip_mesh: bool,
         cuboid: &Cuboid,
-        cuboid_position: &Isometry<Real>,
+        cuboid_position: &Isometry<T>,
         flip_cuboid: bool,
-        _epsilon: Real,
+        _epsilon: T,
     ) -> Option<Self> {
         if self.topology().is_some() && self.pseudo_normals().is_some() {
             let (cuboid_vtx, cuboid_idx) = cuboid.to_trimesh();

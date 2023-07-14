@@ -1,14 +1,15 @@
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::{sat, ClosestPoints, PointQuery};
 use crate::shape::{Cuboid, SupportMap, Triangle};
+use ad_trait::AD;
 
 /// Closest points between a cuboid and a triangle.
 #[inline]
-pub fn closest_points_cuboid_triangle(
-    pos12: &Isometry<Real>,
+pub fn closest_points_cuboid_triangle<T: AD>(
+    pos12: &Isometry<T>,
     cuboid1: &Cuboid,
-    triangle2: &Triangle,
-    margin: Real,
+    triangle2: &Triangle<T>,
+    margin: T,
 ) -> ClosestPoints {
     let pos21 = pos12.inverse();
 
@@ -24,14 +25,15 @@ pub fn closest_points_cuboid_triangle(
     }
 
     #[cfg(feature = "dim2")]
-    let sep3 = (-Real::MAX, crate::math::Vector::<Real>::y()); // This case does not exist in 2D.
+    let sep3 = (-T::constant(f64::MAX), crate::math::Vector::<T>::y());
+    // let sep3 = (-Real::MAX, crate::math::Vector::<Real>::y()); // This case does not exist in 2D.
     #[cfg(feature = "dim3")]
     let sep3 = sat::cuboid_triangle_find_local_separating_edge_twoway(cuboid1, triangle2, &pos12);
     if sep3.0 > margin {
         return ClosestPoints::Disjoint;
     }
 
-    if sep1.0 <= 0.0 && sep2.0 <= 0.0 && sep3.0 <= 0.0 {
+    if sep1.0 <= T::zero() && sep2.0 <= T::zero() && sep3.0 <= T::zero() {
         return ClosestPoints::Intersecting;
     }
 
@@ -79,11 +81,11 @@ pub fn closest_points_cuboid_triangle(
 
 /// Closest points between a triangle and a cuboid.
 #[inline]
-pub fn closest_points_triangle_cuboid(
-    pos12: &Isometry<Real>,
-    triangle1: &Triangle,
+pub fn closest_points_triangle_cuboid<T: AD>(
+    pos12: &Isometry<T>,
+    triangle1: &Triangle<T>,
     cuboid2: &Cuboid,
-    margin: Real,
+    margin: T,
 ) -> ClosestPoints {
     closest_points_cuboid_triangle(&pos12.inverse(), cuboid2, triangle1, margin).flipped()
 }

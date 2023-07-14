@@ -17,6 +17,7 @@ pub use self::shape::{Shape, ShapeType, TypedShape};
 #[doc(inline)]
 pub use self::support_map::SupportMap;
 pub use self::triangle::{Triangle, TriangleOrientation, TrianglePointLocation};
+use ad_trait::AD;
 
 #[cfg(feature = "std")]
 pub use self::{
@@ -57,7 +58,7 @@ pub type RoundCone = RoundShape<Cone>;
 /// A cuboid dilated by a sphere (so it has round corners).
 pub type RoundCuboid = RoundShape<Cuboid>;
 /// A triangle dilated by a sphere (so it has round corners).
-pub type RoundTriangle = RoundShape<Triangle>;
+pub type RoundTriangle<T: AD> = RoundShape<Triangle<T>>;
 /// A convex polyhedron dilated by a sphere (so it has round corners).
 #[cfg(feature = "dim3")]
 #[cfg(feature = "std")]

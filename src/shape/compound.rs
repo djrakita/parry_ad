@@ -11,6 +11,7 @@ use crate::shape::{Shape, SharedShape, SimdCompositeShape, TypedSimdCompositeSha
 #[cfg(feature = "dim2")]
 use crate::transformation::hertel_mehlhorn;
 use crate::utils::DefaultStorage;
+use ad_trait::AD;
 
 /// A compound shape with an aabb bounding volume.
 ///
@@ -19,19 +20,19 @@ use crate::utils::DefaultStorage;
 /// delta transformation to shift or rotate it with regard to the other shapes.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone)]
-pub struct Compound {
-    shapes: Vec<(Isometry<Real>, SharedShape)>,
-    qbvh: Qbvh<u32>,
+pub struct Compound<T: AD> {
+    shapes: Vec<(Isometry<T>, SharedShape<T>)>,
+    qbvh: Qbvh<u32, T>,
     aabbs: Vec<Aabb>,
     aabb: Aabb,
 }
 
-impl Compound {
+impl<T: AD> Compound<T> {
     /// Builds a new compound shape.
     ///
     /// Panics if the input vector is empty, of if some of the provided shapes
     /// are also composite shapes (nested composite shapes are not allowed).
-    pub fn new(shapes: Vec<(Isometry<Real>, SharedShape)>) -> Compound {
+    pub fn new(shapes: Vec<(Isometry<Real>, SharedShape<T>)>) -> Compound<T> {
         assert!(
             !shapes.is_empty(),
             "A compound shape must contain at least one shape."
@@ -55,7 +56,7 @@ impl Compound {
         let mut qbvh = Qbvh::new();
         // NOTE: we apply no dilation factor because we won't
         // update this tree dynamically.
-        qbvh.clear_and_rebuild(leaves.into_iter(), 0.0);
+        qbvh.clear_and_rebuild(leaves.into_iter(), T::zero());
 
         Compound {
             shapes,
@@ -89,10 +90,10 @@ impl Compound {
     }
 }
 
-impl Compound {
+impl<T: AD> Compound<T> {
     /// The shapes of this compound shape.
     #[inline]
-    pub fn shapes(&self) -> &[(Isometry<Real>, SharedShape)] {
+    pub fn shapes(&self) -> &[(Isometry<T>, SharedShape<T>)] {
         &self.shapes[..]
     }
 
@@ -116,26 +117,26 @@ impl Compound {
 
     /// The acceleration structure used by this compound shape.
     #[inline]
-    pub fn qbvh(&self) -> &Qbvh<u32> {
+    pub fn qbvh(&self) -> &Qbvh<T, u32> {
         &self.qbvh
     }
 }
 
-impl SimdCompositeShape for Compound {
+impl<T: AD> SimdCompositeShape<T> for Compound<T> {
     #[inline]
-    fn map_part_at(&self, shape_id: u32, f: &mut dyn FnMut(Option<&Isometry<Real>>, &dyn Shape)) {
+    fn map_part_at(&self, shape_id: u32, f: &mut dyn FnMut(Option<&Isometry<T>>, &dyn Shape)) {
         if let Some(shape) = self.shapes.get(shape_id as usize) {
             f(Some(&shape.0), &*shape.1)
         }
     }
 
     #[inline]
-    fn qbvh(&self) -> &Qbvh<u32> {
+    fn qbvh(&self) -> &Qbvh<T, u32> {
         &self.qbvh
     }
 }
 
-impl TypedSimdCompositeShape for Compound {
+impl<T: AD> TypedSimdCompositeShape<T> for Compound<T> {
     type PartShape = dyn Shape;
     type PartId = u32;
     type QbvhStorage = DefaultStorage;
@@ -144,7 +145,7 @@ impl TypedSimdCompositeShape for Compound {
     fn map_typed_part_at(
         &self,
         i: u32,
-        mut f: impl FnMut(Option<&Isometry<Real>>, &Self::PartShape),
+        mut f: impl FnMut(Option<&Isometry<T>>, &Self::PartShape),
     ) {
         if let Some((part_pos, part)) = self.shapes.get(i as usize) {
             f(Some(part_pos), &**part)
@@ -155,7 +156,7 @@ impl TypedSimdCompositeShape for Compound {
     fn map_untyped_part_at(
         &self,
         i: u32,
-        mut f: impl FnMut(Option<&Isometry<Real>>, &Self::PartShape),
+        mut f: impl FnMut(Option<&Isometry<T>>, &Self::PartShape),
     ) {
         if let Some((part_pos, part)) = self.shapes.get(i as usize) {
             f(Some(part_pos), &**part)
@@ -163,7 +164,7 @@ impl TypedSimdCompositeShape for Compound {
     }
 
     #[inline]
-    fn typed_qbvh(&self) -> &Qbvh<u32> {
+    fn typed_qbvh(&self) -> &Qbvh<T, u32> {
         &self.qbvh
     }
 }

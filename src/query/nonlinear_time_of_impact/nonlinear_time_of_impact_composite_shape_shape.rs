@@ -1,3 +1,4 @@
+use ad_trait::AD;
 use crate::bounding_volume::{BoundingSphere, SimdAabb};
 use crate::math::{Real, SimdBool, SimdReal, SIMD_WIDTH};
 use crate::partitioning::{SimdBestFirstVisitStatus, SimdBestFirstVisitor};
@@ -7,19 +8,19 @@ use crate::utils::DefaultStorage;
 use simba::simd::SimdValue;
 
 /// Time Of Impact of a composite shape with any other shape, under a rigid motion (translation + rotation).
-pub fn nonlinear_time_of_impact_composite_shape_shape<D: ?Sized, G1: ?Sized>(
+pub fn nonlinear_time_of_impact_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(
     dispatcher: &D,
     motion1: &NonlinearRigidMotion,
     g1: &G1,
     motion2: &NonlinearRigidMotion,
     g2: &dyn Shape,
-    start_time: Real,
-    end_time: Real,
+    start_time: T,
+    end_time: T,
     stop_at_penetration: bool,
 ) -> Option<TOI>
 where
     D: QueryDispatcher,
-    G1: TypedSimdCompositeShape<QbvhStorage = DefaultStorage>,
+    G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     let mut visitor = NonlinearTOICompositeShapeShapeBestFirstVisitor::new(
         dispatcher,
@@ -38,19 +39,19 @@ where
 }
 
 /// Time Of Impact of any shape with a composite shape, under a rigid motion (translation + rotation).
-pub fn nonlinear_time_of_impact_shape_composite_shape<D: ?Sized, G2: ?Sized>(
+pub fn nonlinear_time_of_impact_shape_composite_shape<D: ?Sized, G2: ?Sized, T: AD>(
     dispatcher: &D,
     motion1: &NonlinearRigidMotion,
     g1: &dyn Shape,
     motion2: &NonlinearRigidMotion,
     g2: &G2,
-    start_time: Real,
-    end_time: Real,
+    start_time: T,
+    end_time: T,
     stop_at_penetration: bool,
 ) -> Option<TOI>
 where
     D: QueryDispatcher,
-    G2: TypedSimdCompositeShape<QbvhStorage = DefaultStorage>,
+    G2: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     nonlinear_time_of_impact_composite_shape_shape(
         dispatcher,
@@ -66,10 +67,10 @@ where
 }
 
 /// A visitor used to determine the non-linear time of impact between a composite shape and another shape.
-pub struct NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D: ?Sized, G1: ?Sized + 'a> {
+pub struct NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D: ?Sized, G1: ?Sized + 'a, T: AD> {
     sphere2: BoundingSphere,
-    start_time: Real,
-    end_time: Real,
+    start_time: T,
+    end_time: T,
     stop_at_penetration: bool,
 
     dispatcher: &'a D,
@@ -79,10 +80,10 @@ pub struct NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D: ?Sized, G1: ?S
     g2: &'a dyn Shape,
 }
 
-impl<'a, D: ?Sized, G1: ?Sized> NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D, G1>
+impl<'a, D: ?Sized, G1: ?Sized, T: AD> NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
 where
     D: QueryDispatcher,
-    G1: TypedSimdCompositeShape<QbvhStorage = DefaultStorage>,
+    G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     /// Initializes visitor used to determine the non-linear time of impact between
     /// a composite shape and another shape.
@@ -92,10 +93,10 @@ where
         g1: &'a G1,
         motion2: &'a NonlinearRigidMotion,
         g2: &'a dyn Shape,
-        start_time: Real,
-        end_time: Real,
+        start_time: T,
+        end_time: T,
         stop_at_penetration: bool,
-    ) -> NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D, G1> {
+    ) -> NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D, G1, T> {
         NonlinearTOICompositeShapeShapeBestFirstVisitor {
             dispatcher,
             sphere2: g2.compute_local_bounding_sphere(),
@@ -110,28 +111,28 @@ where
     }
 }
 
-impl<'a, D: ?Sized, G1: ?Sized> SimdBestFirstVisitor<G1::PartId, SimdAabb>
-    for NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D, G1>
+impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>>
+    for NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
 where
     D: QueryDispatcher,
-    G1: TypedSimdCompositeShape<QbvhStorage = DefaultStorage>,
+    G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     type Result = (G1::PartId, TOI);
 
     #[inline]
     fn visit(
         &mut self,
-        best: Real,
-        bv: &SimdAabb,
+        best: T,
+        bv: &SimdAabb<T>,
         data: Option<[Option<&G1::PartId>; SIMD_WIDTH]>,
     ) -> SimdBestFirstVisitStatus<Self::Result> {
-        let mut weights = [0.0; SIMD_WIDTH];
+        let mut weights = [T::zero(); SIMD_WIDTH];
         let mut mask = [false; SIMD_WIDTH];
         let mut results = [None; SIMD_WIDTH];
 
         // let centers1: [Point<Real>; SIMD_WIDTH] = bv.center().into();
         let centers1 = bv.center();
-        let radius1: [Real; SIMD_WIDTH] = bv.radius().into();
+        let radius1: [T; SIMD_WIDTH] = bv.radius().into();
 
         for ii in 0..SIMD_WIDTH {
             let center1 = centers1.extract(ii);

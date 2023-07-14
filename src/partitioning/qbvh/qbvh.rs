@@ -3,7 +3,7 @@ use crate::math::{Real, Vector};
 use crate::partitioning::qbvh::storage::QbvhStorage;
 use crate::utils::DefaultStorage;
 use bitflags::bitflags;
-
+use ad_trait::AD;
 use na::SimdValue;
 
 #[cfg(all(feature = "std", feature = "cuda"))]
@@ -120,9 +120,9 @@ bitflags! {
     archive(check_bytes)
 )]
 #[cfg_attr(feature = "cuda", derive(cust_core::DeviceCopy))]
-pub struct QbvhNode {
+pub struct QbvhNode<T: AD> {
     /// The Aabbs of the qbvh nodes represented by this node.
-    pub simd_aabb: SimdAabb,
+    pub simd_aabb: SimdAabb<T>,
     /// Index of the nodes of the 4 nodes represented by `self`.
     /// If this is a leaf, it contains the proxy ids instead.
     pub children: [u32; 4],
@@ -132,7 +132,7 @@ pub struct QbvhNode {
     pub flags: QbvhNodeFlags,
 }
 
-impl QbvhNode {
+impl<T: AD> QbvhNode<T> {
     #[inline]
     /// Is this node a leaf?
     pub fn is_leaf(&self) -> bool {
@@ -236,7 +236,7 @@ impl<LeafData> QbvhProxy<LeafData> {
 )]
 #[repr(C)] // Needed for Cuda.
 #[derive(Debug)]
-pub struct GenericQbvh<LeafData, Storage: QbvhStorage<LeafData>> {
+pub struct GenericQbvh<LeafData, T: AD, Storage: QbvhStorage<LeafData, T>> {
     pub(super) root_aabb: Aabb,
     pub(super) nodes: Storage::Nodes,
     pub(super) dirty_nodes: Storage::ArrayU32,
@@ -247,17 +247,17 @@ pub struct GenericQbvh<LeafData, Storage: QbvhStorage<LeafData>> {
 /// A quaternary bounding-volume-hierarchy.
 ///
 /// This is a bounding-volume-hierarchy where each node has either four children or none.
-pub type Qbvh<LeafData> = GenericQbvh<LeafData, DefaultStorage>;
+pub type Qbvh<LeafData, T: AD> = GenericQbvh<LeafData, DefaultStorage, T>;
 #[cfg(feature = "cuda")]
 /// A Qbvh stored in CUDA memory.
-pub type CudaQbvh<LeafData> = GenericQbvh<LeafData, CudaStorage>;
+pub type CudaQbvh<LeafData, T: AD> = GenericQbvh<LeafData, CudaStorage, T>;
 #[cfg(feature = "cuda")]
 /// A Qbvh accessible from CUDA kernels.
-pub type CudaQbvhPtr<LeafData> = GenericQbvh<LeafData, CudaStoragePtr>;
+pub type CudaQbvhPtr<LeafData, T: AD> = GenericQbvh<LeafData, CudaStoragePtr, T>;
 
-impl<LeafData, Storage> Clone for GenericQbvh<LeafData, Storage>
+impl<LeafData, Storage, T: AD> Clone for GenericQbvh<LeafData, Storage, T>
 where
-    Storage: QbvhStorage<LeafData>,
+    Storage: QbvhStorage<LeafData, T>,
     Storage::Nodes: Clone,
     Storage::ArrayU32: Clone,
     Storage::ArrayProxies: Clone,
@@ -273,9 +273,9 @@ where
     }
 }
 
-impl<LeafData, Storage> Copy for GenericQbvh<LeafData, Storage>
+impl<LeafData, Storage, T: AD> Copy for GenericQbvh<LeafData, Storage, T>
 where
-    Storage: QbvhStorage<LeafData>,
+    Storage: QbvhStorage<LeafData, T>,
     Storage::Nodes: Copy,
     Storage::ArrayU32: Copy,
     Storage::ArrayProxies: Copy,
@@ -283,9 +283,9 @@ where
 }
 
 #[cfg(feature = "cuda")]
-unsafe impl<LeafData, Storage> DeviceCopy for GenericQbvh<LeafData, Storage>
+unsafe impl<LeafData, Storage, T: AD> DeviceCopy for GenericQbvh<LeafData, Storage, T>
 where
-    Storage: QbvhStorage<LeafData>,
+    Storage: QbvhStorage<LeafData, T>,
     Storage::Nodes: DeviceCopy,
     Storage::ArrayU32: DeviceCopy,
     Storage::ArrayProxies: DeviceCopy,
@@ -293,9 +293,9 @@ where
 }
 
 #[cfg(all(feature = "std", feature = "cuda"))]
-impl<LeafData: DeviceCopy> CudaQbvh<LeafData> {
+impl<LeafData: DeviceCopy, T: AD> CudaQbvh<LeafData, T> {
     /// Returns the qbvh usable from within a CUDA kernel.
-    pub fn as_device_ptr(&self) -> CudaQbvhPtr<LeafData> {
+    pub fn as_device_ptr(&self) -> CudaQbvhPtr<LeafData, T> {
         GenericQbvh {
             root_aabb: self.root_aabb,
             nodes: self.nodes.as_device_ptr(),
@@ -307,7 +307,7 @@ impl<LeafData: DeviceCopy> CudaQbvh<LeafData> {
 }
 
 #[cfg(feature = "std")]
-impl<LeafData: IndexedData> Qbvh<LeafData> {
+impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     /// Initialize an empty Qbvh.
     pub fn new() -> Self {
         Qbvh {
@@ -321,7 +321,7 @@ impl<LeafData: IndexedData> Qbvh<LeafData> {
 
     /// Converts this RAM-based qbvh to an qbvh based on CUDA memory.
     #[cfg(feature = "cuda")]
-    pub fn to_cuda(&self) -> CudaResult<CudaQbvh<LeafData>>
+    pub fn to_cuda(&self) -> CudaResult<CudaQbvh<LeafData, T>>
     where
         LeafData: DeviceCopy,
     {
@@ -372,7 +372,7 @@ impl<LeafData: IndexedData> Qbvh<LeafData> {
     /// If this Qbvh isn’t empty, the first element of the returned slice is the root of the
     /// tree. The other elements are not arranged in any particular order.
     /// The more high-level traversal methods should be used instead of this.
-    pub fn raw_nodes(&self) -> &[QbvhNode] {
+    pub fn raw_nodes(&self) -> &[QbvhNode<T>] {
         &self.nodes
     }
 
@@ -397,7 +397,7 @@ impl<LeafData: IndexedData> Qbvh<LeafData> {
     }
 }
 
-impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData, Storage> {
+impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbvh<LeafData, Storage, T> {
     /// The Aabb of the root of this tree.
     pub fn root_aabb(&self) -> &Aabb {
         &self.root_aabb

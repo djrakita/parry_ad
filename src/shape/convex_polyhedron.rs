@@ -6,6 +6,8 @@ use crate::utils::{self, SortedPair};
 use na::{self, ComplexField, Point2, Unit};
 use std::f64;
 
+use ad_trait::AD;
+
 #[cfg(not(feature = "std"))]
 use na::ComplexField; // for .abs()
 
@@ -30,10 +32,10 @@ pub struct Vertex {
     archive(check_bytes)
 )]
 #[derive(PartialEq, Debug, Copy, Clone)]
-pub struct Edge {
+pub struct Edge<T: AD> {
     pub vertices: Point2<u32>,
     pub faces: Point2<u32>,
-    pub dir: Unit<Vector<Real>>,
+    pub dir: Unit<Vector<T>>,
     deleted: bool,
 }
 
@@ -55,10 +57,10 @@ impl Edge {
     archive(check_bytes)
 )]
 #[derive(PartialEq, Debug, Copy, Clone)]
-pub struct Face {
+pub struct Face<T: AD> {
     pub first_vertex_or_edge: u32,
     pub num_vertices_or_edges: u32,
-    pub normal: Unit<Vector<Real>>,
+    pub normal: Unit<Vector<T>>,
 }
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -68,15 +70,15 @@ pub struct Face {
     archive(check_bytes)
 )]
 #[derive(PartialEq, Debug, Copy, Clone)]
-struct Triangle {
+struct Triangle<T: AD> {
     vertices: [u32; 3],
     edges: [u32; 3],
-    normal: Vector<Real>,
+    normal: Vector<T>,
     parent_face: Option<u32>,
     is_degenerate: bool,
 }
 
-impl Triangle {
+impl<T: AD> Triangle<T> {
     fn next_edge_id(&self, id: u32) -> u32 {
         for i in 0..3 {
             if self.edges[i] == id {
@@ -96,8 +98,8 @@ impl Triangle {
 )]
 #[derive(PartialEq, Debug, Clone)]
 /// A convex polyhedron without degenerate faces.
-pub struct ConvexPolyhedron {
-    points: Vec<Point<Real>>,
+pub struct ConvexPolyhedron<T: AD> {
+    points: Vec<Point<T>>,
     vertices: Vec<Vertex>,
     faces: Vec<Face>,
     edges: Vec<Edge>,
@@ -111,12 +113,12 @@ pub struct ConvexPolyhedron {
     vertices_adj_to_face: Vec<u32>,
 }
 
-impl ConvexPolyhedron {
+impl<T: AD> ConvexPolyhedron<T> {
     /// Creates a new convex polyhedron from an arbitrary set of points.
     ///
     /// This explicitly computes the convex hull of the given set of points. Use
     /// Returns `None` if the convex hull computation failed.
-    pub fn from_convex_hull(points: &[Point<Real>]) -> Option<ConvexPolyhedron> {
+    pub fn from_convex_hull(points: &[Point<T>]) -> Option<ConvexPolyhedron> {
         let (vertices, indices) = crate::transformation::convex_hull(points);
         Self::from_convex_mesh(vertices, &indices)
     }
@@ -130,7 +132,7 @@ impl ConvexPolyhedron {
     ///
     /// Retruns `None` if he given solid is not manifold (contains t-junctions, not closed, etc.)
     pub fn from_convex_mesh(
-        points: Vec<Point<Real>>,
+        points: Vec<Point<T>>,
         indices: &[[u32; DIM]],
     ) -> Option<ConvexPolyhedron> {
         let eps = ComplexField::sqrt(crate::math::DEFAULT_EPSILON);
@@ -396,7 +398,7 @@ impl ConvexPolyhedron {
 
     /// The set of vertices of this convex polyhedron.
     #[inline]
-    pub fn points(&self) -> &[Point<Real>] {
+    pub fn points(&self) -> &[Point<T>] {
         &self.points[..]
     }
 
@@ -440,7 +442,7 @@ impl ConvexPolyhedron {
     ///
     /// Returns `None` if the result had degenerate normals (for example if
     /// the scaling factor along one axis is zero).
-    pub fn scaled(mut self, scale: &Vector<Real>) -> Option<Self> {
+    pub fn scaled(mut self, scale: &Vector<T>) -> Option<Self> {
         self.points
             .iter_mut()
             .for_each(|pt| pt.coords.component_mul_assign(scale));
@@ -458,8 +460,8 @@ impl ConvexPolyhedron {
 
     fn support_feature_id_toward_eps(
         &self,
-        local_dir: &Unit<Vector<Real>>,
-        eps: Real,
+        local_dir: &Unit<Vector<T>>,
+        eps: T,
     ) -> FeatureId {
         let (seps, ceps) = ComplexField::sin_cos(eps);
         let support_pt_id = utils::point_cloud_support_point_id(local_dir.as_ref(), &self.points);
@@ -490,13 +492,13 @@ impl ConvexPolyhedron {
     }
 
     /// Computes the ID of the features with a normal that maximize the dot-product with `local_dir`.
-    pub fn support_feature_id_toward(&self, local_dir: &Unit<Vector<Real>>) -> FeatureId {
-        let eps: Real = na::convert::<f64, Real>(f64::consts::PI / 180.0);
+    pub fn support_feature_id_toward(&self, local_dir: &Unit<Vector<T>>) -> FeatureId {
+        let eps = T::constant(f64::consts::PI / 180.0);
         self.support_feature_id_toward_eps(local_dir, eps)
     }
 
     /// The normal of the given feature.
-    pub fn feature_normal(&self, feature: FeatureId) -> Option<Unit<Vector<Real>>> {
+    pub fn feature_normal(&self, feature: FeatureId) -> Option<Unit<Vector<T>>> {
         match feature {
             FeatureId::Face(id) => Some(self.faces[id as usize].normal),
             FeatureId::Edge(id) => {
@@ -523,15 +525,15 @@ impl ConvexPolyhedron {
     }
 }
 
-impl SupportMap for ConvexPolyhedron {
+impl<T: AD> SupportMap for ConvexPolyhedron<T> {
     #[inline]
-    fn local_support_point(&self, dir: &Vector<Real>) -> Point<Real> {
+    fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         utils::point_cloud_support_point(dir, self.points())
     }
 }
 
-impl PolygonalFeatureMap for ConvexPolyhedron {
-    fn local_support_feature(&self, dir: &Unit<Vector<Real>>, out_feature: &mut PolygonalFeature) {
+impl<T: AD> PolygonalFeatureMap for ConvexPolyhedron<T> {
+    fn local_support_feature(&self, dir: &Unit<Vector<T>>, out_feature: &mut PolygonalFeature) {
         let mut best_fid = 0;
         let mut best_dot = self.faces[0].normal.dot(dir);
 

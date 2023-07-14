@@ -1,14 +1,16 @@
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, T, Vector};
 #[cfg(feature = "std")]
 use crate::query::{self, ContactManifold, TrackedContact};
 use crate::shape::{PackedFeatureId, Segment};
 
+use ad_trait::AD;
+
 /// A polygonal feature representing the local polygonal approximation of
 /// a vertex, or face, of a convex shape.
 #[derive(Debug)]
-pub struct PolygonalFeature {
+pub struct PolygonalFeature<T: AD> {
     /// Up to two vertices forming this polygonal feature.
-    pub vertices: [Point<Real>; 2],
+    pub vertices: [Point<T>; 2],
     /// The feature IDs of this polygon's vertices.
     pub vids: [PackedFeatureId; 2],
     /// The feature ID of this polygonal feature.
@@ -17,7 +19,7 @@ pub struct PolygonalFeature {
     pub num_vertices: usize,
 }
 
-impl Default for PolygonalFeature {
+impl<T: AD> Default for PolygonalFeature<T> {
     fn default() -> Self {
         Self {
             vertices: [Point::origin(); 2],
@@ -28,7 +30,7 @@ impl Default for PolygonalFeature {
     }
 }
 
-impl From<Segment> for PolygonalFeature {
+impl<T: AD> From<Segment> for PolygonalFeature<T> {
     fn from(seg: Segment) -> Self {
         PolygonalFeature {
             vertices: [seg.a, seg.b],
@@ -39,9 +41,9 @@ impl From<Segment> for PolygonalFeature {
     }
 }
 
-impl PolygonalFeature {
+impl<T: AD> PolygonalFeature<T> {
     /// Transforms the vertices of `self` by the given position `pos`.
-    pub fn transform_by(&mut self, pos: &Isometry<Real>) {
+    pub fn transform_by(&mut self, pos: &Isometry<T>) {
         self.vertices[0] = pos * self.vertices[0];
         self.vertices[1] = pos * self.vertices[1];
     }
@@ -49,13 +51,13 @@ impl PolygonalFeature {
     /// Computes the contacts between two polygonal features.
     #[cfg(feature = "std")]
     pub fn contacts<ManifoldData, ContactData: Default + Copy>(
-        pos12: &Isometry<Real>,
-        pos21: &Isometry<Real>,
-        sep_axis1: &Vector<Real>,
-        sep_axis2: &Vector<Real>,
+        pos12: &Isometry<T>,
+        pos21: &Isometry<T>,
+        sep_axis1: &Vector<T>,
+        sep_axis2: &Vector<T>,
         feature1: &Self,
         feature2: &Self,
-        prediction: Real,
+        prediction: T,
         manifold: &mut ContactManifold<ManifoldData, ContactData>,
         flipped: bool,
     ) {
@@ -78,11 +80,11 @@ impl PolygonalFeature {
     /// This method assume we already know that at least one contact exists.
     #[cfg(feature = "std")]
     pub fn face_vertex_contacts<ManifoldData, ContactData: Default + Copy>(
-        pos12: &Isometry<Real>,
+        pos12: &Isometry<T>,
         face1: &Self,
-        sep_axis1: &Vector<Real>,
+        sep_axis1: &Vector<T>,
         vertex2: &Self,
-        _prediction: Real,
+        _prediction: T,
         manifold: &mut ContactManifold<ManifoldData, ContactData>,
         flipped: bool,
     ) {
@@ -109,11 +111,11 @@ impl PolygonalFeature {
     /// Computes the contacts between two polygonal faces.
     #[cfg(feature = "std")]
     pub fn face_face_contacts<ManifoldData, ContactData: Default + Copy>(
-        pos12: &Isometry<Real>,
+        pos12: &Isometry<T>,
         face1: &Self,
-        normal1: &Vector<Real>,
+        normal1: &Vector<T>,
         face2: &Self,
-        _prediction: Real,
+        _prediction: T,
         manifold: &mut ContactManifold<ManifoldData, ContactData>,
         flipped: bool,
     ) {

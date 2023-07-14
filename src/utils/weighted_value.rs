@@ -1,39 +1,39 @@
-use crate::math::Real;
 use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
+use ad_trait::AD;
 
 #[derive(Copy, Clone)]
-pub struct WeightedValue<T> {
+pub struct WeightedValue<T, A: AD> {
     pub value: T,
-    pub cost: Real,
+    pub cost: A,
 }
 
-impl<T> WeightedValue<T> {
+impl<T, A: AD> WeightedValue<T, A> {
     /// Creates a new reference packed with a cost value.
     #[inline]
-    pub fn new(value: T, cost: Real) -> WeightedValue<T> {
+    pub fn new(value: T, cost: A) -> WeightedValue<T, A> {
         WeightedValue { value, cost }
     }
 }
 
-impl<T> PartialEq for WeightedValue<T> {
+impl<T, A: AD> PartialEq for WeightedValue<T, A> {
     #[inline]
-    fn eq(&self, other: &WeightedValue<T>) -> bool {
+    fn eq(&self, other: &WeightedValue<T, A>) -> bool {
         self.cost.eq(&other.cost)
     }
 }
 
-impl<T> Eq for WeightedValue<T> {}
+impl<T, A: AD> Eq for WeightedValue<T, A> {}
 
-impl<T> PartialOrd for WeightedValue<T> {
+impl<T, A: AD> PartialOrd for WeightedValue<T, A> {
     #[inline]
-    fn partial_cmp(&self, other: &WeightedValue<T>) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &WeightedValue<T, A>) -> Option<Ordering> {
         self.cost.partial_cmp(&other.cost)
     }
 }
 
-impl<T> Ord for WeightedValue<T> {
+impl<T, A: AD> Ord for WeightedValue<T, A> {
     #[inline]
-    fn cmp(&self, other: &WeightedValue<T>) -> Ordering {
+    fn cmp(&self, other: &WeightedValue<T, A>) -> Ordering {
         if self.cost < other.cost {
             Ordering::Less
         } else if self.cost > other.cost {

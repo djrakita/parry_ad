@@ -1,16 +1,16 @@
-use crate::math::Real;
+use ad_trait::AD;
 use crate::num::Bounded;
 use na;
 #[cfg(feature = "dim3")]
 use {crate::bounding_volume, crate::math::Point};
 
 /// Returns the index of the support point of a list of points.
-pub fn support_point_id<const D: usize>(
-    direction: &na::SVector<Real, D>,
-    points: &[na::Point<Real, D>],
+pub fn support_point_id<const D: usize, T: AD>(
+    direction: &na::SVector<T, D>,
+    points: &[na::Point<T, D>],
 ) -> Option<usize> {
     let mut argmax = None;
-    let _max: Real = Bounded::max_value();
+    let _max = T::constant(Bounded::max_value());
     let mut max = -_max;
 
     for (id, pt) in points.iter().enumerate() {
@@ -26,16 +26,16 @@ pub fn support_point_id<const D: usize>(
 }
 
 /// Returns the index of the support point of an indexed list of points.
-pub fn indexed_support_point_id<I, const D: usize>(
-    direction: &na::SVector<Real, D>,
-    points: &[na::Point<Real, D>],
+pub fn indexed_support_point_id<I, const D: usize, T: AD>(
+    direction: &na::SVector<T, D>,
+    points: &[na::Point<T, D>],
     idx: I,
 ) -> Option<usize>
 where
     I: Iterator<Item = usize>,
 {
     let mut argmax = None;
-    let mut max = -Real::MAX;
+    let mut max = T::constant(-f64::MAX);
 
     for i in idx.into_iter() {
         let dot = direction.dot(&points[i].coords);
@@ -51,16 +51,16 @@ where
 
 /// Returns the number `n` such that `points[idx.nth(n)]` is the support point.
 #[cfg(feature = "dim3")] // We only use this in 3D right now.
-pub fn indexed_support_point_nth<I, const D: usize>(
-    direction: &na::SVector<Real, D>,
-    points: &[na::Point<Real, D>],
+pub fn indexed_support_point_nth<I, const D: usize, T: AD>(
+    direction: &na::SVector<T, D>,
+    points: &[na::Point<T, D>],
     idx: I,
 ) -> Option<usize>
 where
     I: Iterator<Item = usize>,
 {
     let mut argmax = None;
-    let mut max = -Real::MAX;
+    let mut max = T::constant(-f64::MAX);
 
     for (k, i) in idx.into_iter().enumerate() {
         let dot = direction.dot(&points[i].coords);
@@ -76,7 +76,7 @@ where
 
 /// Scale and center the given set of point depending on their Aabb.
 #[cfg(feature = "dim3")]
-pub fn normalize(coords: &mut [Point<Real>]) -> (Point<Real>, Real) {
+pub fn normalize<T: AD>(coords: &mut [Point<T>]) -> (Point<T>, T) {
     let aabb = bounding_volume::details::local_point_cloud_aabb(&coords[..]);
     let diag = na::distance(&aabb.mins, &aabb.maxs);
     let center = aabb.center();

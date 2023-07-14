@@ -10,13 +10,15 @@ use {
     approx::AbsDiffEq,
 };
 
+use ad_trait::AD;
+
 #[cfg(not(feature = "std"))]
 use na::{ComplexField, RealField}; // for .abs() and .copysign()
 
 /// Trait implemented by convex shapes with features with polyhedral approximations.
-pub trait PolygonalFeatureMap: SupportMap {
+pub trait PolygonalFeatureMap<T: AD>: SupportMap {
     /// Compute the support polygonal face of `self` towards the `dir`.
-    fn local_support_feature(&self, dir: &Unit<Vector<Real>>, out_feature: &mut PolygonalFeature);
+    fn local_support_feature(&self, dir: &Unit<Vector<T>>, out_feature: &mut PolygonalFeature);
 
     // TODO: this is currently just a workaround for https://github.com/dimforge/rapier/issues/417
     //       until we get a better way to deal with the issue without breaking internal edges
@@ -27,27 +29,27 @@ pub trait PolygonalFeatureMap: SupportMap {
     }
 }
 
-impl PolygonalFeatureMap for Segment {
-    fn local_support_feature(&self, _: &Unit<Vector<Real>>, out_feature: &mut PolygonalFeature) {
+impl<T: AD> PolygonalFeatureMap<T> for Segment {
+    fn local_support_feature(&self, _: &Unit<Vector<T>>, out_feature: &mut PolygonalFeature<T>) {
         *out_feature = PolygonalFeature::from(*self);
     }
 }
 
-impl PolygonalFeatureMap for Triangle {
-    fn local_support_feature(&self, dir: &Unit<Vector<Real>>, out_feature: &mut PolygonalFeature) {
+impl<T: AD> PolygonalFeatureMap<T> for Triangle<T> {
+    fn local_support_feature(&self, dir: &Unit<Vector<T>>, out_feature: &mut PolygonalFeature<T>) {
         *out_feature = self.support_face(**dir);
     }
 }
 
-impl PolygonalFeatureMap for Cuboid {
-    fn local_support_feature(&self, dir: &Unit<Vector<Real>>, out_feature: &mut PolygonalFeature) {
+impl<T: AD> PolygonalFeatureMap<T> for Cuboid<T> {
+    fn local_support_feature(&self, dir: &Unit<Vector<T>>, out_feature: &mut PolygonalFeature<T>) {
         *out_feature = self.support_face(**dir).into();
     }
 }
 
 #[cfg(feature = "dim3")]
-impl PolygonalFeatureMap for Cylinder {
-    fn local_support_feature(&self, dir: &Unit<Vector<Real>>, out_features: &mut PolygonalFeature) {
+impl<T: AD> PolygonalFeatureMap<T> for Cylinder<T> {
+    fn local_support_feature(&self, dir: &Unit<Vector<T>>, out_features: &mut PolygonalFeature<T>) {
         use na::Vector2;
 
         // About feature ids.
@@ -65,7 +67,7 @@ impl PolygonalFeatureMap for Cylinder {
         // - Note that at all times, one of each cap's vertices are the same as the curved-part
         //   segment endpoints.
         let dir2 = Vector2::new(dir.x, dir.z)
-            .try_normalize(Real::default_epsilon())
+            .try_normalize(T::constant(f64::default_epsilon()))
             .unwrap_or(Vector2::x());
 
         if dir.y.abs() < 0.5 {
@@ -89,7 +91,7 @@ impl PolygonalFeatureMap for Cylinder {
             out_features.vertices[2] = Point::new(-dir2.x * self.radius, y, -dir2.y * self.radius);
             out_features.vertices[3] = Point::new(dir2.y * self.radius, y, -dir2.x * self.radius);
 
-            if dir.y < 0.0 {
+            if dir.y < T::zero() {
                 out_features.eids = PackedFeatureId::edges([2, 4, 6, 8]);
                 out_features.fid = PackedFeatureId::face(9);
                 out_features.num_vertices = 4;
@@ -105,8 +107,8 @@ impl PolygonalFeatureMap for Cylinder {
 }
 
 #[cfg(feature = "dim3")]
-impl PolygonalFeatureMap for Cone {
-    fn local_support_feature(&self, dir: &Unit<Vector<Real>>, out_features: &mut PolygonalFeature) {
+impl<T: AD> PolygonalFeatureMap<T> for Cone<T> {
+    fn local_support_feature(&self, dir: &Unit<Vector<T>>, out_features: &mut PolygonalFeature<T>) {
         use na::Vector2;
 
         // About feature ids. It is very similar to the feature ids of cylinders.
@@ -122,17 +124,17 @@ impl PolygonalFeatureMap for Cone {
         // - Note that at all times, one of the cap's vertices are the same as the curved-part
         //   segment endpoints.
         let dir2 = Vector2::new(dir.x, dir.z)
-            .try_normalize(Real::default_epsilon())
+            .try_normalize(T::constant(f64::default_epsilon()))
             .unwrap_or(Vector2::x());
 
-        if dir.y > 0.0 {
+        if dir.y > T::zero() {
             // We return a segment lying on the cone's curved part.
             out_features.vertices[0] = Point::new(
                 dir2.x * self.radius,
                 -self.half_height,
                 dir2.y * self.radius,
             );
-            out_features.vertices[1] = Point::new(0.0, self.half_height, 0.0);
+            out_features.vertices[1] = Point::new(T::zero(), self.half_height, T::zero());
             out_features.eids = PackedFeatureId::edges([0, 0, 0, 0]);
             out_features.fid = PackedFeatureId::face(0);
             out_features.num_vertices = 2;

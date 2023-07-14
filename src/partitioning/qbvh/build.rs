@@ -1,3 +1,4 @@
+use ad_trait::AD;
 use crate::bounding_volume::{Aabb, SimdAabb};
 use crate::math::Vector;
 use crate::math::{Point, Real};
@@ -258,7 +259,7 @@ where
     }
 }
 
-impl<LeafData: IndexedData> Qbvh<LeafData> {
+impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     /// Clears this quaternary BVH and rebuilds it from a new set of data and Aabbs.
     pub fn clear_and_rebuild(
         &mut self,
@@ -273,7 +274,7 @@ impl<LeafData: IndexedData> Qbvh<LeafData> {
     }
 }
 
-impl<LeafData: IndexedData> Qbvh<LeafData> {
+impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     /// Clears this quaternary BVH and rebuilds it from a new set of data and Aabbs.
     pub fn clear_and_rebuild_with_splitter(
         &mut self,

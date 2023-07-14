@@ -1,5 +1,5 @@
 use crate::bounding_volume::{Aabb, BoundingVolume};
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::contact_manifolds::contact_manifolds_workspace::{
     TypedWorkspaceData, WorkspaceData,
 };
@@ -7,6 +7,7 @@ use crate::query::contact_manifolds::{ContactManifoldsWorkspace, InternalEdgesFi
 use crate::query::query_dispatcher::PersistentQueryDispatcher;
 use crate::query::ContactManifold;
 use crate::shape::{Shape, TriMesh};
+use ad_trait::AD;
 
 #[cfg_attr(feature = "serde-serialize", derive(Serialize, Deserialize))]
 #[cfg_attr(
@@ -34,12 +35,12 @@ impl TriMeshShapeContactManifoldsWorkspace {
 }
 
 /// Computes the contact manifold between a triangle-mesh an a shape, both represented as `Shape` trait-objects.
-pub fn contact_manifolds_trimesh_shape_shapes<ManifoldData, ContactData>(
+pub fn contact_manifolds_trimesh_shape_shapes<ManifoldData, ContactData, T: AD>(
     dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
-    pos12: &Isometry<Real>,
+    pos12: &Isometry<T>,
     shape1: &dyn Shape,
     shape2: &dyn Shape,
-    prediction: Real,
+    prediction: T,
     manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
     workspace: &mut Option<ContactManifoldsWorkspace>,
 ) where
@@ -79,12 +80,12 @@ fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
 }
 
 /// Computes the contact manifold between a triangle-mesh and a shape.
-pub fn contact_manifolds_trimesh_shape<ManifoldData, ContactData>(
+pub fn contact_manifolds_trimesh_shape<ManifoldData, ContactData, T: AD>(
     dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
-    pos12: &Isometry<Real>,
-    trimesh1: &TriMesh,
+    pos12: &Isometry<T>,
+    trimesh1: &TriMesh<T>,
     shape2: &dyn Shape,
-    prediction: Real,
+    prediction: T,
     manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
     workspace: &mut Option<ContactManifoldsWorkspace>,
     flipped: bool,

@@ -1,5 +1,4 @@
 use super::{ConvexHullError, TriangleFacet};
-use crate::math::Real;
 use crate::shape::Triangle;
 use crate::transformation;
 use crate::transformation::convex_hull_utils::support_point_id;
@@ -7,23 +6,25 @@ use crate::utils;
 use na::{Point2, Point3, Vector3};
 use std::cmp::Ordering;
 
+use ad_trait::AD;
+
 #[derive(Debug)]
-pub enum InitialMesh {
-    Facets(Vec<TriangleFacet>),
-    ResultMesh(Vec<Point3<Real>>, Vec<[u32; 3]>),
+pub enum InitialMesh<T: AD> {
+    Facets(Vec<TriangleFacet<T>>),
+    ResultMesh(Vec<Point3<T>>, Vec<[u32; 3]>),
 }
 
-fn build_degenerate_mesh_point(point: Point3<Real>) -> (Vec<Point3<Real>>, Vec<[u32; 3]>) {
+fn build_degenerate_mesh_point<T: AD>(point: Point3<T>) -> (Vec<Point3<T>>, Vec<[u32; 3]>) {
     let ta = [0u32; 3];
     let tb = [0u32; 3];
 
     (vec![point], vec![ta, tb])
 }
 
-fn build_degenerate_mesh_segment(
-    dir: &Vector3<Real>,
-    points: &[Point3<Real>],
-) -> (Vec<Point3<Real>>, Vec<[u32; 3]>) {
+fn build_degenerate_mesh_segment<T: AD>(
+    dir: &Vector3<T>,
+    points: &[Point3<T>],
+) -> (Vec<Point3<T>>, Vec<[u32; 3]>) {
     let a = utils::point_cloud_support_point(dir, points);
     let b = utils::point_cloud_support_point(&-*dir, points);
 
@@ -33,11 +34,11 @@ fn build_degenerate_mesh_segment(
     (vec![a, b], vec![ta, tb])
 }
 
-pub fn try_get_initial_mesh(
-    original_points: &[Point3<Real>],
-    normalized_points: &mut [Point3<Real>],
+pub fn try_get_initial_mesh<T: AD>(
+    original_points: &[Point3<T>],
+    normalized_points: &mut [Point3<T>],
     undecidable: &mut Vec<usize>,
-) -> Result<InitialMesh, ConvexHullError> {
+) -> Result<InitialMesh<T>, ConvexHullError> {
     /*
      * Compute the eigenvectors to see if the input data live on a subspace.
      */
@@ -82,7 +83,7 @@ pub fn try_get_initial_mesh(
      */
     let mut dimension = 0;
     while dimension < 3 {
-        if relative_eq!(eigpairs[dimension].1, 0.0, epsilon = 1.0e-7) {
+        if relative_eq!(eigpairs[dimension].1, T::constant(0.0), epsilon = T::constant(1.0e-7)) {
             break;
         }
 

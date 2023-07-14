@@ -3,6 +3,7 @@ use crate::math::{Point, Real, SimdReal, SIMD_WIDTH};
 use crate::partitioning::{SimdVisitStatus, SimdVisitor};
 use simba::simd::{SimdBool as _, SimdValue};
 use std::marker::PhantomData;
+use ad_trait::AD;
 
 // FIXME: add a point cost fn.
 
@@ -29,12 +30,12 @@ where
     }
 }
 
-impl<'a, T, F> SimdVisitor<T, SimdAabb> for PointIntersectionsVisitor<'a, T, F>
+impl<'a, T, F, A: AD> SimdVisitor<T, SimdAabb<A>> for PointIntersectionsVisitor<'a, T, F>
 where
     F: FnMut(&T) -> bool,
 {
     #[inline]
-    fn visit(&mut self, bv: &SimdAabb, b: Option<[Option<&T>; SIMD_WIDTH]>) -> SimdVisitStatus {
+    fn visit(&mut self, bv: &SimdAabb<A>, b: Option<[Option<&T>; SIMD_WIDTH]>) -> SimdVisitStatus {
         let mask = bv.contains_local_point(&self.simd_point);
 
         if let Some(data) = b {

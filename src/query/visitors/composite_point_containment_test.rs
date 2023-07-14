@@ -5,6 +5,7 @@ use crate::query::point::point_query::PointQuery;
 use crate::shape::TypedSimdCompositeShape;
 use crate::utils::IsometryOpt;
 use simba::simd::{SimdBool as _, SimdValue};
+use ad_trait::AD;
 
 /// Visitor for checking if a composite shape contains a specific point.
 pub struct CompositePointContainmentTest<'a, S: 'a> {
@@ -28,13 +29,13 @@ impl<'a, S> CompositePointContainmentTest<'a, S> {
     }
 }
 
-impl<'a, S: TypedSimdCompositeShape> SimdVisitor<S::PartId, SimdAabb>
+impl<'a, S: TypedSimdCompositeShape<T>, T: AD> SimdVisitor<S::PartId, SimdAabb<T>>
     for CompositePointContainmentTest<'a, S>
 {
     #[inline]
     fn visit(
         &mut self,
-        bv: &SimdAabb,
+        bv: &SimdAabb<T>,
         b: Option<[Option<&S::PartId>; SIMD_WIDTH]>,
     ) -> SimdVisitStatus {
         let simd_point: Point<SimdReal> = Point::splat(*self.point);

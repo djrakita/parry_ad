@@ -9,7 +9,9 @@ use {crate::math::Point, na::Vector3};
 #[cfg(not(feature = "std"))]
 use na::ComplexField; // for .abs()
 
-impl RayCast for Triangle {
+use ad_trait::AD;
+
+impl<T: AD> RayCast for Triangle<T> {
     #[inline]
     #[cfg(feature = "dim2")]
     fn cast_local_ray_and_get_normal(

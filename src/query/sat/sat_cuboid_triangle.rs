@@ -1,3 +1,4 @@
+use ad_trait::AD;
 #[cfg(feature = "dim3")]
 use crate::approx::AbsDiffEq;
 use crate::math::{Isometry, Real, Vector};
@@ -13,11 +14,11 @@ use crate::shape::{Cuboid, SupportMap, Triangle};
 /// account.
 #[cfg(feature = "dim3")]
 #[inline(always)]
-pub fn cuboid_triangle_find_local_separating_edge_twoway(
+pub fn cuboid_triangle_find_local_separating_edge_twoway<T: AD>(
     cube1: &Cuboid,
-    triangle2: &Triangle,
-    pos12: &Isometry<Real>,
-) -> (Real, Vector<Real>) {
+    triangle2: &Triangle<T>,
+    pos12: &Isometry<T>,
+) -> (T, Vector<T>) {
     // NOTE: everything in this method will be expressed
     // in the local-space of the first triangle. So we
     // don't bother adding 2_1 suffixes (e.g. `a2_1`) to everything in
@@ -33,17 +34,17 @@ pub fn cuboid_triangle_find_local_separating_edge_twoway(
     // We have 3 * 3 = 9 axes to test.
     let axes = [
         // Vector::{x, y ,z}().cross(ab)
-        Vector::new(0.0, -ab.z, ab.y),
-        Vector::new(ab.z, 0.0, -ab.x),
-        Vector::new(-ab.y, ab.x, 0.0),
+        Vector::new(T::zero(), -ab.z, ab.y),
+        Vector::new(ab.z, T::zero(), -ab.x),
+        Vector::new(-ab.y, ab.x, T::zero()),
         // Vector::{x, y ,z}().cross(bc)
-        Vector::new(0.0, -bc.z, bc.y),
-        Vector::new(bc.z, 0.0, -bc.x),
-        Vector::new(-bc.y, bc.x, 0.0),
+        Vector::new(T::zero(), -bc.z, bc.y),
+        Vector::new(bc.z, T::zero(), -bc.x),
+        Vector::new(-bc.y, bc.x, T::zero()),
         // Vector::{x, y ,z}().cross(ca)
-        Vector::new(0.0, -ca.z, ca.y),
-        Vector::new(ca.z, 0.0, -ca.x),
-        Vector::new(-ca.y, ca.x, 0.0),
+        Vector::new(T::zero(), -ca.z, ca.y),
+        Vector::new(ca.z, T::zero(), -ca.x),
+        Vector::new(-ca.y, ca.x, T::zero()),
     ];
 
     let tri_dots = [
@@ -58,13 +59,13 @@ pub fn cuboid_triangle_find_local_separating_edge_twoway(
         (axes[8].dot(&a.coords), axes[8].dot(&b.coords)),
     ];
 
-    let mut best_sep = -Real::MAX;
+    let mut best_sep = T::constant(-f64::MAX);
     let mut best_axis = axes[0];
 
     for (i, axis) in axes.iter().enumerate() {
         let axis_norm_squared = axis.norm_squared();
 
-        if axis_norm_squared > Real::default_epsilon() {
+        if axis_norm_squared > T::constant(f64::EPSILON) {
             let axis_norm = na::ComplexField::sqrt(axis_norm_squared);
 
             // NOTE: for both axis and -axis, the dot1 will have the same
@@ -96,12 +97,12 @@ pub fn cuboid_triangle_find_local_separating_edge_twoway(
 ///
 /// Only the normals of `triangle1` are tested.
 #[cfg(feature = "dim2")]
-pub fn triangle_support_map_find_local_separating_normal_oneway(
-    triangle1: &Triangle,
+pub fn triangle_support_map_find_local_separating_normal_oneway<T: AD>(
+    triangle1: &Triangle<T>,
     shape2: &impl SupportMap,
-    pos12: &Isometry<Real>,
-) -> (Real, Vector<Real>) {
-    let mut best_sep = -Real::MAX;
+    pos12: &Isometry<T>,
+) -> (T, Vector<T>) {
+    let mut best_sep = T::constant(-f64::MAX);
     let mut best_normal = Vector::zeros();
 
     for edge in &triangle1.edges() {
@@ -122,11 +123,11 @@ pub fn triangle_support_map_find_local_separating_normal_oneway(
 ///
 /// Only the normals of `triangle1` are tested.
 #[cfg(feature = "dim2")]
-pub fn triangle_cuboid_find_local_separating_normal_oneway(
-    triangle1: &Triangle,
+pub fn triangle_cuboid_find_local_separating_normal_oneway<T: AD>(
+    triangle1: &Triangle<T>,
     shape2: &Cuboid,
-    pos12: &Isometry<Real>,
-) -> (Real, Vector<Real>) {
+    pos12: &Isometry<T>,
+) -> (T, Vector<T>) {
     triangle_support_map_find_local_separating_normal_oneway(triangle1, shape2, pos12)
 }
 
@@ -135,11 +136,11 @@ pub fn triangle_cuboid_find_local_separating_normal_oneway(
 /// Only the normals of `triangle1` are tested.
 #[cfg(feature = "dim3")]
 #[inline(always)]
-pub fn triangle_cuboid_find_local_separating_normal_oneway(
-    triangle1: &Triangle,
+pub fn triangle_cuboid_find_local_separating_normal_oneway<T: AD>(
+    triangle1: &Triangle<T>,
     shape2: &Cuboid,
-    pos12: &Isometry<Real>,
-) -> (Real, Vector<Real>) {
+    pos12: &Isometry<T>,
+) -> (T, Vector<T>) {
     sat::point_cuboid_find_local_separating_normal_oneway(
         triangle1.a,
         triangle1.normal(),

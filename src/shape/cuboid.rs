@@ -7,6 +7,8 @@ use crate::shape::{FeatureId, PackedFeatureId, PolygonalFeature, SupportMap};
 use crate::utils::WSign;
 use na::Unit;
 
+use ad_trait::AD;
+
 #[cfg(not(feature = "std"))]
 use na::RealField; // for .copysign()
 
@@ -22,21 +24,21 @@ use na::RealField; // for .copysign()
 #[cfg_attr(feature = "cuda", derive(cust_core::DeviceCopy))]
 #[derive(PartialEq, Debug, Copy, Clone)]
 #[repr(C)]
-pub struct Cuboid {
+pub struct Cuboid<T: AD> {
     /// The half-extents of the cuboid.
-    pub half_extents: Vector<Real>,
+    pub half_extents: Vector<T>,
 }
 
-impl Cuboid {
+impl<T: AD> Cuboid<T> {
     /// Creates a new box from its half-extents. Half-extents are the box half-width along each
     /// axis. Each half-extent must be positive.
     #[inline]
-    pub fn new(half_extents: Vector<Real>) -> Cuboid {
+    pub fn new(half_extents: Vector<T>) -> Cuboid<T> {
         Cuboid { half_extents }
     }
 
     /// Computes a scaled version of this cuboid.
-    pub fn scaled(self, scale: &Vector<Real>) -> Self {
+    pub fn scaled(self, scale: &Vector<T>) -> Self {
         let new_hext = self.half_extents.component_mul(scale);
         Self {
             half_extents: new_hext,
@@ -46,14 +48,14 @@ impl Cuboid {
     /// Return the id of the vertex of this cuboid with a normal that maximizes
     /// the dot product with `dir`.
     #[cfg(feature = "dim2")]
-    pub fn vertex_feature_id(vertex: Point<Real>) -> u32 {
+    pub fn vertex_feature_id(vertex: Point<T>) -> u32 {
         ((vertex.x.to_bits() >> 31) & 0b001 | (vertex.y.to_bits() >> 30) & 0b010) as u32
     }
 
     /// Return the feature of this cuboid with a normal that maximizes
     /// the dot product with `dir`.
     #[cfg(feature = "dim2")]
-    pub fn support_feature(&self, local_dir: Vector<Real>) -> PolygonalFeature {
+    pub fn support_feature(&self, local_dir: Vector<T>) -> PolygonalFeature {
         // In 2D, it is best for stability to always return a face.
         // It won't have any notable impact on performances anyway.
         self.support_face(local_dir)
@@ -62,7 +64,7 @@ impl Cuboid {
     /// Return the face of this cuboid with a normal that maximizes
     /// the dot product with `local_dir`.
     #[cfg(feature = "dim2")]
-    pub fn support_face(&self, local_dir: Vector<Real>) -> PolygonalFeature {
+    pub fn support_face(&self, local_dir: Vector<T>) -> PolygonalFeature {
         let he = self.half_extents;
         let i = local_dir.iamin();
         let j = (i + 1) % 2;
@@ -88,7 +90,7 @@ impl Cuboid {
     /// Return the face of this cuboid with a normal that maximizes
     /// the dot product with `local_dir`.
     #[cfg(feature = "dim3")]
-    pub fn support_feature(&self, local_dir: Vector<Real>) -> PolygonalFeature {
+    pub fn support_feature(&self, local_dir: Vector<T>) -> PolygonalFeature<T> {
         // FIXME: this should actually return the feature.
         // And we should change all the callers of this method to use
         // `.support_face` instead of this method to preserve their old behavior.
@@ -124,7 +126,7 @@ impl Cuboid {
     /// Return the edge segment of this cuboid with a normal cone containing
     /// a direction that that maximizes the dot product with `local_dir`.
     #[cfg(feature = "dim3")]
-    pub fn local_support_edge_segment(&self, local_dir: Vector<Real>) -> Segment {
+    pub fn local_support_edge_segment(&self, local_dir: Vector<T>) -> Segment {
         let he = self.half_extents;
         let i = local_dir.iamin();
         let j = (i + 1) % 3;
@@ -142,12 +144,12 @@ impl Cuboid {
 
     /// Computes the face with a normal that maximizes the dot-product with `local_dir`.
     #[cfg(feature = "dim3")]
-    pub fn support_face(&self, local_dir: Vector<Real>) -> PolygonalFeature {
+    pub fn support_face(&self, local_dir: Vector<T>) -> PolygonalFeature<T> {
         // NOTE: can we use the orthonormal basis of local_dir
         // to make this AoSoA friendly?
         let he = self.half_extents;
         let iamax = local_dir.iamax();
-        let sign = (1.0 as Real).copysign(local_dir[iamax]);
+        let sign = (T::constant(1.0)).copysign(local_dir[iamax]);
 
         let vertices = match iamax {
             0 => [
@@ -232,37 +234,37 @@ impl Cuboid {
 
     /// The normal of the given feature of this shape.
     #[cfg(feature = "dim2")]
-    pub fn feature_normal(&self, feature: FeatureId) -> Option<Unit<Vector<Real>>> {
+    pub fn feature_normal(&self, feature: FeatureId) -> Option<Unit<Vector<T>>> {
         match feature {
             FeatureId::Face(id) => {
-                let mut dir: Vector<Real> = na::zero();
+                let mut dir: Vector<T> = na::zero();
 
                 if id < 2 {
-                    dir[id as usize] = 1.0;
+                    dir[id as usize] = T::constant(1.0);
                 } else {
-                    dir[id as usize - 2] = -1.0;
+                    dir[id as usize - 2] = T::constant(-1.0);
                 }
                 Some(Unit::new_unchecked(dir))
             }
             FeatureId::Vertex(id) => {
-                let mut dir: Vector<Real> = na::zero();
+                let mut dir: Vector<T> = na::zero();
 
                 match id {
                     0b00 => {
-                        dir[0] = 1.0;
-                        dir[1] = 1.0;
+                        dir[0] = T::constant(1.0);
+                        dir[1] = T::constant(1.0);
                     }
                     0b01 => {
-                        dir[1] = 1.0;
-                        dir[0] = -1.0;
+                        dir[1] = T::constant(1.0);
+                        dir[0] = T::constant(-1.0);
                     }
                     0b11 => {
-                        dir[0] = -1.0;
-                        dir[1] = -1.0;
+                        dir[0] = T::constant(-1.0);
+                        dir[1] = T::constant(-1.0);
                     }
                     0b10 => {
-                        dir[1] = -1.0;
-                        dir[0] = 1.0;
+                        dir[1] = T::constant(-1.0);
+                        dir[0] = T::constant(1.0);
                     }
                     _ => return None,
                 }
@@ -275,15 +277,15 @@ impl Cuboid {
 
     /// The normal of the given feature of this shape.
     #[cfg(feature = "dim3")]
-    pub fn feature_normal(&self, feature: FeatureId) -> Option<Unit<Vector<Real>>> {
+    pub fn feature_normal(&self, feature: FeatureId) -> Option<Unit<Vector<T>>> {
         match feature {
             FeatureId::Face(id) => {
-                let mut dir: Vector<Real> = na::zero();
+                let mut dir: Vector<T> = na::zero();
 
                 if id < 3 {
-                    dir[id as usize] = 1.0;
+                    dir[id as usize] = T::constant(1.0);
                 } else {
-                    dir[id as usize - 3] = -1.0;
+                    dir[id as usize - 3] = T::constant(-1.0);
                 }
                 Some(Unit::new_unchecked(dir))
             }
@@ -293,8 +295,8 @@ impl Cuboid {
                 let face2 = (edge + 2) % 3;
                 let signs = id >> 2;
 
-                let mut dir: Vector<Real> = na::zero();
-                let _1: Real = na::one();
+                let mut dir: Vector<T> = na::zero();
+                let _1: T = na::one();
 
                 if signs & (1 << face1) != 0 {
                     dir[face1 as usize] = -_1
@@ -311,9 +313,9 @@ impl Cuboid {
                 Some(Unit::new_normalize(dir))
             }
             FeatureId::Vertex(id) => {
-                let mut dir: Vector<Real> = na::zero();
+                let mut dir: Vector<T> = na::zero();
                 for i in 0..3 {
-                    let _1: Real = na::one();
+                    let _1: T = na::one();
 
                     if id & (1 << i) != 0 {
                         dir[i] = -_1;
@@ -329,9 +331,9 @@ impl Cuboid {
     }
 }
 
-impl SupportMap for Cuboid {
+impl<T: AD> SupportMap for Cuboid<T> {
     #[inline]
-    fn local_support_point(&self, dir: &Vector<Real>) -> Point<Real> {
+    fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         dir.copy_sign_to(self.half_extents).into()
     }
 }

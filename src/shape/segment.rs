@@ -6,6 +6,8 @@ use crate::shape::{FeatureId, SupportMap};
 use na::{self, Unit};
 use std::mem;
 
+use ad_trait::AD;
+
 /// A segment shape.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "bytemuck", derive(bytemuck::Pod, bytemuck::Zeroable))]
@@ -18,29 +20,29 @@ use std::mem;
 #[cfg_attr(feature = "cuda", derive(cust_core::DeviceCopy))]
 #[derive(PartialEq, Debug, Copy, Clone)]
 #[repr(C)]
-pub struct Segment {
+pub struct Segment<T: AD> {
     /// The segment first point.
-    pub a: Point<Real>,
+    pub a: Point<T>,
     /// The segment second point.
-    pub b: Point<Real>,
+    pub b: Point<T>,
 }
 
 /// Logical description of the location of a point on a triangle.
 #[derive(PartialEq, Debug, Clone, Copy)]
-pub enum SegmentPointLocation {
+pub enum SegmentPointLocation<T: AD> {
     /// The point lies on a vertex.
     OnVertex(u32),
     /// The point lies on the segment interior.
-    OnEdge([Real; 2]),
+    OnEdge([T; 2]),
 }
 
-impl SegmentPointLocation {
+impl<T: AD> SegmentPointLocation<T> {
     /// The barycentric coordinates corresponding to this point location.
-    pub fn barycentric_coordinates(&self) -> [Real; 2] {
-        let mut bcoords = [0.0; 2];
+    pub fn barycentric_coordinates(&self) -> [T; 2] {
+        let mut bcoords = [T::zero(); 2];
 
         match self {
-            SegmentPointLocation::OnVertex(i) => bcoords[*i as usize] = 1.0,
+            SegmentPointLocation::OnVertex(i) => bcoords[*i as usize] = T::constant(T::constant(1.0)),
             SegmentPointLocation::OnEdge(uv) => {
                 bcoords[0] = uv[0];
                 bcoords[1] = uv[1];
@@ -51,20 +53,20 @@ impl SegmentPointLocation {
     }
 }
 
-impl Segment {
+impl<T: AD> Segment<T> {
     /// Creates a new segment from two points.
     #[inline]
-    pub fn new(a: Point<Real>, b: Point<Real>) -> Segment {
+    pub fn new(a: Point<T>, b: Point<T>) -> Segment<T> {
         Segment { a, b }
     }
 
     /// Creates the reference to a segment from the reference to an array of two points.
-    pub fn from_array(arr: &[Point<Real>; 2]) -> &Segment {
+    pub fn from_array(arr: &[Point<T>; 2]) -> &Segment<T> {
         unsafe { mem::transmute(arr) }
     }
 
     /// Computes a scaled version of this segment.
-    pub fn scaled(self, scale: &Vector<Real>) -> Self {
+    pub fn scaled(self, scale: &Vector<T>) -> Self {
         Self::new(
             na::Scale::from(*scale) * self.a,
             na::Scale::from(*scale) * self.b,
@@ -74,12 +76,12 @@ impl Segment {
     /// The direction of this segment scaled by its length.
     ///
     /// Points from `self.a` toward `self.b`.
-    pub fn scaled_direction(&self) -> Vector<Real> {
+    pub fn scaled_direction(&self) -> Vector<T> {
         self.b - self.a
     }
 
     /// The length of this segment.
-    pub fn length(&self) -> Real {
+    pub fn length(&self) -> T {
         self.scaled_direction().norm()
     }
 
@@ -92,13 +94,13 @@ impl Segment {
     ///
     /// Points from `self.a()` toward `self.b()`.
     /// Returns `None` is both points are equal.
-    pub fn direction(&self) -> Option<Unit<Vector<Real>>> {
+    pub fn direction(&self) -> Option<Unit<Vector<T>>> {
         Unit::try_new(self.scaled_direction(), crate::math::DEFAULT_EPSILON)
     }
 
     /// In 2D, the not-normalized counterclockwise normal of this segment.
     #[cfg(feature = "dim2")]
-    pub fn scaled_normal(&self) -> Vector<Real> {
+    pub fn scaled_normal(&self) -> Vector<T> {
         let dir = self.scaled_direction();
         Vector::new(dir.y, -dir.x)
     }
@@ -106,32 +108,32 @@ impl Segment {
     /// The not-normalized counterclockwise normal of this segment, assuming it lies on the plane
     /// with the normal collinear to the given axis (0 = X, 1 = Y, 2 = Z).
     #[cfg(feature = "dim3")]
-    pub fn scaled_planar_normal(&self, plane_axis: u8) -> Vector<Real> {
+    pub fn scaled_planar_normal(&self, plane_axis: u8) -> Vector<T> {
         let dir = self.scaled_direction();
         match plane_axis {
-            0 => Vector::new(0.0, dir.z, -dir.y),
-            1 => Vector::new(-dir.z, 0.0, dir.x),
-            2 => Vector::new(dir.y, -dir.x, 0.0),
+            0 => Vector::new(T::zero(), dir.z, -dir.y),
+            1 => Vector::new(-dir.z, T::zero(), dir.x),
+            2 => Vector::new(dir.y, -dir.x, T::zero()),
             _ => panic!("Invalid axis given: must be 0 (X axis), 1 (Y axis) or 2 (Z axis)"),
         }
     }
 
     /// In 2D, the normalized counterclockwise normal of this segment.
     #[cfg(feature = "dim2")]
-    pub fn normal(&self) -> Option<Unit<Vector<Real>>> {
+    pub fn normal(&self) -> Option<Unit<Vector<T>>> {
         Unit::try_new(self.scaled_normal(), crate::math::DEFAULT_EPSILON)
     }
 
     /// Returns `None`. Exists only for API similarity with the 2D parry.
     #[cfg(feature = "dim3")]
-    pub fn normal(&self) -> Option<Unit<Vector<Real>>> {
+    pub fn normal(&self) -> Option<Unit<Vector<T>>> {
         None
     }
 
     /// The normalized counterclockwise normal of this segment, assuming it lies on the plane
     /// with the normal collinear to the given axis (0 = X, 1 = Y, 2 = Z).
     #[cfg(feature = "dim3")]
-    pub fn planar_normal(&self, plane_axis: u8) -> Option<Unit<Vector<Real>>> {
+    pub fn planar_normal(&self, plane_axis: u8) -> Option<Unit<Vector<T>>> {
         Unit::try_new(
             self.scaled_planar_normal(plane_axis),
             crate::math::DEFAULT_EPSILON,
@@ -139,12 +141,12 @@ impl Segment {
     }
 
     /// Applies the isometry `m` to the vertices of this segment and returns the resulting segment.
-    pub fn transformed(&self, m: &Isometry<Real>) -> Self {
+    pub fn transformed(&self, m: &Isometry<T>) -> Self {
         Segment::new(m * self.a, m * self.b)
     }
 
     /// Computes the point at the given location.
-    pub fn point_at(&self, location: &SegmentPointLocation) -> Point<Real> {
+    pub fn point_at(&self, location: &SegmentPointLocation<T>) -> Point<T> {
         match *location {
             SegmentPointLocation::OnVertex(0) => self.a,
             SegmentPointLocation::OnVertex(1) => self.b,
@@ -156,7 +158,7 @@ impl Segment {
     }
 
     /// The normal of the given feature of this shape.
-    pub fn feature_normal(&self, feature: FeatureId) -> Option<Unit<Vector<Real>>> {
+    pub fn feature_normal(&self, feature: FeatureId) -> Option<Unit<Vector<T>>> {
         if let Some(direction) = self.direction() {
             match feature {
                 FeatureId::Vertex(id) => {
@@ -170,7 +172,7 @@ impl Segment {
                 FeatureId::Edge(_) => {
                     let iamin = direction.iamin();
                     let mut normal = Vector::zeros();
-                    normal[iamin] = 1.0;
+                    normal[iamin] = T::constant(1.0);
                     normal -= *direction * direction[iamin];
                     Some(Unit::new_normalize(normal))
                 }
@@ -193,9 +195,9 @@ impl Segment {
     }
 }
 
-impl SupportMap for Segment {
+impl<T: AD> SupportMap for Segment<T> {
     #[inline]
-    fn local_support_point(&self, dir: &Vector<Real>) -> Point<Real> {
+    fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         if self.a.coords.dot(dir) > self.b.coords.dot(dir) {
             self.a
         } else {
@@ -204,8 +206,8 @@ impl SupportMap for Segment {
     }
 }
 
-impl From<[Point<Real>; 2]> for Segment {
-    fn from(arr: [Point<Real>; 2]) -> Self {
+impl<T: AD> From<[Point<T>; 2]> for Segment<T> {
+    fn from(arr: [Point<T>; 2]) -> Self {
         *Self::from_array(&arr)
     }
 }
@@ -265,7 +267,7 @@ impl ConvexPolyhedron for Segment {
     ) {
         let seg_dir = self.scaled_direction();
 
-        if dir.perp(&seg_dir) >= 0.0 {
+        if dir.perp(&seg_dir) >= T::zero() {
             self.face(FeatureId::Face(0), face);
         } else {
             self.face(FeatureId::Face(1), face);
@@ -318,7 +320,7 @@ impl ConvexPolyhedron for Segment {
                 }
                 #[cfg(feature = "dim2")]
                 {
-                    if dir.perp(&seg_dir) >= 0.0 {
+                    if dir.perp(&seg_dir) >= T::zero() {
                         seg.face(FeatureId::Face(0), face);
                     } else {
                         seg.face(FeatureId::Face(1), face);
@@ -330,14 +332,14 @@ impl ConvexPolyhedron for Segment {
 
     fn support_feature_id_toward(&self, local_dir: &Unit<Vector<Real>>) -> FeatureId {
         if let Some(seg_dir) = self.direction() {
-            let eps: Real = na::convert::<f64, Real>(f64::consts::PI / 180.0);
+            let eps: Real = na::convert::<f64, Real>(f64::consts::PI / 18T::zero());
             let seps = ComplexField::sin(eps);
             let dot = seg_dir.dot(local_dir.as_ref());
 
             if dot <= seps {
                 #[cfg(feature = "dim2")]
                 {
-                    if local_dir.perp(seg_dir.as_ref()) >= 0.0 {
+                    if local_dir.perp(seg_dir.as_ref()) >= T::zero() {
                         FeatureId::Face(0)
                     } else {
                         FeatureId::Face(1)
@@ -347,7 +349,7 @@ impl ConvexPolyhedron for Segment {
                 {
                     FeatureId::Edge(0)
                 }
-            } else if dot >= 0.0 {
+            } else if dot >= T::zero() {
                 FeatureId::Vertex(1)
             } else {
                 FeatureId::Vertex(0)

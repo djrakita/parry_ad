@@ -13,25 +13,26 @@ use crate::transformation::vhacd::{VHACDParameters, VHACD};
 use na::Unit;
 use std::ops::Deref;
 use std::sync::Arc;
+use ad_trait::AD;
 
 /// The shape of a collider.
 #[derive(Clone)]
-pub struct SharedShape(pub Arc<dyn Shape>);
+pub struct SharedShape<T: AD>(pub Arc<dyn Shape>);
 
-impl Deref for SharedShape {
+impl<T: AD> Deref for SharedShape<T> {
     type Target = dyn Shape;
     fn deref(&self) -> &dyn Shape {
         &*self.0
     }
 }
 
-impl AsRef<dyn Shape> for SharedShape {
+impl<T: AD> AsRef<dyn Shape> for SharedShape<T> {
     fn as_ref(&self) -> &dyn Shape {
         &*self.0
     }
 }
 
-impl SharedShape {
+impl<T: AD> SharedShape<T> {
     /// Wraps the given shape as a shared shape.
     pub fn new(shape: impl Shape) -> Self {
         Self(Arc::new(shape))

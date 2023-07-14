@@ -5,6 +5,7 @@ use crate::query::{PointProjection, PointQuery};
 use crate::shape::SimdCompositeShape;
 use na;
 use simba::simd::{SimdBool as _, SimdPartialOrd, SimdValue};
+use ad_trait::AD;
 
 /// Best-first traversal visitor for computing the point closest to a composite shape.
 pub struct CompositeClosestPointVisitor<'a, S: 'a> {
@@ -26,7 +27,7 @@ impl<'a, S> CompositeClosestPointVisitor<'a, S> {
     }
 }
 
-impl<'a, S: SimdCompositeShape + PointQuery> SimdBestFirstVisitor<u32, SimdAabb>
+impl<'a, S: SimdCompositeShape<T> + PointQuery, T: AD> SimdBestFirstVisitor<u32, SimdAabb<T>>
     for CompositeClosestPointVisitor<'a, S>
 {
     type Result = PointProjection;
@@ -35,7 +36,7 @@ impl<'a, S: SimdCompositeShape + PointQuery> SimdBestFirstVisitor<u32, SimdAabb>
     fn visit(
         &mut self,
         best: Real,
-        aabb: &SimdAabb,
+        aabb: &SimdAabb<T>,
         data: Option<[Option<&u32>; SIMD_WIDTH]>,
     ) -> SimdBestFirstVisitStatus<Self::Result> {
         let dist = aabb.distance_to_local_point(&self.simd_point);
@@ -43,7 +44,7 @@ impl<'a, S: SimdCompositeShape + PointQuery> SimdBestFirstVisitor<u32, SimdAabb>
 
         if let Some(data) = data {
             let bitmask = mask.bitmask();
-            let mut weights = [0.0; SIMD_WIDTH];
+            let mut weights = [T::zero(); SIMD_WIDTH];
             let mut mask = [false; SIMD_WIDTH];
             let mut results = [None; SIMD_WIDTH];
 

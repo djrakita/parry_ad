@@ -11,7 +11,7 @@ the rust programming language.
 #![deny(unused_parens)]
 #![deny(non_upper_case_globals)]
 #![deny(unused_results)]
-#![warn(missing_docs)] // TODO: deny this
+// #![warn(missing_docs)] // TODO: deny this
 #![warn(unused_imports)]
 #![allow(missing_copy_implementations)]
 #![doc(html_root_url = "http://docs.rs/parry/0.1.1")]
@@ -229,9 +229,9 @@ pub mod math {
 mod simd {
     use simba::simd::AutoBoolx4;
     /// The number of lanes of a SIMD number.
-    pub const SIMD_WIDTH: usize = 4;
+    pub const SIMD_WIDTH: usize = 1;
     /// SIMD_WIDTH - 1
-    pub const SIMD_LAST_INDEX: usize = 3;
+    pub const SIMD_LAST_INDEX: usize = 0;
 
     /// A SIMD float with SIMD_WIDTH lanes.
     #[cfg(feature = "f32")]
@@ -258,7 +258,7 @@ mod simd {
     pub use simba::simd::{WideBoolF64x4 as SimdBool, WideF64x4 as SimdReal};
 
     /// The number of lanes of a SIMD number.
-    pub const SIMD_WIDTH: usize = 4;
+    pub const SIMD_WIDTH: usize = 1;
     /// SIMD_WIDTH - 1
-    pub const SIMD_LAST_INDEX: usize = 3;
+    pub const SIMD_LAST_INDEX: usize = 0;
 }

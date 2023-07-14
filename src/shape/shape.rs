@@ -25,6 +25,8 @@ use na::{RealField, Unit};
 use num::Zero;
 use num_derive::FromPrimitive;
 
+use ad_trait::AD;
+
 #[derive(Copy, Clone, Debug, FromPrimitive, PartialEq, Eq, Hash)]
 /// Enum representing the type of a shape.
 pub enum ShapeType {
@@ -88,7 +90,7 @@ pub enum ShapeType {
 #[derive(Copy, Clone)]
 #[cfg_attr(feature = "serde-serialize", derive(Serialize))]
 /// Enum representing the shape with its actual type
-pub enum TypedShape<'a> {
+pub enum TypedShape<'a, T: AD> {
     /// A ball shape.
     Ball(&'a Ball),
     /// A cuboid shape.
@@ -98,13 +100,13 @@ pub enum TypedShape<'a> {
     /// A segment shape.
     Segment(&'a Segment),
     /// A triangle shape.
-    Triangle(&'a Triangle),
+    Triangle(&'a Triangle<T>),
     /// A triangle mesh shape.
     #[cfg(feature = "std")]
-    TriMesh(&'a TriMesh),
+    TriMesh(&'a TriMesh<T>),
     /// A set of segments.
     #[cfg(feature = "std")]
-    Polyline(&'a Polyline),
+    Polyline(&'a Polyline<T>),
     /// A shape representing a full half-space.
     HalfSpace(&'a HalfSpace),
     /// A heightfield shape.
@@ -112,7 +114,7 @@ pub enum TypedShape<'a> {
     HeightField(&'a HeightField),
     /// A Compound shape.
     #[cfg(feature = "std")]
-    Compound(&'a Compound),
+    Compound(&'a Compound<T>),
     #[cfg(feature = "dim2")]
     #[cfg(feature = "std")]
     ConvexPolygon(&'a ConvexPolygon),
@@ -131,7 +133,7 @@ pub enum TypedShape<'a> {
     /// A cuboid with rounded corners.
     RoundCuboid(&'a RoundCuboid),
     /// A triangle with rounded corners.
-    RoundTriangle(&'a RoundTriangle),
+    RoundTriangle(&'a RoundTriangle<T>),
     // /// A triangle-mesh with rounded corners.
     // RoundedTriMesh,
     // /// An heightfield with rounded corners.
@@ -271,7 +273,7 @@ impl DeserializableTypedShape {
 }
 
 /// Trait implemented by shapes usable by Rapier.
-pub trait Shape: RayCast + PointQuery + DowncastSync {
+pub trait Shape<T: AD>: RayCast + PointQuery + DowncastSync {
     /// Computes the Aabb of this shape.
     fn compute_local_aabb(&self) -> Aabb;
     /// Computes the bounding-sphere of this shape.
@@ -279,27 +281,27 @@ pub trait Shape: RayCast + PointQuery + DowncastSync {
 
     /// Clones this shape into a boxed trait-object.
     #[cfg(feature = "std")]
-    fn clone_box(&self) -> Box<dyn Shape>;
+    fn clone_box(&self) -> Box<dyn Shape<T>>;
 
     /// Computes the Aabb of this shape with the given position.
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
         self.compute_local_aabb().transform_by(position)
     }
     /// Computes the bounding-sphere of this shape with the given position.
-    fn compute_bounding_sphere(&self, position: &Isometry<Real>) -> BoundingSphere {
+    fn compute_bounding_sphere(&self, position: &Isometry<T>) -> BoundingSphere {
         self.compute_local_bounding_sphere().transform_by(position)
     }
 
     /// Compute the mass-properties of this shape given its uniform density.
-    fn mass_properties(&self, density: Real) -> MassProperties;
+    fn mass_properties(&self, density: T) -> MassProperties<T>;
 
     /// Gets the type tag of this shape.
     fn shape_type(&self) -> ShapeType;
 
     /// Gets the underlying shape as an enum.
-    fn as_typed_shape(&self) -> TypedShape;
+    fn as_typed_shape(&self) -> TypedShape<T>;
 
-    fn ccd_thickness(&self) -> Real;
+    fn ccd_thickness(&self) -> T;
 
     // TODO: document this.
     // This should probably be the largest sharp edge angle (in radians) in [0; PI].
@@ -307,7 +309,7 @@ pub trait Shape: RayCast + PointQuery + DowncastSync {
     // for capsule (which doesn't have any sharp angle). I guess a better way
     // to phrase this is: "the smallest angle such that rotating the shape by
     // that angle may result in different contact points".
-    fn ccd_angular_thickness(&self) -> Real;
+    fn ccd_angular_thickness(&self) -> T;
 
     /// Is this shape known to be convex?
     ///
@@ -324,12 +326,12 @@ pub trait Shape: RayCast + PointQuery + DowncastSync {
     }
 
     #[cfg(feature = "std")]
-    fn as_composite_shape(&self) -> Option<&dyn SimdCompositeShape> {
+    fn as_composite_shape(&self) -> Option<&dyn SimdCompositeShape<T>> {
         None
     }
 
     /// Converts this shape to a polygonal feature-map, if it is one.
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, Real)> {
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
         None
     }
 
@@ -341,14 +343,14 @@ pub trait Shape: RayCast + PointQuery + DowncastSync {
     fn feature_normal_at_point(
         &self,
         _feature: FeatureId,
-        _point: &Point<Real>,
-    ) -> Option<Unit<Vector<Real>>> {
+        _point: &Point<T>,
+    ) -> Option<Unit<Vector<T>>> {
         None
     }
 
     /// Computes the swept Aabb of this shape, i.e., the space it would occupy by moving from
     /// the given start position to the given end position.
-    fn compute_swept_aabb(&self, start_pos: &Isometry<Real>, end_pos: &Isometry<Real>) -> Aabb {
+    fn compute_swept_aabb(&self, start_pos: &Isometry<T>, end_pos: &Isometry<T>) -> Aabb {
         let aabb1 = self.compute_aabb(start_pos);
         let aabb2 = self.compute_aabb(end_pos);
         aabb1.merged(&aabb2)
@@ -357,13 +359,13 @@ pub trait Shape: RayCast + PointQuery + DowncastSync {
 
 impl_downcast!(sync Shape);
 
-impl dyn Shape {
+impl<A: AD> dyn Shape<A> {
     /// Converts this abstract shape to the given shape, if it is one.
-    pub fn as_shape<T: Shape>(&self) -> Option<&T> {
+    pub fn as_shape<T: Shape<A>>(&self) -> Option<&T> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to the given mutable shape, if it is one.
-    pub fn as_shape_mut<T: Shape>(&mut self) -> Option<&mut T> {
+    pub fn as_shape_mut<T: Shape<A>>(&mut self) -> Option<&mut T> {
         self.downcast_mut()
     }
 
@@ -413,44 +415,44 @@ impl dyn Shape {
     }
 
     /// Converts this abstract shape to a triangle, if it is one.
-    pub fn as_triangle(&self) -> Option<&Triangle> {
+    pub fn as_triangle(&self) -> Option<&Triangle<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable triangle, if it is one.
-    pub fn as_triangle_mut(&mut self) -> Option<&mut Triangle> {
+    pub fn as_triangle_mut(&mut self) -> Option<&mut Triangle<A>> {
         self.downcast_mut()
     }
 
     /// Converts this abstract shape to a compound shape, if it is one.
     #[cfg(feature = "std")]
-    pub fn as_compound(&self) -> Option<&Compound> {
+    pub fn as_compound(&self) -> Option<&Compound<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable compound shape, if it is one.
     #[cfg(feature = "std")]
-    pub fn as_compound_mut(&mut self) -> Option<&mut Compound> {
+    pub fn as_compound_mut(&mut self) -> Option<&mut Compound<A>> {
         self.downcast_mut()
     }
 
     /// Converts this abstract shape to a triangle mesh, if it is one.
     #[cfg(feature = "std")]
-    pub fn as_trimesh(&self) -> Option<&TriMesh> {
+    pub fn as_trimesh(&self) -> Option<&TriMesh<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable triangle mesh, if it is one.
     #[cfg(feature = "std")]
-    pub fn as_trimesh_mut(&mut self) -> Option<&mut TriMesh> {
+    pub fn as_trimesh_mut(&mut self) -> Option<&mut TriMesh<A>> {
         self.downcast_mut()
     }
 
     /// Converts this abstract shape to a polyline, if it is one.
     #[cfg(feature = "std")]
-    pub fn as_polyline(&self) -> Option<&Polyline> {
+    pub fn as_polyline(&self) -> Option<&Polyline<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable polyline, if it is one.
     #[cfg(feature = "std")]
-    pub fn as_polyline_mut(&mut self) -> Option<&mut Polyline> {
+    pub fn as_polyline_mut(&mut self) -> Option<&mut Polyline<A>> {
         self.downcast_mut()
     }
 
@@ -475,11 +477,11 @@ impl dyn Shape {
     }
 
     /// Converts this abstract shape to a round triangle, if it is one.
-    pub fn as_round_triangle(&self) -> Option<&RoundTriangle> {
+    pub fn as_round_triangle(&self) -> Option<&RoundTriangle<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a round triangle, if it is one.
-    pub fn as_round_triangle_mut(&mut self) -> Option<&mut RoundTriangle> {
+    pub fn as_round_triangle_mut(&mut self) -> Option<&mut RoundTriangle<A>> {
         self.downcast_mut()
     }
 
@@ -578,9 +580,9 @@ impl dyn Shape {
     }
 }
 
-impl Shape for Ball {
+impl<T: AD> Shape<T> for Ball {
     #[cfg(feature = "std")]
-    fn clone_box(&self) -> Box<dyn Shape> {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -596,16 +598,16 @@ impl Shape for Ball {
         self.aabb(position)
     }
 
-    fn mass_properties(&self, density: Real) -> MassProperties {
+    fn mass_properties(&self, density: Real) -> MassProperties<T> {
         MassProperties::from_ball(density, self.radius)
     }
 
-    fn ccd_thickness(&self) -> Real {
+    fn ccd_thickness(&self) -> T {
         self.radius
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
-        Real::pi()
+    fn ccd_angular_thickness(&self) -> T {
+        T::constant(f64::pi())
     }
 
     fn is_convex(&self) -> bool {
@@ -616,7 +618,7 @@ impl Shape for Ball {
         ShapeType::Ball
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::Ball(self)
     }
 
@@ -629,15 +631,15 @@ impl Shape for Ball {
     fn feature_normal_at_point(
         &self,
         _: FeatureId,
-        point: &Point<Real>,
-    ) -> Option<Unit<Vector<Real>>> {
+        point: &Point<T>,
+    ) -> Option<Unit<Vector<T>>> {
         Unit::try_new(point.coords, crate::math::DEFAULT_EPSILON)
     }
 }
 
-impl Shape for Cuboid {
+impl<T: AD> Shape<T> for Cuboid {
     #[cfg(feature = "std")]
-    fn clone_box(&self) -> Box<dyn Shape> {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -649,11 +651,11 @@ impl Shape for Cuboid {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
         self.aabb(position)
     }
 
-    fn mass_properties(&self, density: Real) -> MassProperties {
+    fn mass_properties(&self, density: T) -> MassProperties<T> {
         MassProperties::from_cuboid(density, self.half_extents)
     }
 
@@ -665,38 +667,38 @@ impl Shape for Cuboid {
         ShapeType::Cuboid
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::Cuboid(self)
     }
 
-    fn ccd_thickness(&self) -> Real {
+    fn ccd_thickness(&self) -> T {
         self.half_extents.min()
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
-        Real::frac_pi_2()
+    fn ccd_angular_thickness(&self) -> T {
+        T::constant(f64::frac_pi_2())
     }
 
     fn as_support_map(&self) -> Option<&dyn SupportMap> {
         Some(self as &dyn SupportMap)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, Real)> {
-        Some((self as &dyn PolygonalFeatureMap, 0.0))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
+        Some((self as &dyn PolygonalFeatureMap, T::zero()))
     }
 
     fn feature_normal_at_point(
         &self,
         feature: FeatureId,
-        _point: &Point<Real>,
-    ) -> Option<Unit<Vector<Real>>> {
+        _point: &Point<T>,
+    ) -> Option<Unit<Vector<T>>> {
         self.feature_normal(feature)
     }
 }
 
-impl Shape for Capsule {
+impl<T: AD> Shape<T> for Capsule {
     #[cfg(feature = "std")]
-    fn clone_box(&self) -> Box<dyn Shape> {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -708,11 +710,11 @@ impl Shape for Capsule {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
         self.aabb(position)
     }
 
-    fn mass_properties(&self, density: Real) -> MassProperties {
+    fn mass_properties(&self, density: T) -> MassProperties<T> {
         MassProperties::from_capsule(density, self.segment.a, self.segment.b, self.radius)
     }
 
@@ -724,30 +726,30 @@ impl Shape for Capsule {
         ShapeType::Capsule
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::Capsule(self)
     }
 
-    fn ccd_thickness(&self) -> Real {
+    fn ccd_thickness(&self) -> T {
         self.radius
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
-        Real::frac_pi_2()
+    fn ccd_angular_thickness(&self) -> T {
+        T::constant(f64::frac_pi_2())
     }
 
     fn as_support_map(&self) -> Option<&dyn SupportMap> {
         Some(self as &dyn SupportMap)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, Real)> {
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
         Some((&self.segment as &dyn PolygonalFeatureMap, self.radius))
     }
 }
 
-impl Shape for Triangle {
+impl<T: AD> Shape<T> for Triangle<T> {
     #[cfg(feature = "std")]
-    fn clone_box(&self) -> Box<dyn Shape> {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -759,11 +761,11 @@ impl Shape for Triangle {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
         self.aabb(position)
     }
 
-    fn mass_properties(&self, _density: Real) -> MassProperties {
+    fn mass_properties(&self, _density: T) -> MassProperties<T> {
         #[cfg(feature = "dim2")]
         return MassProperties::from_triangle(_density, &self.a, &self.b, &self.c);
         #[cfg(feature = "dim3")]
@@ -778,39 +780,39 @@ impl Shape for Triangle {
         ShapeType::Triangle
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::Triangle(self)
     }
 
-    fn ccd_thickness(&self) -> Real {
+    fn ccd_thickness(&self) -> T {
         // TODO: in 2D use the smallest height of the triangle.
-        0.0
+        T::zero()
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
-        Real::frac_pi_2()
+    fn ccd_angular_thickness(&self) -> T {
+        T::constant(f64::frac_pi_2())
     }
 
     fn as_support_map(&self) -> Option<&dyn SupportMap> {
         Some(self as &dyn SupportMap)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, Real)> {
-        Some((self as &dyn PolygonalFeatureMap, 0.0))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
+        Some((self as &dyn PolygonalFeatureMap, T::zero()))
     }
 
     fn feature_normal_at_point(
         &self,
         feature: FeatureId,
-        _point: &Point<Real>,
-    ) -> Option<Unit<Vector<Real>>> {
+        _point: &Point<T>,
+    ) -> Option<Unit<Vector<T>>> {
         self.feature_normal(feature)
     }
 }
 
-impl Shape for Segment {
+impl<T: AD> Shape<T> for Segment {
     #[cfg(feature = "std")]
-    fn clone_box(&self) -> Box<dyn Shape> {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -822,11 +824,11 @@ impl Shape for Segment {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
         self.aabb(position)
     }
 
-    fn mass_properties(&self, _density: Real) -> MassProperties {
+    fn mass_properties(&self, _density: T) -> MassProperties<T> {
         MassProperties::zero()
     }
 
@@ -834,19 +836,19 @@ impl Shape for Segment {
         true
     }
 
-    fn ccd_thickness(&self) -> Real {
-        0.0
+    fn ccd_thickness(&self) -> T {
+        T::zero()
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
-        Real::frac_pi_2()
+    fn ccd_angular_thickness(&self) -> T {
+        T::contant(f64::frac_pi_2())
     }
 
     fn shape_type(&self) -> ShapeType {
         ShapeType::Segment
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::Segment(self)
     }
 
@@ -854,22 +856,22 @@ impl Shape for Segment {
         Some(self as &dyn SupportMap)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, Real)> {
-        Some((self as &dyn PolygonalFeatureMap, 0.0))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
+        Some((self as &dyn PolygonalFeatureMap, T::zero()))
     }
 
     fn feature_normal_at_point(
         &self,
         feature: FeatureId,
-        _point: &Point<Real>,
-    ) -> Option<Unit<Vector<Real>>> {
+        _point: &Point<T>,
+    ) -> Option<Unit<Vector<T>>> {
         self.feature_normal(feature)
     }
 }
 
 #[cfg(feature = "std")]
-impl Shape for Compound {
-    fn clone_box(&self) -> Box<dyn Shape> {
+impl<T: AD> Shape<T> for Compound<T> {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -881,11 +883,11 @@ impl Shape for Compound {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
         self.local_aabb().transform_by(position)
     }
 
-    fn mass_properties(&self, density: Real) -> MassProperties {
+    fn mass_properties(&self, density: T) -> MassProperties<T> {
         MassProperties::from_compound(density, self.shapes())
     }
 
@@ -893,31 +895,31 @@ impl Shape for Compound {
         ShapeType::Compound
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::Compound(self)
     }
 
-    fn ccd_thickness(&self) -> Real {
+    fn ccd_thickness(&self) -> T {
         self.shapes()
             .iter()
-            .fold(Real::MAX, |curr, (_, s)| curr.min(s.ccd_thickness()))
+            .fold(T::constant(f64::MAX), |curr, (_, s)| curr.min(s.ccd_thickness()))
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
-        self.shapes().iter().fold(Real::MAX, |curr, (_, s)| {
+    fn ccd_angular_thickness(&self) -> T {
+        self.shapes().iter().fold(T::constant(f64::MAX), |curr, (_, s)| {
             curr.max(s.ccd_angular_thickness())
         })
     }
 
     #[cfg(feature = "std")]
-    fn as_composite_shape(&self) -> Option<&dyn SimdCompositeShape> {
-        Some(self as &dyn SimdCompositeShape)
+    fn as_composite_shape(&self) -> Option<&dyn SimdCompositeShape<T>> {
+        Some(self as &dyn SimdCompositeShape<T>)
     }
 }
 
 #[cfg(feature = "std")]
-impl Shape for Polyline {
-    fn clone_box(&self) -> Box<dyn Shape> {
+impl<T: AD> Shape<T> for Polyline<T> {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -929,11 +931,11 @@ impl Shape for Polyline {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
         self.aabb(position)
     }
 
-    fn mass_properties(&self, _density: Real) -> MassProperties {
+    fn mass_properties(&self, _density: T) -> MassProperties<T> {
         MassProperties::zero()
     }
 
@@ -941,29 +943,29 @@ impl Shape for Polyline {
         ShapeType::Polyline
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::Polyline(self)
     }
 
-    fn ccd_thickness(&self) -> Real {
-        0.0
+    fn ccd_thickness(&self) -> T {
+        T::zero()
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
+    fn ccd_angular_thickness(&self) -> T {
         // TODO: the value should depend on the angles between
         // adjacent segments of the polyline.
-        Real::frac_pi_4()
+        T::constant(f64::frac_pi_4())
     }
 
     #[cfg(feature = "std")]
-    fn as_composite_shape(&self) -> Option<&dyn SimdCompositeShape> {
-        Some(self as &dyn SimdCompositeShape)
+    fn as_composite_shape(&self) -> Option<&dyn SimdCompositeShape<T>> {
+        Some(self as &dyn SimdCompositeShape<T>)
     }
 }
 
 #[cfg(feature = "std")]
-impl Shape for TriMesh {
-    fn clone_box(&self) -> Box<dyn Shape> {
+impl<T: AD> Shape<T> for TriMesh<T> {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -975,11 +977,11 @@ impl Shape for TriMesh {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
         self.aabb(position)
     }
 
-    fn mass_properties(&self, density: Real) -> MassProperties {
+    fn mass_properties(&self, density: T) -> MassProperties<T> {
         MassProperties::from_trimesh(density, self.vertices(), self.indices())
     }
 
@@ -987,30 +989,30 @@ impl Shape for TriMesh {
         ShapeType::TriMesh
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::TriMesh(self)
     }
 
-    fn ccd_thickness(&self) -> Real {
+    fn ccd_thickness(&self) -> T {
         // TODO: in 2D, return the smallest CCD thickness among triangles?
-        0.0
+        T::zero()
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
+    fn ccd_angular_thickness(&self) -> T {
         // TODO: the value should depend on the angles between
         // adjacent triangles of the trimesh.
-        Real::frac_pi_4()
+        T::constant(f64::frac_pi_4())
     }
 
     #[cfg(feature = "std")]
-    fn as_composite_shape(&self) -> Option<&dyn SimdCompositeShape> {
-        Some(self as &dyn SimdCompositeShape)
+    fn as_composite_shape(&self) -> Option<&dyn SimdCompositeShape<T>> {
+        Some(self as &dyn SimdCompositeShape<T>)
     }
 }
 
 #[cfg(feature = "std")]
-impl Shape for HeightField {
-    fn clone_box(&self) -> Box<dyn Shape> {
+impl<T: AD> Shape<T> for HeightField {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -1022,11 +1024,11 @@ impl Shape for HeightField {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
         self.aabb(position)
     }
 
-    fn mass_properties(&self, _density: Real) -> MassProperties {
+    fn mass_properties(&self, _density: T) -> MassProperties<T> {
         MassProperties::zero()
     }
 
@@ -1034,25 +1036,25 @@ impl Shape for HeightField {
         ShapeType::HeightField
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::HeightField(self)
     }
 
-    fn ccd_thickness(&self) -> Real {
-        0.0
+    fn ccd_thickness(&self) -> T {
+        T::zero()
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
+    fn ccd_angular_thickness(&self) -> T {
         // TODO: the value should depend on the angles between
         // adjacent triangles of the heightfield.
-        Real::frac_pi_4()
+        T::constant(f64::frac_pi_4())
     }
 }
 
 #[cfg(feature = "dim2")]
 #[cfg(feature = "std")]
-impl Shape for ConvexPolygon {
-    fn clone_box(&self) -> Box<dyn Shape> {
+impl<T: AD> Shape<T> for ConvexPolygon {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -1064,11 +1066,11 @@ impl Shape for ConvexPolygon {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
         self.aabb(position)
     }
 
-    fn mass_properties(&self, density: Real) -> MassProperties {
+    fn mass_properties(&self, density: T) -> MassProperties<T> {
         MassProperties::from_convex_polygon(density, &self.points())
     }
 
@@ -1084,38 +1086,38 @@ impl Shape for ConvexPolygon {
         TypedShape::ConvexPolygon(self)
     }
 
-    fn ccd_thickness(&self) -> Real {
+    fn ccd_thickness(&self) -> T {
         // TODO: we should use the OBB instead.
         self.compute_local_aabb().half_extents().min()
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
+    fn ccd_angular_thickness(&self) -> T {
         // TODO: the value should depend on the angles between
         // adjacent segments of the convex polygon.
-        Real::frac_pi_4()
+        T::constant(f64::frac_pi_4())
     }
 
     fn as_support_map(&self) -> Option<&dyn SupportMap> {
         Some(self as &dyn SupportMap)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, Real)> {
-        Some((self as &dyn PolygonalFeatureMap, 0.0))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
+        Some((self as &dyn PolygonalFeatureMap, T::zero()))
     }
 
     fn feature_normal_at_point(
         &self,
         feature: FeatureId,
-        _point: &Point<Real>,
-    ) -> Option<Unit<Vector<Real>>> {
+        _point: &Point<T>,
+    ) -> Option<Unit<Vector<T>>> {
         self.feature_normal(feature)
     }
 }
 
 #[cfg(feature = "dim3")]
 #[cfg(feature = "std")]
-impl Shape for ConvexPolyhedron {
-    fn clone_box(&self) -> Box<dyn Shape> {
+impl<T: AD> Shape<T> for ConvexPolyhedron<T> {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -1127,11 +1129,11 @@ impl Shape for ConvexPolyhedron {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
         self.aabb(position)
     }
 
-    fn mass_properties(&self, density: Real) -> MassProperties {
+    fn mass_properties(&self, density: T) -> MassProperties<T> {
         let (vertices, indices) = self.to_trimesh();
         MassProperties::from_convex_polyhedron(density, &vertices, &indices)
     }
@@ -1144,42 +1146,42 @@ impl Shape for ConvexPolyhedron {
         ShapeType::ConvexPolyhedron
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::ConvexPolyhedron(self)
     }
 
-    fn ccd_thickness(&self) -> Real {
+    fn ccd_thickness(&self) -> T {
         // TODO: we should use the OBB instead.
         self.compute_local_aabb().half_extents().min()
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
+    fn ccd_angular_thickness(&self) -> T {
         // TODO: the value should depend on the angles between
         // adjacent segments of the convex polyhedron.
-        Real::frac_pi_4()
+        T::constant(f64::frac_pi_4())
     }
 
     fn as_support_map(&self) -> Option<&dyn SupportMap> {
         Some(self as &dyn SupportMap)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, Real)> {
-        Some((self as &dyn PolygonalFeatureMap, 0.0))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
+        Some((self as &dyn PolygonalFeatureMap, T::zero()))
     }
 
     fn feature_normal_at_point(
         &self,
         feature: FeatureId,
-        _point: &Point<Real>,
-    ) -> Option<Unit<Vector<Real>>> {
+        _point: &Point<T>,
+    ) -> Option<Unit<Vector<T>>> {
         self.feature_normal(feature)
     }
 }
 
 #[cfg(feature = "dim3")]
-impl Shape for Cylinder {
+impl<T: AD> Shape<T> for Cylinder<T> {
     #[cfg(feature = "std")]
-    fn clone_box(&self) -> Box<dyn Shape> {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -1191,11 +1193,11 @@ impl Shape for Cylinder {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
         self.aabb(position)
     }
 
-    fn mass_properties(&self, density: Real) -> MassProperties {
+    fn mass_properties(&self, density: T) -> MassProperties<T> {
         MassProperties::from_cylinder(density, self.half_height, self.radius)
     }
 
@@ -1207,31 +1209,31 @@ impl Shape for Cylinder {
         ShapeType::Cylinder
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::Cylinder(self)
     }
 
-    fn ccd_thickness(&self) -> Real {
+    fn ccd_thickness(&self) -> T {
         self.radius
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
-        Real::frac_pi_2()
+    fn ccd_angular_thickness(&self) -> T {
+        T::constant(f64::frac_pi_2())
     }
 
     fn as_support_map(&self) -> Option<&dyn SupportMap> {
         Some(self as &dyn SupportMap)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, Real)> {
-        Some((self as &dyn PolygonalFeatureMap, 0.0))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
+        Some((self as &dyn PolygonalFeatureMap, T::zero()))
     }
 }
 
 #[cfg(feature = "dim3")]
-impl Shape for Cone {
+impl<T: AD> Shape<T> for Cone {
     #[cfg(feature = "std")]
-    fn clone_box(&self) -> Box<dyn Shape> {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -1243,11 +1245,11 @@ impl Shape for Cone {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
         self.aabb(position)
     }
 
-    fn mass_properties(&self, density: Real) -> MassProperties {
+    fn mass_properties(&self, density: T) -> MassProperties<T> {
         MassProperties::from_cone(density, self.half_height, self.radius)
     }
 
@@ -1259,18 +1261,18 @@ impl Shape for Cone {
         ShapeType::Cone
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::Cone(self)
     }
 
-    fn ccd_thickness(&self) -> Real {
+    fn ccd_thickness(&self) -> T {
         self.radius
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
+    fn ccd_angular_thickness(&self) -> T {
         let apex_half_angle = self.radius.atan2(self.half_height);
         assert!(apex_half_angle >= 0.0);
-        let basis_angle = Real::frac_pi_2() - apex_half_angle;
+        let basis_angle = T::constant(f64::frac_pi_2()) - apex_half_angle;
         basis_angle.min(apex_half_angle * 2.0)
     }
 
@@ -1278,14 +1280,14 @@ impl Shape for Cone {
         Some(self as &dyn SupportMap)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, Real)> {
-        Some((self as &dyn PolygonalFeatureMap, 0.0))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
+        Some((self as &dyn PolygonalFeatureMap, T::zero()))
     }
 }
 
-impl Shape for HalfSpace {
+impl<T: AD> Shape<T> for HalfSpace {
     #[cfg(feature = "std")]
-    fn clone_box(&self) -> Box<dyn Shape> {
+    fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
@@ -1309,11 +1311,11 @@ impl Shape for HalfSpace {
         f32::MAX as Real
     }
 
-    fn ccd_angular_thickness(&self) -> Real {
-        Real::pi()
+    fn ccd_angular_thickness(&self) -> T {
+        T::constant(f64::pi())
     }
 
-    fn mass_properties(&self, _: Real) -> MassProperties {
+    fn mass_properties(&self, _: Real) -> MassProperties<T> {
         MassProperties::zero()
     }
 
@@ -1321,14 +1323,14 @@ impl Shape for HalfSpace {
         ShapeType::HalfSpace
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::HalfSpace(self)
     }
 }
 
 macro_rules! impl_shape_for_round_shape(
     ($($S: ty, $Tag: ident);*) => {$(
-        impl Shape for RoundShape<$S> {
+        impl<T: AD> Shape for RoundShape<$S> {
             #[cfg(feature = "std")]
             fn clone_box(&self) -> Box<dyn Shape> {
                 Box::new(self.clone())
@@ -1342,11 +1344,11 @@ macro_rules! impl_shape_for_round_shape(
                 self.inner_shape.local_bounding_sphere().loosened(self.border_radius)
             }
 
-            fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+            fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
                 self.inner_shape.aabb(position).loosened(self.border_radius)
             }
 
-            fn mass_properties(&self, density: Real) -> MassProperties {
+            fn mass_properties(&self, density: T) -> MassProperties {
                 self.inner_shape.mass_properties(density)
             }
 
@@ -1362,11 +1364,11 @@ macro_rules! impl_shape_for_round_shape(
                 TypedShape::$Tag(self)
             }
 
-            fn ccd_thickness(&self) -> Real {
+            fn ccd_thickness(&self) -> T {
                 self.inner_shape.ccd_thickness() + self.border_radius
             }
 
-            fn ccd_angular_thickness(&self) -> Real {
+            fn ccd_angular_thickness(&self) -> T {
                 // The fact that the shape is round doesn't change anything
                 // to the CCD angular thickness.
                 self.inner_shape.ccd_angular_thickness()
@@ -1376,7 +1378,7 @@ macro_rules! impl_shape_for_round_shape(
                 Some(self as &dyn SupportMap)
             }
 
-            fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, Real)> {
+            fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
                 Some((&self.inner_shape as &dyn PolygonalFeatureMap, self.border_radius))
             }
         }
@@ -1387,6 +1389,7 @@ impl_shape_for_round_shape!(
     Cuboid, RoundCuboid;
     Triangle, RoundTriangle
 );
+
 #[cfg(feature = "dim2")]
 #[cfg(feature = "std")]
 impl_shape_for_round_shape!(ConvexPolygon, RoundConvexPolygon);

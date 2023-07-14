@@ -1,3 +1,4 @@
+use ad_trait::AD;
 use crate::bounding_volume::BoundingVolume;
 use crate::math::{Isometry, Real};
 use crate::query::contact_manifolds::contact_manifolds_workspace::{
@@ -65,13 +66,13 @@ fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
 }
 
 /// Computes the contact manifold between an heightfield and a composite shape.
-pub fn contact_manifolds_heightfield_composite_shape<ManifoldData, ContactData>(
+pub fn contact_manifolds_heightfield_composite_shape<ManifoldData, ContactData, T: AD>(
     dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
-    pos12: &Isometry<Real>,
-    pos21: &Isometry<Real>,
-    heightfield1: &HeightField,
-    composite2: &dyn SimdCompositeShape,
-    prediction: Real,
+    pos12: &Isometry<T>,
+    pos21: &Isometry<T>,
+    heightfield1: &HeightField<T>,
+    composite2: &dyn SimdCompositeShape<T>,
+    prediction: T,
     manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
     workspace: &mut Option<ContactManifoldsWorkspace>,
     flipped: bool,

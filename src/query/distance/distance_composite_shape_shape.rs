@@ -5,17 +5,18 @@ use crate::query::QueryDispatcher;
 use crate::shape::{Shape, TypedSimdCompositeShape};
 use crate::utils::{DefaultStorage, IsometryOpt};
 use simba::simd::{SimdBool as _, SimdPartialOrd, SimdValue};
+use ad_trait::AD;
 
 /// Smallest distance between a composite shape and any other shape.
-pub fn distance_composite_shape_shape<D: ?Sized, G1: ?Sized>(
+pub fn distance_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(
     dispatcher: &D,
-    pos12: &Isometry<Real>,
+    pos12: &Isometry<T>,
     g1: &G1,
     g2: &dyn Shape,
 ) -> Real
 where
     D: QueryDispatcher,
-    G1: TypedSimdCompositeShape<QbvhStorage = DefaultStorage>,
+    G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     let mut visitor = CompositeShapeAgainstAnyDistanceVisitor::new(dispatcher, pos12, g1, g2);
     g1.typed_qbvh()
@@ -26,35 +27,35 @@ where
 }
 
 /// Smallest distance between a shape and a composite shape.
-pub fn distance_shape_composite_shape<D: ?Sized, G2: ?Sized>(
+pub fn distance_shape_composite_shape<D: ?Sized, G2: ?Sized, T: AD>(
     dispatcher: &D,
-    pos12: &Isometry<Real>,
+    pos12: &Isometry<T>,
     g1: &dyn Shape,
     g2: &G2,
-) -> Real
+) -> T
 where
     D: QueryDispatcher,
-    G2: TypedSimdCompositeShape<QbvhStorage = DefaultStorage>,
+    G2: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     distance_composite_shape_shape(dispatcher, &pos12.inverse(), g2, g1)
 }
 
 /// A visitor for computing the distance between a composite shape and a shape.
-pub struct CompositeShapeAgainstAnyDistanceVisitor<'a, D: ?Sized, G1: ?Sized + 'a> {
-    msum_shift: Vector<SimdReal>,
-    msum_margin: Vector<SimdReal>,
+pub struct CompositeShapeAgainstAnyDistanceVisitor<'a, D: ?Sized, G1: ?Sized + 'a, T: AD> {
+    msum_shift: Vector<T>,
+    msum_margin: Vector<T>,
 
     dispatcher: &'a D,
-    pos12: &'a Isometry<Real>,
+    pos12: &'a Isometry<T>,
     g1: &'a G1,
     g2: &'a dyn Shape,
 }
 
-impl<'a, D: ?Sized, G1: ?Sized + 'a> CompositeShapeAgainstAnyDistanceVisitor<'a, D, G1> {
+impl<'a, D: ?Sized, G1: ?Sized + 'a, T: AD> CompositeShapeAgainstAnyDistanceVisitor<'a, D, G1, T> {
     /// Initialize a visitor for computing the distance between a composite shape and a shape.
     pub fn new(
         dispatcher: &'a D,
-        pos12: &'a Isometry<Real>,
+        pos12: &'a Isometry<T>,
         g1: &'a G1,
         g2: &'a dyn Shape,
     ) -> Self {
@@ -71,18 +72,18 @@ impl<'a, D: ?Sized, G1: ?Sized + 'a> CompositeShapeAgainstAnyDistanceVisitor<'a,
     }
 }
 
-impl<'a, D: ?Sized, G1: ?Sized> SimdBestFirstVisitor<G1::PartId, SimdAabb>
-    for CompositeShapeAgainstAnyDistanceVisitor<'a, D, G1>
+impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>>
+    for CompositeShapeAgainstAnyDistanceVisitor<'a, D, G1, T>
 where
     D: QueryDispatcher,
-    G1: TypedSimdCompositeShape<QbvhStorage = DefaultStorage>,
+    G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
-    type Result = (G1::PartId, Real);
+    type Result = (G1::PartId, T);
 
     fn visit(
         &mut self,
-        best: Real,
-        bv: &SimdAabb,
+        best: T,
+        bv: &SimdAabb<T>,
         data: Option<[Option<&G1::PartId>; SIMD_WIDTH]>,
     ) -> SimdBestFirstVisitStatus<Self::Result> {
         // Compute the minkowski sum of the two Aabbs.
@@ -95,14 +96,14 @@ where
 
         if let Some(data) = data {
             let bitmask = mask.bitmask();
-            let mut weights = [0.0; SIMD_WIDTH];
+            let mut weights = [T::zero(); SIMD_WIDTH];
             let mut mask = [false; SIMD_WIDTH];
             let mut results = [None; SIMD_WIDTH];
 
             for ii in 0..SIMD_WIDTH {
                 if (bitmask & (1 << ii)) != 0 && data[ii].is_some() {
                     let part_id = *data[ii].unwrap();
-                    let mut dist = Ok(0.0);
+                    let mut dist = Ok(T::zero());
                     self.g1.map_untyped_part_at(part_id, |part_pos1, g1| {
                         dist =
                             self.dispatcher
@@ -111,8 +112,8 @@ where
 
                     match dist {
                         Ok(dist) => {
-                            if dist == 0.0 {
-                                return SimdBestFirstVisitStatus::ExitEarly(Some((part_id, 0.0)));
+                            if dist == T::zero() {
+                                return SimdBestFirstVisitStatus::ExitEarly(Some((part_id, T::zero())));
                             } else {
                                 weights[ii] = dist;
                                 mask[ii] = dist < best;

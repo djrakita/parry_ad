@@ -5,6 +5,7 @@ use crate::math::{Point, Real};
 use crate::partitioning::{CenterDataSplitter, QbvhProxy};
 use crate::simd::{SimdReal, SIMD_WIDTH};
 use simba::simd::{SimdBool, SimdValue};
+use ad_trait::AD;
 
 use super::{IndexedData, NodeIndex, Qbvh, QbvhNode, QbvhNodeFlags};
 
@@ -37,7 +38,7 @@ impl QbvhUpdateWorkspace {
     }
 }
 
-impl<LeafData: IndexedData> Qbvh<LeafData> {
+impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     /// Immediately remove a leaf from this QBVH.
     pub fn remove(&mut self, data: LeafData) -> Option<LeafData> {
         let id = data.index();

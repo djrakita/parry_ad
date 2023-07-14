@@ -2,15 +2,16 @@ use crate::math::{Isometry, Real, Vector};
 use crate::query::sat;
 use crate::shape::{Segment, SupportMap, Triangle};
 use na::Unit;
+use ad_trait::AD;
 
 /// Finds the best separating normal a triangle and a segment.
 ///
 /// Only the normals of `triangle1` are tested.
-pub fn triangle_segment_find_local_separating_normal_oneway(
-    triangle1: &Triangle,
+pub fn triangle_segment_find_local_separating_normal_oneway<T: AD>(
+    triangle1: &Triangle<T>,
     segment2: &Segment,
-    pos12: &Isometry<Real>,
-) -> (Real, Vector<Real>) {
+    pos12: &Isometry<T>,
+) -> (T, Vector<T>) {
     if let Some(dir) = triangle1.normal() {
         let p2a = segment2.support_point_toward(pos12, &-dir);
         let p2b = segment2.support_point_toward(pos12, &dir);
@@ -23,7 +24,7 @@ pub fn triangle_segment_find_local_separating_normal_oneway(
             (sep_b, -*dir)
         }
     } else {
-        (-Real::MAX, Vector::zeros())
+        (T::constant(-f64::MAX), Vector::zeros())
     }
 }
 
@@ -31,11 +32,11 @@ pub fn triangle_segment_find_local_separating_normal_oneway(
 ///
 /// All combinations of edges from the segment and the triangle are taken into
 /// account.
-pub fn segment_triangle_find_local_separating_edge_twoway(
+pub fn segment_triangle_find_local_separating_edge_twoway<T: AD>(
     segment1: &Segment,
-    triangle2: &Triangle,
-    pos12: &Isometry<Real>,
-) -> (Real, Vector<Real>) {
+    triangle2: &Triangle<T>,
+    pos12: &Isometry<T>,
+) -> (T, Vector<T>) {
     let x2 = pos12 * (triangle2.b - triangle2.a);
     let y2 = pos12 * (triangle2.c - triangle2.b);
     let z2 = pos12 * (triangle2.a - triangle2.c);
@@ -50,11 +51,11 @@ pub fn segment_triangle_find_local_separating_edge_twoway(
         -crosses1[1],
         -crosses1[2],
     ];
-    let mut max_separation = -Real::MAX;
+    let mut max_separation = T::constant(-f64::MAX);
     let mut sep_dir = axes1[0];
 
     for axis1 in &axes1 {
-        if let Some(axis1) = Unit::try_new(*axis1, 0.0) {
+        if let Some(axis1) = Unit::try_new(*axis1, T::zero()) {
             let sep =
                 sat::support_map_support_map_compute_separation(segment1, triangle2, pos12, &axis1);
 

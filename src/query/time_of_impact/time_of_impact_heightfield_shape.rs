@@ -1,3 +1,4 @@
+use ad_trait::AD;
 use crate::math::{Isometry, Real, Vector};
 use crate::query::{QueryDispatcher, Ray, Unsupported, TOI};
 use crate::shape::{GenericHeightField, HeightFieldStorage, Shape};
@@ -104,13 +105,13 @@ where
 
 /// Time Of Impact between a moving shape and a heightfield.
 #[cfg(feature = "dim3")]
-pub fn time_of_impact_heightfield_shape<Storage, D: ?Sized>(
+pub fn time_of_impact_heightfield_shape<Storage, D: ?Sized, T: AD>(
     dispatcher: &D,
-    pos12: &Isometry<Real>,
-    vel12: &Vector<Real>,
-    heightfield1: &GenericHeightField<Storage>,
+    pos12: &Isometry<T>,
+    vel12: &Vector<T>,
+    heightfield1: &GenericHeightField<Storage, T>,
     g2: &dyn Shape,
-    max_toi: Real,
+    max_toi: T,
     stop_at_penetration: bool,
 ) -> Result<Option<TOI>, Unsupported>
 where
@@ -140,15 +141,15 @@ where
     /*
      * Enlarge the ranges by 1 to account for any movement within one cell.
      */
-    if ray.dir.z > 0.0 {
+    if ray.dir.z > T::zero() {
         curr_range_i.end += 1;
-    } else if ray.dir.z < 0.0 {
+    } else if ray.dir.z < T::zero() {
         curr_range_i.start -= 1;
     }
 
-    if ray.dir.x > 0.0 {
+    if ray.dir.x > T::zero() {
         curr_range_j.end += 1;
-    } else if ray.dir.x < 0.0 {
+    } else if ray.dir.x < T::zero() {
         curr_range_j.start -= 1;
     }
 
@@ -174,7 +175,7 @@ where
                         max_toi,
                         stop_at_penetration,
                     )? {
-                        if hit.toi < best_hit.map(|toi| toi.toi).unwrap_or(Real::MAX) {
+                        if hit.toi < best_hit.map(|toi| toi.toi).unwrap_or(T::contant(f64::MAX)) {
                             best_hit = Some(hit);
                         }
                     }
@@ -191,7 +192,7 @@ where
         }
     }
 
-    if ray.dir.y == 0.0 {
+    if ray.dir.y == T::zero() {
         return Ok(best_hit);
     }
 
@@ -203,35 +204,35 @@ where
         /*
          * Find the next cell to cast the ray on.
          */
-        let toi_x = if ray.dir.x > 0.0 {
+        let toi_x = if ray.dir.x > T::zero() {
             let x = heightfield1.signed_x_at(cell.1 + 1);
             (x - ray.origin.x) / ray.dir.x
-        } else if ray.dir.x < 0.0 {
+        } else if ray.dir.x < T::zero() {
             let x = heightfield1.signed_x_at(cell.1 + 0);
             (x - ray.origin.x) / ray.dir.x
         } else {
-            Real::MAX
+            T::constant(f64::MAX)
         };
 
-        let toi_z = if ray.dir.z > 0.0 {
+        let toi_z = if ray.dir.z > T::zero() {
             let z = heightfield1.signed_z_at(cell.0 + 1);
             (z - ray.origin.z) / ray.dir.z
-        } else if ray.dir.z < 0.0 {
+        } else if ray.dir.z < T::zero() {
             let z = heightfield1.signed_z_at(cell.0 + 0);
             (z - ray.origin.z) / ray.dir.z
         } else {
-            Real::MAX
+            T::constant(f64::MAX)
         };
 
         if toi_x > max_toi && toi_z > max_toi {
             break;
         }
 
-        if toi_x >= 0.0 && toi_x <= toi_z {
+        if toi_x >= T::zero() && toi_x <= toi_z {
             cell.1 += ray.dir.x.signum() as isize;
         }
 
-        if toi_z >= 0.0 && toi_z <= toi_x {
+        if toi_z >= T::zero() && toi_z <= toi_x {
             cell.0 += ray.dir.z.signum() as isize;
         }
 
@@ -281,13 +282,13 @@ where
 }
 
 /// Time Of Impact between a moving shape and a heightfield.
-pub fn time_of_impact_shape_heightfield<Storage, D: ?Sized>(
+pub fn time_of_impact_shape_heightfield<Storage, D: ?Sized, T: AD>(
     dispatcher: &D,
-    pos12: &Isometry<Real>,
-    vel12: &Vector<Real>,
+    pos12: &Isometry<T>,
+    vel12: &Vector<T>,
     g1: &dyn Shape,
-    heightfield2: &GenericHeightField<Storage>,
-    max_toi: Real,
+    heightfield2: &GenericHeightField<Storage, T>,
+    max_toi: T,
     stop_at_penetration: bool,
 ) -> Result<Option<TOI>, Unsupported>
 where

@@ -1,5 +1,5 @@
 use crate::bounding_volume::BoundingVolume;
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::contact_manifolds::contact_manifolds_workspace::{
     TypedWorkspaceData, WorkspaceData,
 };
@@ -10,6 +10,7 @@ use crate::query::ContactManifold;
 use crate::shape::Capsule;
 use crate::shape::{HeightField, Shape};
 use crate::utils::hashmap::{Entry, HashMap};
+use ad_trait::AD;
 
 #[cfg(feature = "dim3")]
 use crate::query::contact_manifolds::InternalEdgesFixer;
@@ -47,12 +48,12 @@ impl HeightFieldShapeContactManifoldsWorkspace {
 }
 
 /// Computes the contact manifold between an heightfield and a shape, both represented as `Shape` trait-objects.
-pub fn contact_manifolds_heightfield_shape_shapes<ManifoldData, ContactData>(
+pub fn contact_manifolds_heightfield_shape_shapes<ManifoldData, ContactData, T: AD>(
     dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
-    pos12: &Isometry<Real>,
+    pos12: &Isometry<T>,
     shape1: &dyn Shape,
     shape2: &dyn Shape,
-    prediction: Real,
+    prediction: T,
     manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
     workspace: &mut Option<ContactManifoldsWorkspace>,
 ) where
@@ -101,12 +102,12 @@ fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
 }
 
 /// Computes the contact manifold between an heightfield and an abstract shape.
-pub fn contact_manifolds_heightfield_shape<ManifoldData, ContactData>(
+pub fn contact_manifolds_heightfield_shape<ManifoldData, ContactData, T: AD>(
     dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
-    pos12: &Isometry<Real>,
-    heightfield1: &HeightField,
+    pos12: &Isometry<T>,
+    heightfield1: &HeightField<T>,
     shape2: &dyn Shape,
-    prediction: Real,
+    prediction: T,
     manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
     workspace: &mut Option<ContactManifoldsWorkspace>,
     flipped: bool,

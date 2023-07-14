@@ -1,10 +1,12 @@
 //! Definition of the tetrahedron shape.
 
-use crate::math::{Matrix, Point, Real};
+use crate::math::{Matrix, Point};
 use crate::shape::{Segment, Triangle};
 use crate::utils;
 use na::Matrix3;
 use std::mem;
+
+use ad_trait::AD;
 
 #[cfg(not(feature = "std"))]
 use na::ComplexField; // for .abs()
@@ -21,20 +23,20 @@ use na::ComplexField; // for .abs()
 #[cfg_attr(feature = "cuda", derive(cust_core::DeviceCopy))]
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct Tetrahedron {
+pub struct Tetrahedron<T: AD> {
     /// The tetrahedron first point.
-    pub a: Point<Real>,
+    pub a: Point<T>,
     /// The tetrahedron first point.
-    pub b: Point<Real>,
+    pub b: Point<T>,
     /// The tetrahedron first point.
-    pub c: Point<Real>,
+    pub c: Point<T>,
     /// The tetrahedron first point.
-    pub d: Point<Real>,
+    pub d: Point<T>,
 }
 
 /// Logical description of the location of a point on a triangle.
 #[derive(Copy, Clone, Debug)]
-pub enum TetrahedronPointLocation {
+pub enum TetrahedronPointLocation<T: AD> {
     /// The point lies on a vertex.
     OnVertex(u32),
     /// The point lies on an edge.
@@ -45,27 +47,27 @@ pub enum TetrahedronPointLocation {
     /// The 3-rd edge is the segment BC.
     /// The 4-th edge is the segment BD.
     /// The 5-th edge is the segment CD.
-    OnEdge(u32, [Real; 2]),
+    OnEdge(u32, [T; 2]),
     /// The point lies on a triangular face interior.
     ///
     /// The first face is the triangle ABC.
     /// The second face is the triangle ABD.
     /// The third face is the triangle ACD.
     /// The fourth face is the triangle BDC.
-    OnFace(u32, [Real; 3]),
+    OnFace(u32, [T; 3]),
     /// The point lies inside of the tetrahedron.
     OnSolid,
 }
 
-impl TetrahedronPointLocation {
+impl<T: AD> TetrahedronPointLocation<T> {
     /// The barycentric coordinates corresponding to this point location.
     ///
     /// Returns `None` if the location is `TetrahedronPointLocation::OnSolid`.
-    pub fn barycentric_coordinates(&self) -> Option<[Real; 4]> {
-        let mut bcoords = [0.0; 4];
+    pub fn barycentric_coordinates(&self) -> Option<[T; 4]> {
+        let mut bcoords = [T::zero(); 4];
 
         match self {
-            TetrahedronPointLocation::OnVertex(i) => bcoords[*i as usize] = 1.0,
+            TetrahedronPointLocation::OnVertex(i) => bcoords[*i as usize] = T::constant(1.0),
             TetrahedronPointLocation::OnEdge(i, uv) => {
                 let idx = Tetrahedron::edge_ids(*i);
                 bcoords[idx.0 as usize] = uv[0];
@@ -103,15 +105,15 @@ impl TetrahedronPointLocation {
     }
 }
 
-impl Tetrahedron {
+impl<T: AD> Tetrahedron<T> {
     /// Creates a tetrahedron from three points.
     #[inline]
-    pub fn new(a: Point<Real>, b: Point<Real>, c: Point<Real>, d: Point<Real>) -> Tetrahedron {
+    pub fn new(a: Point<T>, b: Point<T>, c: Point<T>, d: Point<T>) -> Tetrahedron {
         Tetrahedron { a, b, c, d }
     }
 
     /// Creates the reference to a tetrahedron from the reference to an array of four points.
-    pub fn from_array(arr: &[Point<Real>; 4]) -> &Tetrahedron {
+    pub fn from_array(arr: &[Point<T>; 4]) -> &Tetrahedron {
         unsafe { mem::transmute(arr) }
     }
 
@@ -190,7 +192,7 @@ impl Tetrahedron {
     /// Computes the barycentric coordinates of the given point in the coordinate system of this tetrahedron.
     ///
     /// Returns `None` if this tetrahedron is degenerate.
-    pub fn barycentric_coordinates(&self, p: &Point<Real>) -> Option<[Real; 4]> {
+    pub fn barycentric_coordinates(&self, p: &Point<T>) -> Option<[T; 4]> {
         let ab = self.b - self.a;
         let ac = self.c - self.a;
         let ad = self.d - self.a;
@@ -209,7 +211,7 @@ impl Tetrahedron {
 
     /// Computes the volume of this tetrahedron.
     #[inline]
-    pub fn volume(&self) -> Real {
+    pub fn volume(&self) -> T {
         self.signed_volume().abs()
     }
 
@@ -218,7 +220,7 @@ impl Tetrahedron {
     /// If it is positive, `p4` is on the half-space pointed by the normal of the oriented triangle
     /// `(p1, p2, p3)`.
     #[inline]
-    pub fn signed_volume(&self) -> Real {
+    pub fn signed_volume(&self) -> T {
         let p1p2 = self.b - self.a;
         let p1p3 = self.c - self.a;
         let p1p4 = self.d - self.a;
@@ -227,12 +229,12 @@ impl Tetrahedron {
             p1p2[0], p1p3[0], p1p4[0], p1p2[1], p1p3[1], p1p4[1], p1p2[2], p1p3[2], p1p4[2],
         );
 
-        mat.determinant() / na::convert::<f64, Real>(6.0f64)
+        mat.determinant() / T::constant(6.0f64);
     }
 
     /// Computes the center of this tetrahedron.
     #[inline]
-    pub fn center(&self) -> Point<Real> {
+    pub fn center(&self) -> Point<T> {
         utils::center(&[self.a, self.b, self.c, self.d])
     }
 }

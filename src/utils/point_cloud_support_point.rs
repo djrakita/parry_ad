@@ -1,8 +1,9 @@
-use crate::math::{Point, Real, Vector};
+use crate::math::{Point, Vector};
+use ad_trait::AD;
 
 /// Computes the index of the support point of a cloud of points.
 #[inline]
-pub fn point_cloud_support_point_id(dir: &Vector<Real>, points: &[Point<Real>]) -> usize {
+pub fn point_cloud_support_point_id<T: AD>(dir: &Vector<T>, points: &[Point<T>]) -> usize {
     let mut best_pt = 0;
     let mut best_dot = points[0].coords.dot(dir);
 
@@ -21,6 +22,6 @@ pub fn point_cloud_support_point_id(dir: &Vector<Real>, points: &[Point<Real>]) 
 
 /// Computes the support point of a cloud of points.
 #[inline]
-pub fn point_cloud_support_point(dir: &Vector<Real>, points: &[Point<Real>]) -> Point<Real> {
+pub fn point_cloud_support_point<T: AD>(dir: &Vector<T>, points: &[Point<T>]) -> Point<T> {
     points[point_cloud_support_point_id(dir, points)]
 }

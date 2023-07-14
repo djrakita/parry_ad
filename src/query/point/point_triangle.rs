@@ -1,3 +1,4 @@
+use ad_trait::AD;
 use crate::math::{Point, Real, Vector, DIM};
 use crate::query::{PointProjection, PointQuery, PointQueryWithLocation};
 use crate::shape::{FeatureId, Triangle, TrianglePointLocation};
@@ -17,7 +18,7 @@ fn compute_result(pt: &Point<Real>, proj: Point<Real>) -> PointProjection {
     }
 }
 
-impl PointQuery for Triangle {
+impl<T: AD> PointQuery for Triangle<T> {
     #[inline]
     fn project_local_point(&self, pt: &Point<Real>, solid: bool) -> PointProjection {
         self.project_local_point_and_get_location(pt, solid).0
@@ -51,8 +52,8 @@ impl PointQuery for Triangle {
     // eaten by the `::approx_eq(...)` on `project_point(...)`.
 }
 
-impl PointQueryWithLocation for Triangle {
-    type Location = TrianglePointLocation;
+impl<T: AD> PointQueryWithLocation for Triangle<T> {
+    type Location = TrianglePointLocation<T>;
 
     #[inline]
     fn project_local_point_and_get_location(

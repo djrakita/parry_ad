@@ -1,8 +1,8 @@
 use super::TriangleFacet;
-use crate::math::Real;
+use ad_trait::AD;
 use na::Point3;
 
-pub fn check_facet_links(ifacet: usize, facets: &[TriangleFacet]) {
+pub fn check_facet_links<T: AD>(ifacet: usize, facets: &[TriangleFacet<T>]) {
     let facet = &facets[ifacet];
 
     for i in 0..3 {
@@ -26,7 +26,7 @@ pub fn check_facet_links(ifacet: usize, facets: &[TriangleFacet]) {
 }
 
 /// Checks if a convex-hull is properly formed.
-pub fn check_convex_hull(points: &[Point3<Real>], triangles: &[[u32; 3]]) {
+pub fn check_convex_hull<T: AD>(points: &[Point3<T>], triangles: &[[u32; 3]]) {
     use crate::utils::hashmap::{Entry, HashMap};
     use crate::utils::SortedPair;
     let mut edges = HashMap::default();

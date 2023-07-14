@@ -24,6 +24,8 @@ use crate::utils::{CudaStorage, CudaStoragePtr};
 #[cfg(all(feature = "std", feature = "cuda"))]
 use {crate::utils::CudaArray1, cust::error::CudaResult};
 
+use ad_trait::AD;
+
 /// Indicated an inconsistency in the topology of a triangle mesh.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum TopologyError {
@@ -348,8 +350,8 @@ bitflags::bitflags! {
 )]
 #[repr(C)] // Needed for Cuda.
 /// A triangle mesh.
-pub struct GenericTriMesh<Storage: TriMeshStorage> {
-    qbvh: GenericQbvh<u32, Storage::QbvhStorage>,
+pub struct GenericTriMesh<Storage: TriMeshStorage, T: AD> {
+    qbvh: GenericQbvh<u32, Storage::QbvhStorage, T>,
     vertices: Storage::ArrayPoint,
     indices: Storage::ArrayIdx,
     #[cfg(feature = "dim3")]
@@ -360,7 +362,7 @@ pub struct GenericTriMesh<Storage: TriMeshStorage> {
 }
 
 /// A triangle-mesh.
-pub type TriMesh = GenericTriMesh<DefaultStorage>;
+pub type TriMesh<T: AD> = GenericTriMesh<DefaultStorage, T>;
 #[cfg(feature = "cuda")]
 /// A triangle-mesh stored on CUDA memory.
 pub type CudaTriMesh = GenericTriMesh<CudaStorage>;
@@ -389,7 +391,7 @@ impl CudaTriMesh {
 }
 
 #[cfg(feature = "std")]
-impl TriMesh {
+impl<T: AD> TriMesh<T> {
     /// Creates a new triangle mesh from a vertex buffer and an index buffer.
     pub fn new(vertices: Vec<Point<Real>>, indices: Vec<[u32; 3]>) -> Self {
         Self::with_flags(vertices, indices, TriMeshFlags::empty())
@@ -1013,7 +1015,7 @@ impl TriMesh {
     }
 }
 
-impl<Storage: TriMeshStorage> GenericTriMesh<Storage> {
+impl<Storage: TriMeshStorage, T: AD> GenericTriMesh<Storage, T> {
     /// The flags of this triangle mesh.
     pub fn flags(&self) -> TriMeshFlags {
         self.flags
@@ -1049,7 +1051,7 @@ impl<Storage: TriMeshStorage> GenericTriMesh<Storage> {
     }
 
     /// Get the `i`-th triangle of this mesh.
-    pub fn triangle(&self, i: u32) -> Triangle {
+    pub fn triangle(&self, i: u32) -> Triangle<T> {
         let idx = self.indices[i as usize];
         Triangle::new(
             self.vertices[idx[0] as usize],

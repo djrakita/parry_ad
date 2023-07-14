@@ -3,21 +3,22 @@ use crate::math::SIMD_WIDTH;
 use crate::partitioning::{SimdVisitStatus, SimdVisitor};
 use simba::simd::SimdBool as _;
 use std::marker::PhantomData;
+use ad_trait::AD;
 
 /// Spatial partitioning data structure visitor collecting interferences with a given bounding volume.
-pub struct BoundingVolumeIntersectionsVisitor<T, F> {
-    bv: SimdAabb,
+pub struct BoundingVolumeIntersectionsVisitor<T, F, A: AD> {
+    bv: SimdAabb<A>,
     callback: F,
     _phantom: PhantomData<T>,
 }
 
-impl<T, F> BoundingVolumeIntersectionsVisitor<T, F>
+impl<T, F, A: AD> BoundingVolumeIntersectionsVisitor<T, F, A>
 where
     F: FnMut(&T) -> bool,
 {
     /// Creates a new `BoundingVolumeIntersectionsVisitor`.
     #[inline]
-    pub fn new(bv: &Aabb, callback: F) -> BoundingVolumeIntersectionsVisitor<T, F> {
+    pub fn new(bv: &Aabb, callback: F) -> BoundingVolumeIntersectionsVisitor<T, F, A> {
         BoundingVolumeIntersectionsVisitor {
             bv: SimdAabb::splat(*bv),
             callback,
@@ -26,12 +27,12 @@ where
     }
 }
 
-impl<T, F> SimdVisitor<T, SimdAabb> for BoundingVolumeIntersectionsVisitor<T, F>
+impl<T, F, A: AD> SimdVisitor<T, SimdAabb<A>> for BoundingVolumeIntersectionsVisitor<T, F, A>
 where
     F: FnMut(&T) -> bool,
 {
     #[inline]
-    fn visit(&mut self, bv: &SimdAabb, b: Option<[Option<&T>; SIMD_WIDTH]>) -> SimdVisitStatus {
+    fn visit(&mut self, bv: &SimdAabb<A>, b: Option<[Option<&T>; SIMD_WIDTH]>) -> SimdVisitStatus {
         let mask = bv.intersects(&self.bv);
 
         if let Some(data) = b {

@@ -9,17 +9,18 @@ use crate::query::QueryDispatcher;
 use crate::shape::{Shape, TypedSimdCompositeShape};
 use crate::utils::{DefaultStorage, IsometryOpt};
 use simba::simd::{SimdBool as _, SimdPartialOrd, SimdValue};
+use ad_trait::AD;
 
 /// Intersection test between a composite shape (`Mesh`, `Compound`) and any other shape.
-pub fn intersection_test_composite_shape_shape<D: ?Sized, G1: ?Sized>(
+pub fn intersection_test_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(
     dispatcher: &D,
-    pos12: &Isometry<Real>,
+    pos12: &Isometry<T>,
     g1: &G1,
     g2: &dyn Shape,
 ) -> bool
 where
     D: QueryDispatcher,
-    G1: TypedSimdCompositeShape<QbvhStorage = DefaultStorage>,
+    G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     let mut visitor = IntersectionCompositeShapeShapeVisitor::new(dispatcher, pos12, g1, g2);
 
@@ -28,43 +29,43 @@ where
 }
 
 /// Proximity between a shape and a composite (`Mesh`, `Compound`) shape.
-pub fn intersection_test_shape_composite_shape<D: ?Sized, G2: ?Sized>(
+pub fn intersection_test_shape_composite_shape<D: ?Sized, G2: ?Sized, T: AD>(
     dispatcher: &D,
-    pos12: &Isometry<Real>,
+    pos12: &Isometry<T>,
     g1: &dyn Shape,
     g2: &G2,
 ) -> bool
 where
     D: QueryDispatcher,
-    G2: TypedSimdCompositeShape<QbvhStorage = DefaultStorage>,
+    G2: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     intersection_test_composite_shape_shape(dispatcher, &pos12.inverse(), g2, g1)
 }
 
 /// A visitor for checking if a composite-shape and a shape intersect.
-pub struct IntersectionCompositeShapeShapeVisitor<'a, D: ?Sized, G1: ?Sized + 'a> {
-    ls_aabb2: SimdAabb,
+pub struct IntersectionCompositeShapeShapeVisitor<'a, D: ?Sized, G1: ?Sized + 'a, T: AD> {
+    ls_aabb2: SimdAabb<T>,
 
     dispatcher: &'a D,
-    pos12: &'a Isometry<Real>,
+    pos12: &'a Isometry<T>,
     g1: &'a G1,
     g2: &'a dyn Shape,
 
     found_intersection: bool,
 }
 
-impl<'a, D: ?Sized, G1: ?Sized> IntersectionCompositeShapeShapeVisitor<'a, D, G1>
+impl<'a, D: ?Sized, G1: ?Sized, T: AD> IntersectionCompositeShapeShapeVisitor<'a, D, G1, T>
 where
     D: QueryDispatcher,
-    G1: TypedSimdCompositeShape<QbvhStorage = DefaultStorage>,
+    G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     /// Initialize a visitor for checking if a composite-shape and a shape intersect.
     pub fn new(
         dispatcher: &'a D,
-        pos12: &'a Isometry<Real>,
+        pos12: &'a Isometry<T>,
         g1: &'a G1,
         g2: &'a dyn Shape,
-    ) -> IntersectionCompositeShapeShapeVisitor<'a, D, G1> {
+    ) -> IntersectionCompositeShapeShapeVisitor<'a, D, G1, T> {
         let ls_aabb2 = g2.compute_aabb(&pos12);
 
         IntersectionCompositeShapeShapeVisitor {
@@ -78,15 +79,15 @@ where
     }
 }
 
-impl<'a, D: ?Sized, G1: ?Sized> SimdVisitor<G1::PartId, SimdAabb>
-    for IntersectionCompositeShapeShapeVisitor<'a, D, G1>
+impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdVisitor<G1::PartId, SimdAabb<T>>
+    for IntersectionCompositeShapeShapeVisitor<'a, D, G1,T>
 where
     D: QueryDispatcher,
-    G1: TypedSimdCompositeShape<QbvhStorage = DefaultStorage>,
+    G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     fn visit(
         &mut self,
-        bv: &SimdAabb,
+        bv: &SimdAabb<T>,
         data: Option<[Option<&G1::PartId>; SIMD_WIDTH]>,
     ) -> SimdVisitStatus {
         let mask = self.ls_aabb2.intersects(bv);
@@ -120,28 +121,28 @@ where
 
 /// A visitor for checking if a composite-shape and a shape intersect.
 #[deprecated(note = "Use IntersectionCompositeShapeShapeVisitor instead.")]
-pub struct IntersectionCompositeShapeShapeBestFirstVisitor<'a, D: ?Sized, G1: ?Sized + 'a> {
-    msum_shift: Vector<SimdReal>,
-    msum_margin: Vector<SimdReal>,
+pub struct IntersectionCompositeShapeShapeBestFirstVisitor<'a, D: ?Sized, G1: ?Sized + 'a, T: AD> {
+    msum_shift: Vector<T>,
+    msum_margin: Vector<T>,
 
     dispatcher: &'a D,
-    pos12: &'a Isometry<Real>,
+    pos12: &'a Isometry<T>,
     g1: &'a G1,
     g2: &'a dyn Shape,
 }
 
-impl<'a, D: ?Sized, G1: ?Sized> IntersectionCompositeShapeShapeBestFirstVisitor<'a, D, G1>
+impl<'a, D: ?Sized, G1: ?Sized, T: AD> IntersectionCompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
 where
     D: QueryDispatcher,
-    G1: TypedSimdCompositeShape<QbvhStorage = DefaultStorage>,
+    G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     /// Initialize a visitor for checking if a composite-shape and a shape intersect.
     pub fn new(
         dispatcher: &'a D,
-        pos12: &'a Isometry<Real>,
+        pos12: &'a Isometry<T>,
         g1: &'a G1,
         g2: &'a dyn Shape,
-    ) -> IntersectionCompositeShapeShapeBestFirstVisitor<'a, D, G1> {
+    ) -> IntersectionCompositeShapeShapeBestFirstVisitor<'a, D, G1, T> {
         let ls_aabb2 = g2.compute_aabb(&pos12);
 
         IntersectionCompositeShapeShapeBestFirstVisitor {
@@ -155,18 +156,18 @@ where
     }
 }
 
-impl<'a, D: ?Sized, G1: ?Sized> SimdBestFirstVisitor<G1::PartId, SimdAabb>
-    for IntersectionCompositeShapeShapeBestFirstVisitor<'a, D, G1>
+impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>>
+    for IntersectionCompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
 where
     D: QueryDispatcher,
-    G1: TypedSimdCompositeShape<QbvhStorage = DefaultStorage>,
+    G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     type Result = (G1::PartId, bool);
 
     fn visit(
         &mut self,
-        best: Real,
-        bv: &SimdAabb,
+        best: T,
+        bv: &SimdAabb<T>,
         data: Option<[Option<&G1::PartId>; SIMD_WIDTH]>,
     ) -> SimdBestFirstVisitStatus<Self::Result> {
         // Compute the minkowski sum of the two Aabbs.

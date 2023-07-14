@@ -2,6 +2,7 @@ use crate::utils::DefaultStorage;
 #[cfg(feature = "std")]
 use na::DMatrix;
 use std::ops::Range;
+use ad_trait::AD;
 
 #[cfg(feature = "cuda")]
 use crate::utils::{CudaArrayPointer2, CudaStorage, CudaStoragePtr};
@@ -9,7 +10,7 @@ use crate::utils::{CudaArrayPointer2, CudaStorage, CudaStoragePtr};
 use {crate::utils::CudaArray2, cust::error::CudaResult};
 
 use crate::bounding_volume::Aabb;
-use crate::math::{Real, Vector};
+use crate::math::{Vector};
 use crate::shape::{FeatureId, Triangle};
 use crate::utils::Array2;
 use na::Point3;
@@ -41,28 +42,28 @@ bitflags! {
 }
 
 /// Trait describing all the types needed for storing an heightfield’s data.
-pub trait HeightFieldStorage {
+pub trait HeightFieldStorage<T: AD> {
     /// Type of the array containing the heightfield’s heights.
-    type Heights: Array2<Item = Real>;
+    type Heights: Array2<Item = T>;
     /// Type of the array containing the heightfield’s cells status.
     type Status: Array2<Item = HeightFieldCellStatus>;
 }
 
 #[cfg(feature = "std")]
-impl HeightFieldStorage for DefaultStorage {
-    type Heights = DMatrix<Real>;
+impl<T: AD> HeightFieldStorage<T> for DefaultStorage {
+    type Heights = DMatrix<T>;
     type Status = DMatrix<HeightFieldCellStatus>;
 }
 
 #[cfg(all(feature = "std", feature = "cuda"))]
-impl HeightFieldStorage for CudaStorage {
-    type Heights = CudaArray2<Real>;
+impl<T: AD> HeightFieldStorage<T> for CudaStorage {
+    type Heights = CudaArray2<T>;
     type Status = CudaArray2<HeightFieldCellStatus>;
 }
 
 #[cfg(feature = "cuda")]
-impl HeightFieldStorage for CudaStoragePtr {
-    type Heights = CudaArrayPointer2<Real>;
+impl<T: AD> HeightFieldStorage<T> for CudaStoragePtr {
+    type Heights = CudaArrayPointer2<T>;
     type Status = CudaArrayPointer2<HeightFieldCellStatus>;
 }
 
@@ -75,18 +76,18 @@ impl HeightFieldStorage for CudaStoragePtr {
 #[derive(Debug)]
 #[repr(C)] // Needed for Cuda.
 /// A 3D heightfield with a generic storage buffer for its height grid.
-pub struct GenericHeightField<Storage: HeightFieldStorage> {
+pub struct GenericHeightField<Storage: HeightFieldStorage<T>, T: AD> {
     heights: Storage::Heights,
     status: Storage::Status,
 
-    scale: Vector<Real>,
+    scale: Vector<T>,
     aabb: Aabb,
     num_triangles: usize,
 }
 
-impl<Storage> Clone for GenericHeightField<Storage>
+impl<Storage, T: AD> Clone for GenericHeightField<Storage, T>
 where
-    Storage: HeightFieldStorage,
+    Storage: HeightFieldStorage<T>,
     Storage::Heights: Clone,
     Storage::Status: Clone,
 {
@@ -101,18 +102,18 @@ where
     }
 }
 
-impl<Storage> Copy for GenericHeightField<Storage>
+impl<Storage, T: AD> Copy for GenericHeightField<Storage, T>
 where
-    Storage: HeightFieldStorage,
+    Storage: HeightFieldStorage<T>,
     Storage::Heights: Copy,
     Storage::Status: Copy,
 {
 }
 
 #[cfg(feature = "cuda")]
-unsafe impl<Storage> cust_core::DeviceCopy for GenericHeightField<Storage>
+unsafe impl<Storage, T: AD> cust_core::DeviceCopy for GenericHeightField<Storage, T>
 where
-    Storage: HeightFieldStorage,
+    Storage: HeightFieldStorage<T>,
     Storage::Heights: cust_core::DeviceCopy + Copy,
     Storage::Status: cust_core::DeviceCopy + Copy,
 {
@@ -120,27 +121,27 @@ where
 
 /// A 3D heightfield.
 #[cfg(feature = "std")]
-pub type HeightField = GenericHeightField<DefaultStorage>;
+pub type HeightField<T: AD> = GenericHeightField<DefaultStorage, T>;
 
 /// A 3D heightfield stored in the CUDA memory, initializable from the host.
 #[cfg(all(feature = "std", feature = "cuda"))]
-pub type CudaHeightField = GenericHeightField<CudaStorage>;
+pub type CudaHeightField<T: AD> = GenericHeightField<CudaStorage, T>;
 
 /// A 3D heightfield stored in the CUDA memory, accessible from within a Cuda kernel.
 #[cfg(feature = "cuda")]
-pub type CudaHeightFieldPtr = GenericHeightField<CudaStoragePtr>;
+pub type CudaHeightFieldPtr<T: AD> = GenericHeightField<CudaStoragePtr, T>;
 
 #[cfg(feature = "std")]
-impl HeightField {
+impl<T: AD> HeightField<T> {
     /// Initializes a new heightfield with the given heights and a scaling factor.
-    pub fn new(heights: DMatrix<Real>, scale: Vector<Real>) -> Self {
+    pub fn new(heights: DMatrix<T>, scale: Vector<T>) -> Self {
         assert!(
             heights.nrows() > 1 && heights.ncols() > 1,
             "A heightfield heights must have at least 2 rows and columns."
         );
         let max = heights.max();
         let min = heights.min();
-        let hscale = scale * 0.5;
+        let hscale = scale * T::constant(T::constant(0.5));
         let aabb = Aabb::new(
             Point3::new(-hscale.x, min * scale.y, -hscale.z),
             Point3::new(hscale.x, max * scale.y, hscale.z),
@@ -163,7 +164,7 @@ impl HeightField {
 
     /// Converts this RAM-based heightfield to an heightfield based on CUDA memory.
     #[cfg(feature = "cuda")]
-    pub fn to_cuda(&self) -> CudaResult<CudaHeightField> {
+    pub fn to_cuda(&self) -> CudaResult<CudaHeightField<T>> {
         Ok(CudaHeightField {
             heights: CudaArray2::from_matrix(&self.heights)?,
             status: CudaArray2::from_matrix(&self.status)?,
@@ -175,9 +176,9 @@ impl HeightField {
 }
 
 #[cfg(all(feature = "std", feature = "cuda"))]
-impl CudaHeightField {
+impl<T: AD> CudaHeightField<T> {
     /// Returns the heightfield usable from within a CUDA kernel.
-    pub fn as_device_ptr(&self) -> CudaHeightFieldPtr {
+    pub fn as_device_ptr(&self) -> CudaHeightFieldPtr<T> {
         CudaHeightFieldPtr {
             heights: self.heights.as_device_ptr(),
             status: self.status.as_device_ptr(),
@@ -188,7 +189,7 @@ impl CudaHeightField {
     }
 }
 
-impl<Storage: HeightFieldStorage> GenericHeightField<Storage> {
+impl<Storage: HeightFieldStorage<T>, T: AD> GenericHeightField<Storage, T> {
     /// The number of rows of this heightfield.
     pub fn nrows(&self) -> usize {
         self.heights.nrows() - 1
@@ -229,28 +230,28 @@ impl<Storage: HeightFieldStorage> GenericHeightField<Storage> {
         }
     }
 
-    fn quantize_floor_unclamped(&self, val: Real, cell_size: Real) -> isize {
-        ((val + 0.5) / cell_size).floor() as isize
+    fn quantize_floor_unclamped(&self, val: T, cell_size: T) -> isize {
+        ((val + T::constant(0.5)) / cell_size).floor() as isize
     }
 
-    fn quantize_ceil_unclamped(&self, val: Real, cell_size: Real) -> isize {
-        ((val + 0.5) / cell_size).ceil() as isize
+    fn quantize_ceil_unclamped(&self, val: T, cell_size: T) -> isize {
+        ((val + T::constant(0.5)) / cell_size).ceil() as isize
     }
 
-    fn quantize_floor(&self, val: Real, cell_size: Real, num_cells: usize) -> usize {
+    fn quantize_floor(&self, val: T, cell_size: T, num_cells: usize) -> usize {
         na::clamp(
-            ((val + 0.5) / cell_size).floor(),
-            0.0,
-            (num_cells - 1) as Real,
+            ((val + T::constant(0.5)) / cell_size).floor(),
+            T::zero(),
+            (num_cells - 1) as T,
         ) as usize
     }
 
-    fn quantize_ceil(&self, val: Real, cell_size: Real, num_cells: usize) -> usize {
-        na::clamp(((val + 0.5) / cell_size).ceil(), 0.0, num_cells as Real) as usize
+    fn quantize_ceil(&self, val: T, cell_size: T, num_cells: usize) -> usize {
+        na::clamp(((val + T::constant(0.5)) / cell_size).ceil(), T::zero(), num_cells as T) as usize
     }
 
     /// The pair of index of the cell containing the vertical projection of the given point.
-    pub fn closest_cell_at_point(&self, pt: &Point3<Real>) -> (usize, usize) {
+    pub fn closest_cell_at_point(&self, pt: &Point3<T>) -> (usize, usize) {
         let scaled_pt = pt.coords.component_div(&self.scale);
         let cell_width = self.unit_cell_width();
         let cell_height = self.unit_cell_height();
@@ -263,14 +264,14 @@ impl<Storage: HeightFieldStorage> GenericHeightField<Storage> {
     }
 
     /// The pair of index of the cell containing the vertical projection of the given point.
-    pub fn cell_at_point(&self, pt: &Point3<Real>) -> Option<(usize, usize)> {
+    pub fn cell_at_point(&self, pt: &Point3<T>) -> Option<(usize, usize)> {
         let scaled_pt = pt.coords.component_div(&self.scale);
         let cell_width = self.unit_cell_width();
         let cell_height = self.unit_cell_height();
         let ncells_x = self.ncols();
         let ncells_z = self.nrows();
 
-        if scaled_pt.x < -0.5 || scaled_pt.x > 0.5 || scaled_pt.z < -0.5 || scaled_pt.z > 0.5 {
+        if scaled_pt.x < -T::constant(0.5) || scaled_pt.x > T::constant(0.5) || scaled_pt.z < -T::constant(0.5) || scaled_pt.z > T::constant(0.5) {
             // Outside of the heightfield bounds.
             None
         } else {
@@ -281,7 +282,7 @@ impl<Storage: HeightFieldStorage> GenericHeightField<Storage> {
     }
 
     /// The pair of index of the cell containing the vertical projection of the given point.
-    pub fn unclamped_cell_at_point(&self, pt: &Point3<Real>) -> (isize, isize) {
+    pub fn unclamped_cell_at_point(&self, pt: &Point3<T>) -> (isize, isize) {
         let scaled_pt = pt.coords.component_div(&self.scale);
         let cell_width = self.unit_cell_width();
         let cell_height = self.unit_cell_height();
@@ -292,23 +293,23 @@ impl<Storage: HeightFieldStorage> GenericHeightField<Storage> {
     }
 
     /// The smallest x coordinate of the `j`-th column of this heightfield.
-    pub fn x_at(&self, j: usize) -> Real {
-        (-0.5 + self.unit_cell_width() * (j as Real)) * self.scale.x
+    pub fn x_at(&self, j: usize) -> T {
+        (-T::constant(0.5) + self.unit_cell_width() * T::constant(j as f64)) * self.scale.x
     }
 
     /// The smallest z coordinate of the start of the `i`-th row of this heightfield.
-    pub fn z_at(&self, i: usize) -> Real {
-        (-0.5 + self.unit_cell_height() * (i as Real)) * self.scale.z
+    pub fn z_at(&self, i: usize) -> T {
+        (-T::constant(0.5) + self.unit_cell_height() * T::constant(i as f64)) * self.scale.z
     }
 
     /// The smallest x coordinate of the `j`-th column of this heightfield.
-    pub fn signed_x_at(&self, j: isize) -> Real {
-        (-0.5 + self.unit_cell_width() * (j as Real)) * self.scale.x
+    pub fn signed_x_at(&self, j: isize) -> T {
+        (-T::constant(0.5) + self.unit_cell_width() * T::constant(j as f64)) * self.scale.x
     }
 
     /// The smallest z coordinate of the start of the `i`-th row of this heightfield.
-    pub fn signed_z_at(&self, i: isize) -> Real {
-        (-0.5 + self.unit_cell_height() * (i as Real)) * self.scale.z
+    pub fn signed_z_at(&self, i: isize) -> T {
+        (-T::constant(0.5) + self.unit_cell_height() * T::constant(i as f64)) * self.scale.z
     }
 
     /// An iterator through all the triangles of this heightfield.
@@ -323,7 +324,7 @@ impl<Storage: HeightFieldStorage> GenericHeightField<Storage> {
     /// An iterator through all the triangles around the given point, after vertical projection on the heightfield.
     pub fn triangles_around_point<'a>(
         &'a self,
-        point: &Point3<Real>,
+        point: &Point3<T>,
     ) -> HeightFieldRadialTriangles<Storage> {
         let center = self.closest_cell_at_point(point);
         HeightFieldRadialTriangles {
@@ -427,11 +428,11 @@ impl<Storage: HeightFieldStorage> GenericHeightField<Storage> {
         let cell_width = self.unit_cell_width();
         let cell_height = self.unit_cell_height();
 
-        let z0 = -0.5 + cell_height * (i as Real);
-        let z1 = -0.5 + cell_height * ((i + 1) as Real);
+        let z0 = -T::constant(0.5) + cell_height * T::constant(i as f64);
+        let z1 = -T::constant(0.5) + cell_height * ((i + 1) as T);
 
-        let x0 = -0.5 + cell_width * (j as Real);
-        let x1 = -0.5 + cell_width * ((j + 1) as Real);
+        let x0 = -T::constant(0.5) + cell_width * T::constant(j as f64);
+        let x1 = -T::constant(0.5) + cell_width * ((j + 1) as T);
 
         let y00 = self.heights.get(i + 0, j + 0);
         let y10 = self.heights.get(i + 1, j + 0);
@@ -511,12 +512,12 @@ impl<Storage: HeightFieldStorage> GenericHeightField<Storage> {
     }
 
     /// The scale factor applied to this heightfield.
-    pub fn scale(&self) -> &Vector<Real> {
+    pub fn scale(&self) -> &Vector<T> {
         &self.scale
     }
 
     /// Sets the scale factor applied to this heightfield.
-    pub fn set_scale(&mut self, new_scale: Vector<Real>) {
+    pub fn set_scale(&mut self, new_scale: Vector<T>) {
         let ratio = new_scale.component_div(&self.scale);
         self.aabb.mins.coords.component_mul_assign(&ratio);
         self.aabb.maxs.coords.component_mul_assign(&ratio);
@@ -524,29 +525,29 @@ impl<Storage: HeightFieldStorage> GenericHeightField<Storage> {
     }
 
     /// Returns a scaled version of this heightfield.
-    pub fn scaled(mut self, scale: &Vector<Real>) -> Self {
+    pub fn scaled(mut self, scale: &Vector<T>) -> Self {
         self.set_scale(self.scale.component_mul(&scale));
         self
     }
 
     /// The width (extent along its local `x` axis) of each cell of this heightmap, including the scale factor.
-    pub fn cell_width(&self) -> Real {
+    pub fn cell_width(&self) -> T {
         self.unit_cell_width() * self.scale.x
     }
 
     /// The height (extent along its local `z` axis) of each cell of this heightmap, including the scale factor.
-    pub fn cell_height(&self) -> Real {
+    pub fn cell_height(&self) -> T {
         self.unit_cell_height() * self.scale.z
     }
 
     /// The width (extent along its local `x` axis) of each cell of this heightmap, excluding the scale factor.
-    pub fn unit_cell_width(&self) -> Real {
-        1.0 / (self.heights.ncols() as Real - 1.0)
+    pub fn unit_cell_width(&self) -> T {
+        T::constant(1.0 / (self.heights.ncols() as f64 - 1.0))
     }
 
     /// The height (extent along its local `z` axis) of each cell of this heightmap, excluding the scale factor.
-    pub fn unit_cell_height(&self) -> Real {
-        1.0 / (self.heights.nrows() as Real - 1.0)
+    pub fn unit_cell_height(&self) -> T {
+        T::constant(1.0 / (self.heights.nrows() as f64 - 1.0))
     }
 
     /// The Aabb of this heightmap.
@@ -676,7 +677,7 @@ impl<Storage: HeightFieldStorage> GenericHeightField<Storage> {
         let cell_width = self.unit_cell_width();
         let cell_height = self.unit_cell_height();
 
-        if ref_maxs.x <= -0.5 || ref_maxs.z <= -0.5 || ref_mins.x >= 0.5 || ref_mins.z >= 0.5 {
+        if ref_maxs.x <= -T::constant(0.5) || ref_maxs.z <= -T::constant(0.5) || ref_mins.x >= T::constant(0.5) || ref_mins.z >= T::constant(0.5) {
             // Outside of the heightfield bounds.
             return;
         }
@@ -697,10 +698,10 @@ impl<Storage: HeightFieldStorage> GenericHeightField<Storage> {
                     continue;
                 }
 
-                let z0 = -0.5 + cell_height * (i as Real);
+                let z0 = -T::constant(0.5) + cell_height * T::constant(i as f64);
                 let z1 = z0 + cell_height;
 
-                let x0 = -0.5 + cell_width * (j as Real);
+                let x0 = -T::constant(0.5) + cell_width * T::constant(j as f64);
                 let x1 = x0 + cell_width;
 
                 let y00 = self.heights.get(i + 0, j + 0);
@@ -754,16 +755,16 @@ impl<Storage: HeightFieldStorage> GenericHeightField<Storage> {
     }
 }
 
-struct HeightFieldTriangles<'a, Storage: HeightFieldStorage> {
-    heightfield: &'a GenericHeightField<Storage>,
+struct HeightFieldTriangles<'a, Storage: HeightFieldStorage, T: AD> {
+    heightfield: &'a GenericHeightField<Storage, T>,
     curr: (usize, usize),
-    tris: (Option<Triangle>, Option<Triangle>),
+    tris: (Option<Triangle<T>>, Option<Triangle<T>>),
 }
 
-impl<'a, Storage: HeightFieldStorage> Iterator for HeightFieldTriangles<'a, Storage> {
-    type Item = Triangle;
+impl<'a, Storage: HeightFieldStorage, T: AD> Iterator for HeightFieldTriangles<'a, Storage, T> {
+    type Item = Triangle<T>;
 
-    fn next(&mut self) -> Option<Triangle> {
+    fn next(&mut self) -> Option<Triangle<T>> {
         loop {
             if let Some(tri1) = self.tris.0.take() {
                 return Some(tri1);
@@ -789,22 +790,22 @@ impl<'a, Storage: HeightFieldStorage> Iterator for HeightFieldTriangles<'a, Stor
 }
 
 /// An iterator through all the triangles around the given point, after vertical projection on the heightfield.
-pub struct HeightFieldRadialTriangles<'a, Storage: HeightFieldStorage> {
-    heightfield: &'a GenericHeightField<Storage>,
+pub struct HeightFieldRadialTriangles<'a, Storage: HeightFieldStorage, T: AD> {
+    heightfield: &'a GenericHeightField<Storage, T>,
     center: (usize, usize),
     curr_radius: usize,
     curr_element: usize,
-    tris: (Option<Triangle>, Option<Triangle>),
+    tris: (Option<Triangle<T>>, Option<Triangle<T>>),
 }
 
-impl<'a, Storage: HeightFieldStorage> HeightFieldRadialTriangles<'a, Storage> {
+impl<'a, Storage: HeightFieldStorage, T: AD> HeightFieldRadialTriangles<'a, Storage, T> {
     /// Returns the next triangle in this iterator.
     ///
     /// Returns `None` no triangle closest than `max_dist` remain
     /// to be yielded. The `max_dist` can be modified at each iteration
     /// as long as the the new value is smaller or equal to the previous value.
-    pub fn next(&mut self, max_dist: Real) -> Option<Triangle> {
-        let max_rad = if max_dist == Real::MAX {
+    pub fn next(&mut self, max_dist: T) -> Option<Triangle<T>> {
+        let max_rad = if max_dist == T::constant(f64::MAX) {
             usize::MAX
         } else {
             (max_dist / self.heightfield.cell_width())

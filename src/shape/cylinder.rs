@@ -10,6 +10,7 @@ use either::Either;
 
 #[cfg(not(feature = "std"))]
 use na::RealField; // for .copysign()
+use ad_trait::AD;
 
 /// Cylinder shape with its principal axis aligned with the `y` axis.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -23,20 +24,20 @@ use na::RealField; // for .copysign()
 #[cfg_attr(feature = "cuda", derive(cust_core::DeviceCopy))]
 #[derive(PartialEq, Debug, Copy, Clone)]
 #[repr(C)]
-pub struct Cylinder {
+pub struct Cylinder<T: AD> {
     /// The half-height of the cylinder.
-    pub half_height: Real,
+    pub half_height: T,
     /// The radius fo the cylinder.
-    pub radius: Real,
+    pub radius: T,
 }
 
-impl Cylinder {
+impl<T> Cylinder<T> {
     /// Creates a new cylinder.
     ///
     /// # Arguments:
     /// * `half_height` - the half length of the cylinder along the `y` axis.
     /// * `radius` - the length of the cylinder along all other axis.
-    pub fn new(half_height: Real, radius: Real) -> Cylinder {
+    pub fn new(half_height: T, radius: T) -> Cylinder<T> {
         assert!(half_height.is_sign_positive() && radius.is_sign_positive());
 
         Cylinder {
@@ -55,7 +56,7 @@ impl Cylinder {
     #[inline]
     pub fn scaled(
         self,
-        scale: &Vector<Real>,
+        scale: &Vector<T>,
         nsubdivs: u32,
     ) -> Option<Either<Self, super::ConvexPolyhedron>> {
         if scale.x != scale.z {
@@ -75,11 +76,11 @@ impl Cylinder {
     }
 }
 
-impl SupportMap for Cylinder {
+impl<T: AD> SupportMap for Cylinder<T> {
     fn local_support_point(&self, dir: &Vector<Real>) -> Point<Real> {
         let mut vres = *dir;
 
-        vres[1] = 0.0;
+        vres[1] = T::zero();
 
         if vres.normalize_mut().is_zero() {
             vres = na::zero()

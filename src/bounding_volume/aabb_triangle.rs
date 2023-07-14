@@ -1,13 +1,14 @@
 use crate::{
     bounding_volume::Aabb,
-    math::{Isometry, Point, Real, DIM},
+    math::{Isometry, Point, DIM},
     shape::Triangle,
 };
+use ad_trait::AD;
 
-impl Triangle {
+impl<T: AD> Triangle<T> {
     /// Computes the world-space Aabb of this triangle, transformed by `pos`.
     #[inline]
-    pub fn aabb(&self, pos: &Isometry<Real>) -> Aabb {
+    pub fn aabb(&self, pos: &Isometry<T>) -> Aabb {
         self.transformed(pos).local_aabb()
     }
 

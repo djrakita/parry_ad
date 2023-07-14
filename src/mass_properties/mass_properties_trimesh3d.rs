@@ -1,15 +1,16 @@
+use ad_trait::AD;
 use crate::mass_properties::MassProperties;
 use crate::math::{Matrix, Point, Real, DIM};
 use crate::shape::Tetrahedron;
 use num::Zero;
 
-impl MassProperties {
+impl<T: AD> MassProperties<T> {
     /// Computes the mass properties of a triangle mesh.
     pub fn from_trimesh(
-        density: Real,
-        vertices: &[Point<Real>],
+        density: T,
+        vertices: &[Point<T>],
         indices: &[[u32; DIM]],
-    ) -> MassProperties {
+    ) -> MassProperties<T> {
         let (volume, com) = trimesh_signed_volume_and_center_of_mass(vertices, indices);
 
         if volume.is_zero() {
@@ -35,13 +36,13 @@ impl MassProperties {
 }
 
 /// Computes the unit inertia tensor of a tetrahedron, with regard to the given `point`.
-pub fn tetrahedron_unit_inertia_tensor_wrt_point(
-    point: &Point<Real>,
-    p1: &Point<Real>,
-    p2: &Point<Real>,
-    p3: &Point<Real>,
-    p4: &Point<Real>,
-) -> Matrix<Real> {
+pub fn tetrahedron_unit_inertia_tensor_wrt_point<T: AD>(
+    point: &Point<T>,
+    p1: &Point<T>,
+    p2: &Point<T>,
+    p3: &Point<T>,
+    p4: &Point<T>,
+) -> Matrix<T> {
     let p1 = p1 - point;
     let p2 = p2 - point;
     let p3 = p3 - point;
@@ -92,74 +93,74 @@ pub fn tetrahedron_unit_inertia_tensor_wrt_point(
         + z3 * z4
         + z4 * z4;
 
-    let a0 = (diag_y + diag_z) * 0.1;
-    let b0 = (diag_z + diag_x) * 0.1;
-    let c0 = (diag_x + diag_y) * 0.1;
+    let a0 = (diag_y + diag_z) * T::constant(0.1);
+    let b0 = (diag_z + diag_x) * T::constant(0.1);
+    let c0 = (diag_x + diag_y) * T::constant(0.1);
 
-    let a1 = (y1 * z1 * 2.0
+    let a1 = (y1 * z1 * T::constant(2.0)
         + y2 * z1
         + y3 * z1
         + y4 * z1
         + y1 * z2
-        + y2 * z2 * 2.0
+        + y2 * z2 * T::constant(2.0)
         + y3 * z2
         + y4 * z2
         + y1 * z3
         + y2 * z3
-        + y3 * z3 * 2.0
+        + y3 * z3 * T::constant(2.0)
         + y4 * z3
         + y1 * z4
         + y2 * z4
         + y3 * z4
-        + y4 * z4 * 2.0)
-        * 0.05;
-    let b1 = (x1 * z1 * 2.0
+        + y4 * z4 * T::constant(2.0))
+        * T::constant(0.05);
+    let b1 = (x1 * z1 * T::constant(2.0)
         + x2 * z1
         + x3 * z1
         + x4 * z1
         + x1 * z2
-        + x2 * z2 * 2.0
+        + x2 * z2 * T::constant(2.0)
         + x3 * z2
         + x4 * z2
         + x1 * z3
         + x2 * z3
-        + x3 * z3 * 2.0
+        + x3 * z3 * T::constant(2.0)
         + x4 * z3
         + x1 * z4
         + x2 * z4
         + x3 * z4
-        + x4 * z4 * 2.0)
-        * 0.05;
-    let c1 = (x1 * y1 * 2.0
+        + x4 * z4 * T::constant(2.0))
+        * T::constant(0.05);
+    let c1 = (x1 * y1 * T::constant(2.0)
         + x2 * y1
         + x3 * y1
         + x4 * y1
         + x1 * y2
-        + x2 * y2 * 2.0
+        + x2 * y2 * T::constant(2.0)
         + x3 * y2
         + x4 * y2
         + x1 * y3
         + x2 * y3
-        + x3 * y3 * 2.0
+        + x3 * y3 * T::constant(2.0)
         + x4 * y3
         + x1 * y4
         + x2 * y4
         + x3 * y4
-        + x4 * y4 * 2.0)
-        * 0.05;
+        + x4 * y4 * T::constant(2.0))
+        * T::constant(0.05);
 
     Matrix::new(a0, -b1, -c1, -b1, b0, -a1, -c1, -a1, c0)
 }
 
 /// Computes the volume and center-of-mass of a mesh.
-pub fn trimesh_signed_volume_and_center_of_mass(
-    vertices: &[Point<Real>],
+pub fn trimesh_signed_volume_and_center_of_mass<T: AD>(
+    vertices: &[Point<T>],
     indices: &[[u32; DIM]],
-) -> (Real, Point<Real>) {
-    let geometric_center = Point::new(-10.0, -10.0, -10.0); // utils::center(vertices);
+) -> (T, Point<T>) {
+    let geometric_center = Point::new(T::constant(-10.0), T::constant(-10.0), T::constant(-10.0)); // utils::center(vertices);
 
     let mut res = Point::origin();
-    let mut vol = 0.0;
+    let mut vol = T::constant(0.0);
 
     for t in indices {
         let p2 = vertices[t[0] as usize];

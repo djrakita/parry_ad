@@ -4,6 +4,7 @@ use crate::partitioning::Qbvh;
 use crate::query::{PointProjection, PointQueryWithLocation};
 use crate::shape::composite_shape::SimdCompositeShape;
 use crate::shape::{FeatureId, Segment, SegmentPointLocation, Shape, TypedSimdCompositeShape};
+use ad_trait::AD;
 
 use crate::utils::DefaultStorage;
 #[cfg(not(feature = "std"))]
@@ -17,13 +18,13 @@ use na::ComplexField; // for .abs()
     archive(check_bytes)
 )]
 /// A polyline.
-pub struct Polyline {
-    qbvh: Qbvh<u32>,
-    vertices: Vec<Point<Real>>,
+pub struct Polyline<T: AD> {
+    qbvh: Qbvh<u32, T>,
+    vertices: Vec<Point<T>>,
     indices: Vec<[u32; 2]>,
 }
 
-impl Polyline {
+impl<T: AD> Polyline<T> {
     /// Creates a new polyline from a vertex buffer and an index buffer.
     pub fn new(vertices: Vec<Point<Real>>, indices: Option<Vec<[u32; 2]>>) -> Self {
         let indices =
@@ -56,7 +57,7 @@ impl Polyline {
         &self.qbvh.root_aabb()
     }
 
-    pub(crate) fn qbvh(&self) -> &Qbvh<u32> {
+    pub(crate) fn qbvh(&self) -> &Qbvh<u32, T> {
         &self.qbvh
     }
 
@@ -98,7 +99,7 @@ impl Polyline {
     }
 
     /// The vertex buffer of this mesh.
-    pub fn vertices(&self) -> &[Point<Real>] {
+    pub fn vertices(&self) -> &[Point<T>] {
         &self.vertices[..]
     }
 
@@ -165,7 +166,7 @@ impl Polyline {
     ///
     /// The orientation of each closed loop (clockwise or counterclockwise) are identical to their
     /// original orientation in `self`.
-    pub fn extract_connected_components(&self) -> Vec<Polyline> {
+    pub fn extract_connected_components(&self) -> Vec<Polyline<T>> {
         let vertices = self.vertices();
         let indices = self.indices();
 
@@ -277,18 +278,18 @@ impl Polyline {
     }
 }
 
-impl SimdCompositeShape for Polyline {
+impl<T: AD> SimdCompositeShape<T> for Polyline<T> {
     fn map_part_at(&self, i: u32, f: &mut dyn FnMut(Option<&Isometry<Real>>, &dyn Shape)) {
         let tri = self.segment(i);
         f(None, &tri)
     }
 
-    fn qbvh(&self) -> &Qbvh<u32> {
+    fn qbvh(&self) -> &Qbvh<T, u32> {
         &self.qbvh
     }
 }
 
-impl TypedSimdCompositeShape for Polyline {
+impl<T: AD> TypedSimdCompositeShape<T> for Polyline<T> {
     type PartShape = Segment;
     type PartId = u32;
     type QbvhStorage = DefaultStorage;
@@ -309,7 +310,7 @@ impl TypedSimdCompositeShape for Polyline {
         f(None, &seg)
     }
 
-    fn typed_qbvh(&self) -> &Qbvh<u32> {
+    fn typed_qbvh(&self) -> &Qbvh<T, u32> {
         &self.qbvh
     }
 }

@@ -8,6 +8,8 @@ use std::marker::PhantomData;
 #[cfg(feature = "parallel")]
 use crate::partitioning::{QbvhNode, SimdNodeIndex};
 
+use ad_trait::AD;
+
 /// Spatial partitioning data structure visitor collecting interferences with a given bounding volume.
 pub struct BoundingVolumeIntersectionsSimultaneousVisitor<T1, T2, F> {
     pos12: Option<Isometry<SimdReal>>,
@@ -40,7 +42,7 @@ impl<T1, T2, F> BoundingVolumeIntersectionsSimultaneousVisitor<T1, T2, F> {
     }
 }
 
-impl<T1, T2, F> SimdSimultaneousVisitor<T1, T2, SimdAabb>
+impl<T1, T2, F, A: AD> SimdSimultaneousVisitor<T1, T2, SimdAabb<A>>
     for BoundingVolumeIntersectionsSimultaneousVisitor<T1, T2, F>
 where
     F: FnMut(&T1, &T2) -> bool,
@@ -48,9 +50,9 @@ where
     #[inline]
     fn visit(
         &mut self,
-        left_bv: &SimdAabb,
+        left_bv: &SimdAabb<A>,
         left_data: Option<[Option<&T1>; SIMD_WIDTH]>,
-        right_bv: &SimdAabb,
+        right_bv: &SimdAabb<A>,
         right_data: Option<[Option<&T2>; SIMD_WIDTH]>,
     ) -> SimdSimultaneousVisitStatus {
         let mask = if let Some(pos12) = &self.pos12 {
@@ -79,8 +81,8 @@ where
 }
 
 #[cfg(feature = "parallel")]
-impl<LeafData1: Sync, LeafData2: Sync, F>
-    crate::partitioning::ParallelSimdSimultaneousVisitor<LeafData1, LeafData2>
+impl<LeafData1: Sync, LeafData2: Sync, F, T: AD>
+    crate::partitioning::ParallelSimdSimultaneousVisitor<LeafData1, LeafData2, T>
     for BoundingVolumeIntersectionsSimultaneousVisitor<LeafData1, LeafData2, F>
 where
     F: Sync + Fn(&LeafData1, &LeafData2) -> bool,
@@ -91,10 +93,10 @@ where
     fn visit(
         &self,
         _: SimdNodeIndex,
-        left_node: &QbvhNode,
+        left_node: &QbvhNode<T>,
         left_data: Option<[Option<&LeafData1>; SIMD_WIDTH]>,
         _: SimdNodeIndex,
-        right_node: &QbvhNode,
+        right_node: &QbvhNode<T>,
         right_data: Option<[Option<&LeafData2>; SIMD_WIDTH]>,
         _: (),
     ) -> (SimdSimultaneousVisitStatus, ()) {

@@ -1,9 +1,9 @@
-use crate::math::Real;
+use ad_trait::AD;
 
-pub fn inv(val: Real) -> Real {
-    if val == 0.0 {
-        0.0
+pub fn inv<T: AD>(val: T) -> T {
+    if val == T::constant(0.0) {
+        T::constant(0.0)
     } else {
-        1.0 / val
+        T::constant(1.0) / val
     }
 }

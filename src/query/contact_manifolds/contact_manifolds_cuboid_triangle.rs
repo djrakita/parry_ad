@@ -4,6 +4,7 @@ use crate::math::{Isometry, Real};
 use crate::query::{sat, ContactManifold};
 use crate::shape::PolygonalFeature;
 use crate::shape::{Cuboid, Shape, Triangle};
+use ad_trait::AD;
 
 /// Computes the contact manifold between a cuboid and a triangle represented as `Shape` trait-objects.
 pub fn contact_manifold_cuboid_triangle_shapes<ManifoldData, ContactData>(
@@ -39,11 +40,11 @@ pub fn contact_manifold_cuboid_triangle_shapes<ManifoldData, ContactData>(
 }
 
 /// Computes the contact manifold between a cuboid and a triangle.
-pub fn contact_manifold_cuboid_triangle<'a, ManifoldData, ContactData>(
-    pos12: &Isometry<Real>,
-    pos21: &Isometry<Real>,
+pub fn contact_manifold_cuboid_triangle<'a, ManifoldData, ContactData, T: AD>(
+    pos12: &Isometry<T>,
+    pos21: &Isometry<T>,
     cuboid1: &'a Cuboid,
-    triangle2: &'a Triangle,
+    triangle2: &'a Triangle<T>,
     prediction: Real,
     manifold: &mut ContactManifold<ManifoldData, ContactData>,
     flipped: bool,
