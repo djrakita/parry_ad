@@ -1,3 +1,4 @@
+/*
 use crate::math::Real;
 use crate::shape::{GenericHeightField, HeightFieldCellStatus, HeightFieldStorage};
 use na::Point3;
@@ -8,3 +9,4 @@ impl<Storage: HeightFieldStorage> GenericHeightField<Storage> {
         todo!()
     }
 }
+*/

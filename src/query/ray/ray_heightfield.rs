@@ -1,4 +1,3 @@
-use crate::math::Real;
 #[cfg(feature = "dim2")]
 use crate::query;
 use crate::query::{Ray, RayCast, RayIntersection};
@@ -29,7 +28,7 @@ impl<Storage: HeightFieldStorage> RayCast for GenericHeightField<Storage> {
 
         // None may happen due to slight numerical errors.
         let mut curr = self.cell_at_point(&clip_ray_a).unwrap_or_else(|| {
-            if ray.origin.x > 0.0 {
+            if ray.origin.x > T::zero() {
                 self.num_cells() - 1
             } else {
                 0_usize
@@ -46,10 +45,10 @@ impl<Storage: HeightFieldStorage> RayCast for GenericHeightField<Storage> {
                 &seg.a,
                 &seg.scaled_direction(),
             );
-            if s >= 0.0 && t >= 0.0 && t <= 1.0 {
+            if s >= T::zero() && t >= T::zero() && t <= T::one() {
                 // Cast succeeded on the first element!
                 let n = seg.normal().unwrap().into_inner();
-                let fid = if n.dot(&ray.dir) > 0.0 {
+                let fid = if n.dot(&ray.dir) > T::zero() {
                     // The ray hit the back face.
                     curr + self.num_cells()
                 } else {
@@ -64,11 +63,11 @@ impl<Storage: HeightFieldStorage> RayCast for GenericHeightField<Storage> {
         /*
          * Test other segments in the path of the ray.
          */
-        if ray.dir.x == 0.0 {
+        if ray.dir.x == T::zero() {
             return None;
         }
 
-        let right = ray.dir.x > 0.0;
+        let right = ray.dir.x > T::zero();
         let cell_width = self.cell_width();
         let start_x = self.start_x();
 
@@ -101,9 +100,9 @@ impl<Storage: HeightFieldStorage> RayCast for GenericHeightField<Storage> {
                     &seg.scaled_direction(),
                 );
 
-                if t >= 0.0 && t <= 1.0 && s <= max_toi {
+                if t >= T::zero() && t <= T::one() && s <= max_toi {
                     let n = seg.normal().unwrap().into_inner();
-                    let fid = if n.dot(&ray.dir) > 0.0 {
+                    let fid = if n.dot(&ray.dir) > T::zero() {
                         // The ray hit the back face.
                         curr + self.num_cells()
                     } else {
@@ -120,14 +119,14 @@ impl<Storage: HeightFieldStorage> RayCast for GenericHeightField<Storage> {
 }
 
 #[cfg(feature = "dim3")]
-impl<Storage: HeightFieldStorage, T: AD> RayCast for GenericHeightField<Storage, T> {
+impl<Storage: HeightFieldStorage<T>, T: AD> RayCast<T> for GenericHeightField<Storage, T> {
     #[inline]
     fn cast_local_ray_and_get_normal(
         &self,
-        ray: &Ray,
-        max_toi: Real,
+        ray: &Ray<T>,
+        max_toi: T,
         solid: bool,
-    ) -> Option<RayIntersection> {
+    ) -> Option<RayIntersection<T>> {
         use num_traits::Bounded;
 
         let aabb = self.local_aabb();
@@ -138,13 +137,13 @@ impl<Storage: HeightFieldStorage, T: AD> RayCast for GenericHeightField<Storage,
             Some(cell) => cell,
             // None may happen due to slight numerical errors.
             None => {
-                let i = if ray.origin.z > 0.0 {
+                let i = if ray.origin.z > T::zero() {
                     self.nrows() - 1
                 } else {
                     0
                 };
 
-                let j = if ray.origin.x > 0.0 {
+                let j = if ray.origin.x > T::zero() {
                     self.ncols() - 1
                 } else {
                     0
@@ -191,31 +190,31 @@ impl<Storage: HeightFieldStorage, T: AD> RayCast for GenericHeightField<Storage,
             /*
              * Find the next cell to cast the ray on.
              */
-            let (toi_x, right) = if ray.dir.x > 0.0 {
+            let (toi_x, right) = if ray.dir.x > T::zero() {
                 let x = self.x_at(cell.1 + 1);
                 ((x - ray.origin.x) / ray.dir.x, true)
-            } else if ray.dir.x < 0.0 {
+            } else if ray.dir.x < T::zero() {
                 let x = self.x_at(cell.1 + 0);
                 ((x - ray.origin.x) / ray.dir.x, false)
             } else {
                 (Real::max_value(), false)
             };
 
-            let (toi_z, down) = if ray.dir.z > 0.0 {
+            let (toi_z, down) = if ray.dir.z > T::zero() {
                 let z = self.z_at(cell.0 + 1);
                 ((z - ray.origin.z) / ray.dir.z, true)
-            } else if ray.dir.z < 0.0 {
+            } else if ray.dir.z < T::zero() {
                 let z = self.z_at(cell.0 + 0);
                 ((z - ray.origin.z) / ray.dir.z, false)
             } else {
-                (Real::max_value(), false)
+                (T::constant(f64::max_value()), false)
             };
 
             if toi_x > max_t && toi_z > max_t {
                 break;
             }
 
-            if toi_x >= 0.0 && toi_x < toi_z {
+            if toi_x >= T::zero() && toi_x < toi_z {
                 if right {
                     cell.1 += 1
                 } else if cell.1 > 0 {
@@ -223,7 +222,7 @@ impl<Storage: HeightFieldStorage, T: AD> RayCast for GenericHeightField<Storage,
                 } else {
                     break;
                 }
-            } else if toi_z >= 0.0 {
+            } else if toi_z >= T::zero() {
                 if down {
                     cell.0 += 1
                 } else if cell.0 > 0 {

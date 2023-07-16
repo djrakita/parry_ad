@@ -1,4 +1,4 @@
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::query::{
     self, details::NonlinearTOIMode, ClosestPoints, Contact, NonlinearRigidMotion, QueryDispatcher,
     Unsupported, TOI,
@@ -9,17 +9,18 @@ use crate::query::{
     ContactManifold,
 };
 use crate::shape::{HalfSpace, Segment, Shape, ShapeType};
+use ad_trait::AD;
 
 /// A dispatcher that exposes built-in queries
 #[derive(Debug, Clone)]
 pub struct DefaultQueryDispatcher;
 
-impl QueryDispatcher for DefaultQueryDispatcher {
+impl<T: AD> QueryDispatcher<T> for DefaultQueryDispatcher {
     fn intersection_test(
         &self,
-        pos12: &Isometry<Real>,
-        shape1: &dyn Shape,
-        shape2: &dyn Shape,
+        pos12: &Isometry<T>,
+        shape1: &dyn Shape<T>,
+        shape2: &dyn Shape<T>,
     ) -> Result<bool, Unsupported> {
         if let (Some(b1), Some(b2)) = (shape1.as_ball(), shape2.as_ball()) {
             let p12 = Point::from(pos12.translation.vector);
@@ -81,10 +82,10 @@ impl QueryDispatcher for DefaultQueryDispatcher {
     /// Returns `0.0` if the objects are touching or penetrating.
     fn distance(
         &self,
-        pos12: &Isometry<Real>,
-        shape1: &dyn Shape,
-        shape2: &dyn Shape,
-    ) -> Result<Real, Unsupported> {
+        pos12: &Isometry<T>,
+        shape1: &dyn Shape<T>,
+        shape2: &dyn Shape<T>,
+    ) -> Result<T, Unsupported> {
         let ball1 = shape1.as_ball();
         let ball2 = shape2.as_ball();
 
@@ -137,11 +138,11 @@ impl QueryDispatcher for DefaultQueryDispatcher {
 
     fn contact(
         &self,
-        pos12: &Isometry<Real>,
-        shape1: &dyn Shape,
-        shape2: &dyn Shape,
-        prediction: Real,
-    ) -> Result<Option<Contact>, Unsupported> {
+        pos12: &Isometry<T>,
+        shape1: &dyn Shape<T>,
+        shape2: &dyn Shape<T>,
+        prediction: T,
+    ) -> Result<Option<Contact<T>>, Unsupported> {
         let ball1 = shape1.as_ball();
         let ball2 = shape2.as_ball();
 
@@ -152,13 +153,13 @@ impl QueryDispatcher for DefaultQueryDispatcher {
         //         pos12, c1, c2, prediction,
         //     ))
         } else if let (Some(p1), Some(s2)) =
-            (shape1.as_shape::<HalfSpace>(), shape2.as_support_map())
+            (shape1.as_shape::<HalfSpace<T>>(), shape2.as_support_map())
         {
             Ok(query::details::contact_halfspace_support_map(
                 pos12, p1, s2, prediction,
             ))
         } else if let (Some(s1), Some(p2)) =
-            (shape1.as_support_map(), shape2.as_shape::<HalfSpace>())
+            (shape1.as_support_map(), shape2.as_shape::<HalfSpace<T>>())
         {
             Ok(query::details::contact_support_map_halfspace(
                 pos12, s1, p2, prediction,
@@ -193,11 +194,11 @@ impl QueryDispatcher for DefaultQueryDispatcher {
 
     fn closest_points(
         &self,
-        pos12: &Isometry<Real>,
-        shape1: &dyn Shape,
-        shape2: &dyn Shape,
-        max_dist: Real,
-    ) -> Result<ClosestPoints, Unsupported> {
+        pos12: &Isometry<T>,
+        shape1: &dyn Shape<T>,
+        shape2: &dyn Shape<T>,
+        max_dist: T,
+    ) -> Result<ClosestPoints<T>, Unsupported> {
         let ball1 = shape1.as_ball();
         let ball2 = shape2.as_ball();
 
@@ -214,7 +215,7 @@ impl QueryDispatcher for DefaultQueryDispatcher {
                 pos12, shape1, b2, max_dist,
             ))
         } else if let (Some(s1), Some(s2)) =
-            (shape1.as_shape::<Segment>(), shape2.as_shape::<Segment>())
+            (shape1.as_shape::<Segment<T>>(), shape2.as_shape::<Segment<T>>())
         {
             Ok(query::details::closest_points_segment_segment(
                 &pos12, s1, s2, max_dist,
@@ -236,13 +237,13 @@ impl QueryDispatcher for DefaultQueryDispatcher {
                 pos12, t1, c2, max_dist,
             ))
         } else if let (Some(p1), Some(s2)) =
-            (shape1.as_shape::<HalfSpace>(), shape2.as_support_map())
+            (shape1.as_shape::<HalfSpace<T>>(), shape2.as_support_map())
         {
             Ok(query::details::closest_points_halfspace_support_map(
                 &pos12, p1, s2, max_dist,
             ))
         } else if let (Some(s1), Some(p2)) =
-            (shape1.as_support_map(), shape2.as_shape::<HalfSpace>())
+            (shape1.as_support_map(), shape2.as_shape::<HalfSpace<T>>())
         {
             Ok(query::details::closest_points_support_map_halfspace(
                 &pos12, s1, p2, max_dist,
@@ -269,13 +270,13 @@ impl QueryDispatcher for DefaultQueryDispatcher {
 
     fn time_of_impact(
         &self,
-        pos12: &Isometry<Real>,
-        local_vel12: &Vector<Real>,
-        shape1: &dyn Shape,
-        shape2: &dyn Shape,
-        max_toi: Real,
+        pos12: &Isometry<T>,
+        local_vel12: &Vector<T>,
+        shape1: &dyn Shape<T>,
+        shape2: &dyn Shape<T>,
+        max_toi: T,
         stop_at_penetration: bool,
-    ) -> Result<Option<TOI>, Unsupported> {
+    ) -> Result<Option<TOI<T>>, Unsupported> {
         if let (Some(b1), Some(b2)) = (shape1.as_ball(), shape2.as_ball()) {
             Ok(query::details::time_of_impact_ball_ball(
                 pos12,
@@ -285,7 +286,7 @@ impl QueryDispatcher for DefaultQueryDispatcher {
                 max_toi,
             ))
         } else if let (Some(p1), Some(s2)) =
-            (shape1.as_shape::<HalfSpace>(), shape2.as_support_map())
+            (shape1.as_shape::<HalfSpace<T>>(), shape2.as_support_map())
         {
             Ok(query::details::time_of_impact_halfspace_support_map(
                 pos12,
@@ -296,7 +297,7 @@ impl QueryDispatcher for DefaultQueryDispatcher {
                 stop_at_penetration,
             ))
         } else if let (Some(s1), Some(p2)) =
-            (shape1.as_support_map(), shape2.as_shape::<HalfSpace>())
+            (shape1.as_support_map(), shape2.as_shape::<HalfSpace<T>>())
         {
             Ok(query::details::time_of_impact_support_map_halfspace(
                 pos12,
@@ -366,14 +367,14 @@ impl QueryDispatcher for DefaultQueryDispatcher {
 
     fn nonlinear_time_of_impact(
         &self,
-        motion1: &NonlinearRigidMotion,
-        shape1: &dyn Shape,
-        motion2: &NonlinearRigidMotion,
-        shape2: &dyn Shape,
-        start_time: Real,
-        end_time: Real,
+        motion1: &NonlinearRigidMotion<T>,
+        shape1: &dyn Shape<T>,
+        motion2: &NonlinearRigidMotion<T>,
+        shape2: &dyn Shape<T>,
+        start_time: T,
+        end_time: T,
         stop_at_penetration: bool,
-    ) -> Result<Option<TOI>, Unsupported> {
+    ) -> Result<Option<TOI<T>>, Unsupported> {
         if let (Some(sm1), Some(sm2)) = (shape1.as_support_map(), shape2.as_support_map()) {
             let mode = if stop_at_penetration {
                 NonlinearTOIMode::StopAtPenetration
@@ -428,7 +429,7 @@ impl QueryDispatcher for DefaultQueryDispatcher {
 }
 
 #[cfg(feature = "std")]
-impl<ManifoldData, ContactData> PersistentQueryDispatcher<ManifoldData, ContactData>
+impl<T: AD, ManifoldData, ContactData> PersistentQueryDispatcher<T, ManifoldData, ContactData>
     for DefaultQueryDispatcher
 where
     ManifoldData: Default + Clone,
@@ -436,12 +437,12 @@ where
 {
     fn contact_manifolds(
         &self,
-        pos12: &Isometry<Real>,
-        shape1: &dyn Shape,
-        shape2: &dyn Shape,
-        prediction: Real,
-        manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
-        workspace: &mut Option<ContactManifoldsWorkspace>,
+        pos12: &Isometry<T>,
+        shape1: &dyn Shape<T>,
+        shape2: &dyn Shape<T>,
+        prediction: T,
+        manifolds: &mut Vec<ContactManifold<T, ManifoldData, ContactData>>,
+        workspace: &mut Option<ContactManifoldsWorkspace<T>>,
     ) -> Result<(), Unsupported> {
         use crate::query::contact_manifolds::*;
 
@@ -537,11 +538,11 @@ where
 
     fn contact_manifold_convex_convex(
         &self,
-        pos12: &Isometry<Real>,
-        shape1: &dyn Shape,
-        shape2: &dyn Shape,
-        prediction: Real,
-        manifold: &mut ContactManifold<ManifoldData, ContactData>,
+        pos12: &Isometry<T>,
+        shape1: &dyn Shape<T>,
+        shape2: &dyn Shape<T>,
+        prediction: T,
+        manifold: &mut ContactManifold<T, ManifoldData, ContactData>,
     ) -> Result<(), Unsupported> {
         use crate::query::contact_manifolds::*;
 

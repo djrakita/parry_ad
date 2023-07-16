@@ -7,10 +7,10 @@ use ad_trait::AD;
 #[inline]
 pub fn closest_points_cuboid_triangle<T: AD>(
     pos12: &Isometry<T>,
-    cuboid1: &Cuboid,
+    cuboid1: &Cuboid<T>,
     triangle2: &Triangle<T>,
     margin: T,
-) -> ClosestPoints {
+) -> ClosestPoints<T> {
     let pos21 = pos12.inverse();
 
     let sep1 =
@@ -84,8 +84,8 @@ pub fn closest_points_cuboid_triangle<T: AD>(
 pub fn closest_points_triangle_cuboid<T: AD>(
     pos12: &Isometry<T>,
     triangle1: &Triangle<T>,
-    cuboid2: &Cuboid,
+    cuboid2: &Cuboid<T>,
     margin: T,
-) -> ClosestPoints {
+) -> ClosestPoints<T> {
     closest_points_cuboid_triangle(&pos12.inverse(), cuboid2, triangle1, margin).flipped()
 }

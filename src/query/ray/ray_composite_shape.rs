@@ -1,15 +1,15 @@
 use ad_trait::AD;
 use crate::bounding_volume::SimdAabb;
-use crate::math::{Real, SimdBool, SimdReal, SIMD_WIDTH};
+use crate::math::{SIMD_WIDTH};
 use crate::partitioning::{SimdBestFirstVisitStatus, SimdBestFirstVisitor};
 use crate::query::{Ray, RayCast, RayIntersection, SimdRay};
 use crate::shape::{Compound, FeatureId, Polyline, TriMesh, TypedSimdCompositeShape};
 use crate::utils::DefaultStorage;
 use simba::simd::{SimdBool as _, SimdPartialOrd, SimdValue};
 
-impl<T: AD> RayCast for TriMesh<T> {
+impl<T: AD> RayCast<T> for TriMesh<T> {
     #[inline]
-    fn cast_local_ray(&self, ray: &Ray, max_toi: T, solid: bool) -> Option<T> {
+    fn cast_local_ray(&self, ray: &Ray<T>, max_toi: T, solid: bool) -> Option<T> {
         let mut visitor = RayCompositeShapeToiBestFirstVisitor::new(self, ray, max_toi, solid);
 
         self.qbvh()
@@ -20,10 +20,10 @@ impl<T: AD> RayCast for TriMesh<T> {
     #[inline]
     fn cast_local_ray_and_get_normal(
         &self,
-        ray: &Ray,
+        ray: &Ray<T>,
         max_toi: T,
         solid: bool,
-    ) -> Option<RayIntersection> {
+    ) -> Option<RayIntersection<T>> {
         let mut visitor =
             RayCompositeShapeToiAndNormalBestFirstVisitor::new(self, ray, max_toi, solid);
 
@@ -42,9 +42,9 @@ impl<T: AD> RayCast for TriMesh<T> {
     }
 }
 
-impl<T: AD> RayCast for Polyline<T> {
+impl<T: AD> RayCast<T> for Polyline<T> {
     #[inline]
-    fn cast_local_ray(&self, ray: &Ray, max_toi: Real, solid: bool) -> Option<Real> {
+    fn cast_local_ray(&self, ray: &Ray<T>, max_toi: T, solid: bool) -> Option<T> {
         let mut visitor = RayCompositeShapeToiBestFirstVisitor::new(self, ray, max_toi, solid);
 
         self.qbvh()
@@ -55,10 +55,10 @@ impl<T: AD> RayCast for Polyline<T> {
     #[inline]
     fn cast_local_ray_and_get_normal(
         &self,
-        ray: &Ray,
-        max_toi: Real,
+        ray: &Ray<T>,
+        max_toi: T,
         solid: bool,
-    ) -> Option<RayIntersection> {
+    ) -> Option<RayIntersection<T>> {
         let mut visitor =
             RayCompositeShapeToiAndNormalBestFirstVisitor::new(self, ray, max_toi, solid);
 
@@ -68,9 +68,9 @@ impl<T: AD> RayCast for Polyline<T> {
     }
 }
 
-impl<T: AD> RayCast for Compound<T> {
+impl<T: AD> RayCast<T> for Compound<T> {
     #[inline]
-    fn cast_local_ray(&self, ray: &Ray, max_toi: T, solid: bool) -> Option<T> {
+    fn cast_local_ray(&self, ray: &Ray<T>, max_toi: T, solid: bool) -> Option<T> {
         let mut visitor = RayCompositeShapeToiBestFirstVisitor::new(self, ray, max_toi, solid);
 
         self.qbvh()
@@ -81,10 +81,10 @@ impl<T: AD> RayCast for Compound<T> {
     #[inline]
     fn cast_local_ray_and_get_normal(
         &self,
-        ray: &Ray,
+        ray: &Ray<T>,
         max_toi: T,
         solid: bool,
-    ) -> Option<RayIntersection> {
+    ) -> Option<RayIntersection<T>> {
         let mut visitor =
             RayCompositeShapeToiAndNormalBestFirstVisitor::new(self, ray, max_toi, solid);
 
@@ -100,15 +100,15 @@ impl<T: AD> RayCast for Compound<T> {
 /// A visitor for casting a ray on a composite shape.
 pub struct RayCompositeShapeToiBestFirstVisitor<'a, S, T: AD> {
     shape: &'a S,
-    ray: &'a Ray,
-    simd_ray: SimdRay,
+    ray: &'a Ray<T>,
+    simd_ray: SimdRay<T>,
     max_toi: T,
     solid: bool,
 }
 
 impl<'a, S, T: AD> RayCompositeShapeToiBestFirstVisitor<'a, S, T> {
     /// Initialize a visitor for casting a ray on a composite shape.
-    pub fn new(shape: &'a S, ray: &'a Ray, max_toi: T, solid: bool) -> Self {
+    pub fn new(shape: &'a S, ray: &'a Ray<T>, max_toi: T, solid: bool) -> Self {
         Self {
             shape,
             ray,
@@ -119,7 +119,7 @@ impl<'a, S, T: AD> RayCompositeShapeToiBestFirstVisitor<'a, S, T> {
     }
 }
 
-impl<'a, S, T: AD> SimdBestFirstVisitor<S::PartId, SimdAabb<T>>
+impl<'a, S, T: AD> SimdBestFirstVisitor<S::PartId, SimdAabb<T>, T>
     for RayCompositeShapeToiBestFirstVisitor<'a, S, T>
 where
     S: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
@@ -132,15 +132,15 @@ where
         best: T,
         aabb: &SimdAabb<T>,
         data: Option<[Option<&S::PartId>; SIMD_WIDTH]>,
-    ) -> SimdBestFirstVisitStatus<Self::Result> {
-        let (hit, toi) = aabb.cast_local_ray(&self.simd_ray, SimdReal::splat(self.max_toi));
+    ) -> SimdBestFirstVisitStatus<Self::Result, T> {
+        let (hit, toi) = aabb.cast_local_ray(&self.simd_ray, self.max_toi);
 
         if let Some(data) = data {
             let mut weights = [T::zero(); SIMD_WIDTH];
             let mut mask = [false; SIMD_WIDTH];
             let mut results = [None; SIMD_WIDTH];
 
-            let better_toi = toi.simd_lt(SimdReal::splat(best));
+            let better_toi = toi.simd_lt(best);
             let bitmask = (hit & better_toi).bitmask();
 
             for ii in 0..SIMD_WIDTH {
@@ -163,8 +163,8 @@ where
             }
 
             SimdBestFirstVisitStatus::MaybeContinue {
-                weights: SimdReal::from(weights),
-                mask: SimdBool::from(mask),
+                weights: weights[0],
+                mask: mask[0],
                 results,
             }
         } else {
@@ -178,17 +178,17 @@ where
 }
 
 /// A visitor for casting a ray on a composite shape.
-pub struct RayCompositeShapeToiAndNormalBestFirstVisitor<'a, S> {
+pub struct RayCompositeShapeToiAndNormalBestFirstVisitor<'a, S, T: AD> {
     shape: &'a S,
-    ray: &'a Ray,
-    simd_ray: SimdRay,
-    max_toi: Real,
+    ray: &'a Ray<T>,
+    simd_ray: SimdRay<T>,
+    max_toi: T,
     solid: bool,
 }
 
-impl<'a, S> RayCompositeShapeToiAndNormalBestFirstVisitor<'a, S> {
+impl<'a, S, T: AD> RayCompositeShapeToiAndNormalBestFirstVisitor<'a, S, T> {
     /// Initialize a visitor for casting a ray on a composite shape.
-    pub fn new(shape: &'a S, ray: &'a Ray, max_toi: Real, solid: bool) -> Self {
+    pub fn new(shape: &'a S, ray: &'a Ray<T>, max_toi: T, solid: bool) -> Self {
         Self {
             shape,
             ray,
@@ -199,12 +199,12 @@ impl<'a, S> RayCompositeShapeToiAndNormalBestFirstVisitor<'a, S> {
     }
 }
 
-impl<'a, S, T: AD> SimdBestFirstVisitor<S::PartId, SimdAabb<T>>
-    for RayCompositeShapeToiAndNormalBestFirstVisitor<'a, S>
+impl<'a, S, T: AD> SimdBestFirstVisitor<S::PartId, SimdAabb<T>, T>
+    for RayCompositeShapeToiAndNormalBestFirstVisitor<'a, S, T>
 where
     S: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
-    type Result = (S::PartId, RayIntersection);
+    type Result = (S::PartId, RayIntersection<T>);
 
     #[inline]
     fn visit(
@@ -212,15 +212,15 @@ where
         best: T,
         aabb: &SimdAabb<T>,
         data: Option<[Option<&S::PartId>; SIMD_WIDTH]>,
-    ) -> SimdBestFirstVisitStatus<Self::Result> {
-        let (hit, toi) = aabb.cast_local_ray(&self.simd_ray, SimdReal::splat(self.max_toi));
+    ) -> SimdBestFirstVisitStatus<Self::Result, T> {
+        let (hit, toi) = aabb.cast_local_ray(&self.simd_ray, self.max_toi);
 
         if let Some(data) = data {
             let mut weights = [T::zero(); SIMD_WIDTH];
             let mut mask = [false; SIMD_WIDTH];
             let mut results = [None; SIMD_WIDTH];
 
-            let better_toi = toi.simd_lt(SimdReal::splat(best));
+            let better_toi = toi.simd_lt(best);
             let bitmask = (hit & better_toi).bitmask();
 
             for ii in 0..SIMD_WIDTH {
@@ -252,8 +252,8 @@ where
             }
 
             SimdBestFirstVisitStatus::MaybeContinue {
-                weights: SimdReal::from(weights),
-                mask: SimdBool::from(mask),
+                weights: weights[0],
+                mask: mask[0],
                 results,
             }
         } else {

@@ -1,18 +1,19 @@
-use crate::math::{Point, Real};
+use crate::math::{Point};
 use crate::query::{PointProjection, PointQuery, PointQueryWithLocation};
 use crate::shape::{FeatureId, Segment, SegmentPointLocation};
+use ad_trait::AD;
 
-impl PointQuery for Segment {
+impl<T: AD> PointQuery<T> for Segment<T> {
     #[inline]
-    fn project_local_point(&self, pt: &Point<Real>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection<T> {
         self.project_local_point_and_get_location(pt, solid).0
     }
 
     #[inline]
     fn project_local_point_and_get_feature(
         &self,
-        pt: &Point<Real>,
-    ) -> (PointProjection, FeatureId) {
+        pt: &Point<T>,
+    ) -> (PointProjection<T>, FeatureId) {
         let (proj, loc) = self.project_local_point_and_get_location(pt, false);
         let feature = match loc {
             SegmentPointLocation::OnVertex(i) => FeatureId::Vertex(i),
@@ -21,7 +22,7 @@ impl PointQuery for Segment {
                 {
                     let dir = self.scaled_direction();
                     let dpt = *pt - proj.point;
-                    if dpt.perp(&dir) >= 0.0 {
+                    if dpt.perp(&dir) >= T::zero() {
                         FeatureId::Face(0)
                     } else {
                         FeatureId::Face(1)
@@ -42,15 +43,15 @@ impl PointQuery for Segment {
     // eaten by the `::approx_eq(...)` on `project_point(...)`.
 }
 
-impl PointQueryWithLocation for Segment {
-    type Location = SegmentPointLocation;
+impl<T: AD> PointQueryWithLocation<T> for Segment<T> {
+    type Location = SegmentPointLocation<T>;
 
     #[inline]
     fn project_local_point_and_get_location(
         &self,
-        pt: &Point<Real>,
+        pt: &Point<T>,
         _: bool,
-    ) -> (PointProjection, Self::Location) {
+    ) -> (PointProjection<T>, Self::Location) {
         let ab = self.b - self.a;
         let ap = pt - self.a;
         let ab_ap = ab.dot(&ap);
@@ -60,7 +61,7 @@ impl PointQueryWithLocation for Segment {
         let proj;
         let location;
 
-        if ab_ap <= 0.0 {
+        if ab_ap <= T::zero() {
             // Voronoï region of vertex 'a'.
             location = SegmentPointLocation::OnVertex(0);
             proj = self.a;
@@ -69,7 +70,7 @@ impl PointQueryWithLocation for Segment {
             location = SegmentPointLocation::OnVertex(1);
             proj = self.b;
         } else {
-            assert!(sqnab != 0.0);
+            assert!(sqnab != T::zero());
 
             // Voronoï region of the segment interior.
             let u = ab_ap / sqnab;

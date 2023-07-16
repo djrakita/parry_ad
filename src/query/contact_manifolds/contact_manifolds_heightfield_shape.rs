@@ -108,7 +108,7 @@ pub fn contact_manifolds_heightfield_shape<ManifoldData, ContactData, T: AD>(
     heightfield1: &HeightField<T>,
     shape2: &dyn Shape,
     prediction: T,
-    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
+    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
     workspace: &mut Option<ContactManifoldsWorkspace>,
     flipped: bool,
 ) where

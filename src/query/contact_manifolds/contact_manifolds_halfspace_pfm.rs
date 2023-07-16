@@ -1,14 +1,15 @@
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::{ContactManifold, TrackedContact};
 use crate::shape::{HalfSpace, PackedFeatureId, PolygonalFeature, PolygonalFeatureMap, Shape};
+use ad_trait::AD;
 
 /// Computes the contact manifold between a convex shape and a ball, both represented as a `Shape` trait-object.
-pub fn contact_manifold_halfspace_pfm_shapes<ManifoldData, ContactData>(
-    pos12: &Isometry<Real>,
-    shape1: &dyn Shape,
-    shape2: &dyn Shape,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+pub fn contact_manifold_halfspace_pfm_shapes<ManifoldData, ContactData, T: AD>(
+    pos12: &Isometry<T>,
+    shape1: &dyn Shape<T>,
+    shape2: &dyn Shape<T>,
+    prediction: T,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
 ) where
     ContactData: Default + Copy,
 {
@@ -40,16 +41,16 @@ pub fn contact_manifold_halfspace_pfm_shapes<ManifoldData, ContactData>(
 }
 
 /// Computes the contact manifold between a convex shape and a ball.
-pub fn contact_manifold_halfspace_pfm<'a, ManifoldData, ContactData, S2>(
-    pos12: &Isometry<Real>,
-    halfspace1: &'a HalfSpace,
+pub fn contact_manifold_halfspace_pfm<'a, ManifoldData, ContactData, S2, T: AD>(
+    pos12: &Isometry<T>,
+    halfspace1: &'a HalfSpace<T>,
     pfm2: &'a S2,
-    border_radius2: Real,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+    border_radius2: T,
+    prediction: T,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
     flipped: bool,
 ) where
-    S2: ?Sized + PolygonalFeatureMap,
+    S2: ?Sized + PolygonalFeatureMap<T>,
     ContactData: Default + Copy,
 {
     let normal1_2 = pos12.inverse_transform_unit_vector(&halfspace1.normal);

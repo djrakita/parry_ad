@@ -1,5 +1,6 @@
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::shape::PackedFeatureId;
+use ad_trait::AD;
 
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "serde-serialize", derive(Serialize, Deserialize))]
@@ -9,13 +10,13 @@ use crate::shape::PackedFeatureId;
     archive(check_bytes)
 )]
 /// A single contact between two shape.
-pub struct TrackedContact<Data> {
+pub struct TrackedContact<T: AD, Data> {
     /// The contact point in the local-space of the first shape.
-    pub local_p1: Point<Real>,
+    pub local_p1: Point<T>,
     /// The contact point in the local-space of the second shape.
-    pub local_p2: Point<Real>,
+    pub local_p2: Point<T>,
     /// The distance between the two contact points.
-    pub dist: Real,
+    pub dist: T,
 
     /// The feature ID of the first shape involved in the contact.
     pub fid1: PackedFeatureId,
@@ -25,14 +26,14 @@ pub struct TrackedContact<Data> {
     pub data: Data,
 }
 
-impl<Data: Default + Copy> TrackedContact<Data> {
+impl<T: AD, Data: Default + Copy> TrackedContact<T, Data> {
     /// Creates a new tracked contact.
     pub fn new(
-        local_p1: Point<Real>,
-        local_p2: Point<Real>,
+        local_p1: Point<T>,
+        local_p2: Point<T>,
         fid1: PackedFeatureId,
         fid2: PackedFeatureId,
-        dist: Real,
+        dist: T,
     ) -> Self {
         Self {
             local_p1,
@@ -46,11 +47,11 @@ impl<Data: Default + Copy> TrackedContact<Data> {
 
     /// Creates a new tracked contact where its input may need to be flipped.
     pub fn flipped(
-        local_p1: Point<Real>,
-        local_p2: Point<Real>,
+        local_p1: Point<T>,
+        local_p2: Point<T>,
         fid1: PackedFeatureId,
         fid2: PackedFeatureId,
-        dist: Real,
+        dist: T,
         flipped: bool,
     ) -> Self {
         if !flipped {
@@ -76,7 +77,7 @@ impl<Data: Default + Copy> TrackedContact<Data> {
 ///
 /// A contact manifold describes a set of contacts between two shapes. All the contact
 /// part of the same contact manifold share the same contact normal and contact kinematics.
-pub struct ContactManifold<ManifoldData, ContactData> {
+pub struct ContactManifold<ManifoldData, ContactData, T: AD> {
     // NOTE: use a SmallVec instead?
     // And for 2D use an ArrayVec since there will never be more than 2 contacts anyways.
     /// The contacts points.
@@ -84,11 +85,11 @@ pub struct ContactManifold<ManifoldData, ContactData> {
     pub points: arrayvec::ArrayVec<TrackedContact<ContactData>, 2>,
     /// The contacts points.
     #[cfg(feature = "dim3")]
-    pub points: Vec<TrackedContact<ContactData>>,
+    pub points: Vec<TrackedContact<T, ContactData>>,
     /// The contact normal of all the contacts of this manifold, expressed in the local space of the first shape.
-    pub local_n1: Vector<Real>,
+    pub local_n1: Vector<T>,
     /// The contact normal of all the contacts of this manifold, expressed in the local space of the second shape.
-    pub local_n2: Vector<Real>,
+    pub local_n2: Vector<T>,
     /// The first subshape involved in this contact manifold.
     ///
     /// This is zero if the first shape is not a composite shape.
@@ -99,15 +100,15 @@ pub struct ContactManifold<ManifoldData, ContactData> {
     pub subshape2: u32,
     /// If the first shape involved is a composite shape, this contains the position of its subshape
     /// involved in this contact.
-    pub subshape_pos1: Option<Isometry<Real>>,
+    pub subshape_pos1: Option<Isometry<T>>,
     /// If the second shape involved is a composite shape, this contains the position of its subshape
     /// involved in this contact.
-    pub subshape_pos2: Option<Isometry<Real>>,
+    pub subshape_pos2: Option<Isometry<T>>,
     /// Additional tracked data associated to this contact manifold.
     pub data: ManifoldData,
 }
 
-impl<ManifoldData, ContactData: Default + Copy> ContactManifold<ManifoldData, ContactData> {
+impl<T: AD, ManifoldData, ContactData: Default + Copy> ContactManifold<T, ManifoldData, ContactData> {
     /// Create a new empty contact-manifold.
     pub fn new() -> Self
     where
@@ -172,17 +173,17 @@ impl<ManifoldData, ContactData: Default + Copy> ContactManifold<ManifoldData, Co
 
     /// The slice of all the contacts, active or not, on this contact manifold.
     #[inline]
-    pub fn contacts(&self) -> &[TrackedContact<ContactData>] {
+    pub fn contacts(&self) -> &[TrackedContact<T, ContactData>] {
         &self.points
     }
 
     /// Attempts to use spatial coherence to update contacts points.
     #[inline]
-    pub fn try_update_contacts(&mut self, pos12: &Isometry<Real>) -> bool {
-        // const DOT_THRESHOLD: Real = 0.crate::COS_10_DEGREES;
-        // const DOT_THRESHOLD: Real = crate::utils::COS_5_DEGREES;
-        const DOT_THRESHOLD: Real = crate::utils::COS_1_DEGREES;
-        const DIST_SQ_THRESHOLD: Real = 1.0e-6; // FIXME: this should not be hard-coded.
+    pub fn try_update_contacts(&mut self, pos12: &Isometry<T>) -> bool {
+        // const DOT_THRESHOLD: T = 0.crate::COS_10_DEGREES;
+        // const DOT_THRESHOLD: T = crate::utils::COS_5_DEGREES;
+        const DOT_THRESHOLD: T = crate::utils::COS_1_DEGREES;
+        const DIST_SQ_THRESHOLD: T = T::constant(1.0e-6); // FIXME: this should not be hard-coded.
         self.try_update_contacts_eps(pos12, DOT_THRESHOLD, DIST_SQ_THRESHOLD)
     }
 
@@ -190,9 +191,9 @@ impl<ManifoldData, ContactData: Default + Copy> ContactManifold<ManifoldData, Co
     #[inline]
     pub fn try_update_contacts_eps(
         &mut self,
-        pos12: &Isometry<Real>,
-        angle_dot_threshold: Real,
-        dist_sq_threshold: Real,
+        pos12: &Isometry<T>,
+        angle_dot_threshold: T,
+        dist_sq_threshold: T,
     ) -> bool {
         if self.points.len() == 0 {
             return false;
@@ -209,7 +210,7 @@ impl<ManifoldData, ContactData: Default + Copy> ContactManifold<ManifoldData, Co
             let dpt = local_p2 - pt.local_p1;
             let dist = dpt.dot(&self.local_n1);
 
-            if dist * pt.dist < 0.0 {
+            if dist * pt.dist < T::zero() {
                 // We switched between penetrating/non-penetrating.
                 // The may result in other contacts to appear.
                 return false;
@@ -245,7 +246,7 @@ impl<ManifoldData, ContactData: Default + Copy> ContactManifold<ManifoldData, Co
     pub fn match_contacts_using_positions(
         &mut self,
         old_contacts: &[TrackedContact<ContactData>],
-        dist_threshold: Real,
+        dist_threshold: T,
     ) {
         let sq_threshold = dist_threshold * dist_threshold;
         for contact in &mut self.points {

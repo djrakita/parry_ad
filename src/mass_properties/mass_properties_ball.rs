@@ -1,7 +1,7 @@
 use crate::mass_properties::MassProperties;
 #[cfg(feature = "dim3")]
 use crate::math::Vector;
-use crate::math::{Point, PrincipalAngularInertia, Real};
+use crate::math::{Point, PrincipalAngularInertia};
 use na::RealField;
 use ad_trait::AD;
 

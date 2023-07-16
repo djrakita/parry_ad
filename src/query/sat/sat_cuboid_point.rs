@@ -1,5 +1,5 @@
 use ad_trait::AD;
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::shape::{Cuboid, SupportMap};
 
 use na::Unit;
@@ -10,7 +10,7 @@ use na::Unit;
 pub fn point_cuboid_find_local_separating_normal_oneway<T: AD>(
     point1: Point<T>,
     normal1: Option<Unit<Vector<T>>>,
-    shape2: &Cuboid,
+    shape2: &Cuboid<T>,
     pos12: &Isometry<T>,
 ) -> (T, Vector<T>) {
     let mut best_separation = T::constant(-f64::MAX);

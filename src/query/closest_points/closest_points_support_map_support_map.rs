@@ -1,20 +1,21 @@
-use crate::math::{Isometry, Real, Vector};
+use crate::math::{Isometry, Vector};
 use crate::query::gjk::{self, CSOPoint, GJKResult, VoronoiSimplex};
 use crate::query::ClosestPoints;
 use crate::shape::SupportMap;
+use ad_trait::AD;
 
 use na::Unit;
 
 /// Closest points between support-mapped shapes (`Cuboid`, `ConvexHull`, etc.)
-pub fn closest_points_support_map_support_map<G1: ?Sized, G2: ?Sized>(
-    pos12: &Isometry<Real>,
+pub fn closest_points_support_map_support_map<T: AD, G1: ?Sized, G2: ?Sized>(
+    pos12: &Isometry<T>,
     g1: &G1,
     g2: &G2,
-    prediction: Real,
-) -> ClosestPoints
+    prediction: T,
+) -> ClosestPoints<T>
 where
-    G1: SupportMap,
-    G2: SupportMap,
+    G1: SupportMap<T>,
+    G2: SupportMap<T>,
 {
     match closest_points_support_map_support_map_with_params(
         pos12,
@@ -36,17 +37,17 @@ where
 /// Closest points between support-mapped shapes (`Cuboid`, `ConvexHull`, etc.)
 ///
 /// This allows a more fine grained control other the underlying GJK algorigtm.
-pub fn closest_points_support_map_support_map_with_params<G1: ?Sized, G2: ?Sized>(
-    pos12: &Isometry<Real>,
+pub fn closest_points_support_map_support_map_with_params<T: AD, G1: ?Sized, G2: ?Sized>(
+    pos12: &Isometry<T>,
     g1: &G1,
     g2: &G2,
-    prediction: Real,
+    prediction: T,
     simplex: &mut VoronoiSimplex,
-    init_dir: Option<Vector<Real>>,
+    init_dir: Option<Vector<T>>,
 ) -> GJKResult
 where
-    G1: SupportMap,
-    G2: SupportMap,
+    G1: SupportMap<T>,
+    G2: SupportMap<T>,
 {
     let dir = match init_dir {
         // FIXME: or pos12.translation.vector (without the minus sign) ?
@@ -61,7 +62,7 @@ where
             pos12,
             g1,
             g2,
-            &Vector::<Real>::x_axis(),
+            &Vector::<T>::x_axis(),
         ));
     }
 

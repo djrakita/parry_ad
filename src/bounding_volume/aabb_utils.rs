@@ -1,19 +1,20 @@
 use std::iter::IntoIterator;
 
 use crate::bounding_volume::Aabb;
-use crate::math::{Isometry, Point, Real, Vector, DIM};
+use crate::math::{Isometry, Point, Vector, DIM};
 use crate::shape::SupportMap;
 use na;
+use ad_trait::AD;
 
 /// Computes the Aabb of an support mapped shape.
 #[cfg(feature = "dim3")]
-pub fn support_map_aabb<G>(m: &Isometry<Real>, i: &G) -> Aabb
+pub fn support_map_aabb<G, T: AD>(m: &Isometry<T>, i: &G) -> Aabb<T>
 where
-    G: SupportMap,
+    G: SupportMap<T>,
 {
-    let mut min = na::zero::<Vector<Real>>();
-    let mut max = na::zero::<Vector<Real>>();
-    let mut basis = na::zero::<Vector<Real>>();
+    let mut min = na::zero::<Vector<T>>();
+    let mut max = na::zero::<Vector<T>>();
+    let mut basis = na::zero::<Vector<T>>();
 
     for d in 0..DIM {
         // FIXME: this could be further improved iterating on `m`'s columns, and passing
@@ -31,13 +32,13 @@ where
 }
 
 /// Computes the Aabb of an support mapped shape.
-pub fn local_support_map_aabb<G>(i: &G) -> Aabb
+pub fn local_support_map_aabb<G, T: AD>(i: &G) -> Aabb<T>
 where
-    G: SupportMap,
+    G: SupportMap<T>,
 {
-    let mut min = na::zero::<Vector<Real>>();
-    let mut max = na::zero::<Vector<Real>>();
-    let mut basis = na::zero::<Vector<Real>>();
+    let mut min = na::zero::<Vector<T>>();
+    let mut max = na::zero::<Vector<T>>();
+    let mut basis = na::zero::<Vector<T>>();
 
     for d in 0..DIM {
         // FIXME: this could be further improved iterating on `m`'s columns, and passing
@@ -55,9 +56,9 @@ where
 }
 
 /// Computes the Aabb of a set of points transformed by `m`.
-pub fn point_cloud_aabb<'a, I>(m: &Isometry<Real>, pts: I) -> Aabb
+pub fn point_cloud_aabb<'a, I, T: AD>(m: &Isometry<T>, pts: I) -> Aabb<T>
 where
-    I: IntoIterator<Item = &'a Point<Real>>,
+    I: IntoIterator<Item = &'a Point<T>>,
 {
     let mut it = pts.into_iter();
 
@@ -65,8 +66,8 @@ where
         "Point cloud Aabb construction: the input iterator should yield at least one point.",
     );
     let wp0 = m.transform_point(&p0);
-    let mut min: Point<Real> = wp0;
-    let mut max: Point<Real> = wp0;
+    let mut min: Point<T> = wp0;
+    let mut max: Point<T> = wp0;
 
     for pt in it {
         let wpt = m * pt;
@@ -78,17 +79,17 @@ where
 }
 
 /// Computes the Aabb of a set of points.
-pub fn local_point_cloud_aabb<'a, I>(pts: I) -> Aabb
+pub fn local_point_cloud_aabb<'a, I, T: AD>(pts: I) -> Aabb<T>
 where
-    I: IntoIterator<Item = &'a Point<Real>>,
+    I: IntoIterator<Item = &'a Point<T>>,
 {
     let mut it = pts.into_iter();
 
     let p0 = it.next().expect(
         "Point cloud Aabb construction: the input iterator should yield at least one point.",
     );
-    let mut min: Point<Real> = *p0;
-    let mut max: Point<Real> = *p0;
+    let mut min: Point<T> = *p0;
+    let mut max: Point<T> = *p0;
 
     for pt in it {
         min = min.inf(&pt);

@@ -1,5 +1,6 @@
-use crate::math::{Isometry, Real, Vector, DIM};
+use crate::math::{Isometry, Vector, DIM};
 use crate::shape::{Cuboid, SupportMap};
+use ad_trait::AD;
 
 use na::Unit;
 
@@ -7,12 +8,12 @@ use na::Unit;
 /// along the given axis.
 // TODO: this is a very slow approach. We should only do special-cases instead.
 #[cfg(feature = "dim3")]
-pub fn cuboid_support_map_compute_separation_wrt_local_line(
-    cube1: &Cuboid,
-    shape2: &impl SupportMap,
-    pos12: &Isometry<Real>,
-    axis1: &Unit<Vector<Real>>,
-) -> (Real, Unit<Vector<Real>>) {
+pub fn cuboid_support_map_compute_separation_wrt_local_line<T: AD>(
+    cube1: &Cuboid<T>,
+    shape2: &impl SupportMap<T>,
+    pos12: &Isometry<T>,
+    axis1: &Unit<Vector<T>>,
+) -> (T, Unit<Vector<T>>) {
     let axis1_2 = pos12.inverse_transform_unit_vector(&axis1);
     let separation1 = {
         let axis2 = -axis1_2;
@@ -41,18 +42,18 @@ pub fn cuboid_support_map_compute_separation_wrt_local_line(
 ///
 /// Only the axes given by `axes` are tested.
 #[cfg(feature = "dim3")]
-pub fn cuboid_support_map_find_local_separating_edge_twoway(
-    cube1: &Cuboid,
-    shape2: &impl SupportMap,
-    axes: &[Vector<Real>],
-    pos12: &Isometry<Real>,
-) -> (Real, Vector<Real>) {
+pub fn cuboid_support_map_find_local_separating_edge_twoway<T: AD>(
+    cube1: &Cuboid<T>,
+    shape2: &impl SupportMap<T>,
+    axes: &[Vector<T>],
+    pos12: &Isometry<T>,
+) -> (T, Vector<T>) {
     use approx::AbsDiffEq;
-    let mut best_separation = -Real::MAX;
+    let mut best_separation = -T::constant(f64::MAX);
     let mut best_dir = Vector::zeros();
 
     for axis1 in axes {
-        if let Some(axis1) = Unit::try_new(*axis1, Real::default_epsilon()) {
+        if let Some(axis1) = Unit::try_new(*axis1, T::constant(f64::default_epsilon())) {
             let (separation, axis1) =
                 cuboid_support_map_compute_separation_wrt_local_line(cube1, shape2, pos12, &axis1);
 
@@ -69,16 +70,16 @@ pub fn cuboid_support_map_find_local_separating_edge_twoway(
 /// Finds the best separating normal between a cuboid and a convex shape implementing the `SupportMap` trait.
 ///
 /// Only the normals of `cube1` are tested.
-pub fn cuboid_support_map_find_local_separating_normal_oneway<S: SupportMap>(
-    cube1: &Cuboid,
+pub fn cuboid_support_map_find_local_separating_normal_oneway<S: SupportMap<T>, T: AD>(
+    cube1: &Cuboid<T>,
     shape2: &S,
-    pos12: &Isometry<Real>,
-) -> (Real, Vector<Real>) {
-    let mut best_separation = -Real::MAX;
+    pos12: &Isometry<T>,
+) -> (T, Vector<T>) {
+    let mut best_separation = T::constant(-f64::MAX);
     let mut best_dir = Vector::zeros();
 
     for i in 0..DIM {
-        for sign in &[-1.0, 1.0] {
+        for sign in &[T::constant(-1.0), T::constant(1.0)] {
             let axis1 = Vector::ith(i, *sign);
             let pt2 = shape2.support_point_toward(&pos12, &Unit::new_unchecked(-axis1));
             let separation = pt2[i] * *sign - cube1.half_extents[i];

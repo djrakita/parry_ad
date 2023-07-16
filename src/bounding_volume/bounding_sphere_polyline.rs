@@ -6,13 +6,13 @@ use ad_trait::AD;
 impl<T: AD> Polyline<T> {
     /// Computes the world-space bounding sphere of this polyline, transformed by `pos`.
     #[inline]
-    pub fn bounding_sphere(&self, pos: &Isometry<T>) -> BoundingSphere {
+    pub fn bounding_sphere(&self, pos: &Isometry<T>) -> BoundingSphere<T> {
         self.local_aabb().bounding_sphere().transform_by(pos)
     }
 
     /// Computes the local-space bounding sphere of this polyline.
     #[inline]
-    pub fn local_bounding_sphere(&self) -> BoundingSphere {
+    pub fn local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_aabb().bounding_sphere()
     }
 }

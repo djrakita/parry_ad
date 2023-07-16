@@ -1,7 +1,7 @@
 use crate::bounding_volume::{Aabb, BoundingVolume, SimdAabb};
 #[cfg(feature = "dim3")]
 use crate::math::Vector;
-use crate::math::{Point, Real};
+use crate::math::{Point};
 use crate::partitioning::{CenterDataSplitter, QbvhProxy};
 use crate::simd::{SimdReal, SIMD_WIDTH};
 use simba::simd::{SimdBool, SimdValue};
@@ -17,17 +17,17 @@ mod tests;
 ///
 /// Re-using the same workspace for multiple QBVH modification isn’t mandatory, but it improves
 /// performances by avoiding useless allocation.
-pub struct QbvhUpdateWorkspace {
+pub struct QbvhUpdateWorkspace<T: AD> {
     stack: Vec<(u32, u8)>,
     dirty_parent_nodes: Vec<u32>,
     // For rebalancing.
     to_sort: Vec<usize>,
     orig_ids: Vec<u32>,
     is_leaf: Vec<bool>,
-    aabbs: Vec<Aabb>,
+    aabbs: Vec<Aabb<T>>,
 }
 
-impl QbvhUpdateWorkspace {
+impl<T: AD> QbvhUpdateWorkspace<T> {
     fn clear(&mut self) {
         self.stack.clear();
         self.dirty_parent_nodes.clear();
@@ -266,7 +266,7 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     /// This will not alter the topology of this `Qbvh`.
     pub fn refit<F>(
         &mut self,
-        margin: Real,
+        margin: T,
         workspace: &mut QbvhUpdateWorkspace,
         aabb_builder: F,
     ) -> usize
@@ -275,7 +275,7 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     {
         // Loop on the dirty leaves.
         workspace.clear();
-        let margin = SimdReal::splat(margin);
+        let margin = T::constant(margin);
         let mut first_iter = true;
         let mut num_changed = 0;
 
@@ -331,7 +331,7 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     ///
     /// This will modify the topology of this tree. This assumes that the leaf AABBs have
     /// already been updated with [`Qbvh::refit`].
-    pub fn rebalance(&mut self, margin: Real, workspace: &mut QbvhUpdateWorkspace) {
+    pub fn rebalance(&mut self, margin: T, workspace: &mut QbvhUpdateWorkspace<T>) {
         if self.nodes.is_empty() {
             return;
         }
@@ -400,10 +400,10 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     fn do_recurse_rebalance(
         &mut self,
         indices: &mut [usize],
-        workspace: &QbvhUpdateWorkspace,
+        workspace: &QbvhUpdateWorkspace<T>,
         parent: NodeIndex,
-        margin: Real,
-    ) -> (u32, Aabb) {
+        margin: T,
+    ) -> (u32, Aabb<T>) {
         if indices.len() <= 4 {
             // Leaf case.
             let mut has_leaf = false;
@@ -508,7 +508,7 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
         #[cfg(feature = "dim3")]
         let mut variance = Vector::zeros();
 
-        let center_denom = 1.0 / (indices.len() as Real);
+        let center_denom = T::constant(1.0 / (indices.len() as f64));
 
         for i in &*indices {
             let coords = workspace.aabbs[*i].center().coords;
@@ -517,7 +517,7 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
 
         #[cfg(feature = "dim3")]
         {
-            let variance_denom = 1.0 / ((indices.len() - 1) as Real);
+            let variance_denom = T::constant(1.0 / ((indices.len() - 1) as f64));
             for i in &*indices {
                 let dir_to_center = workspace.aabbs[*i].center() - center;
                 variance += dir_to_center.component_mul(&dir_to_center) * variance_denom;

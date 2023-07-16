@@ -8,13 +8,13 @@ use ad_trait::AD;
 impl<T: AD> Triangle<T> {
     /// Computes the world-space Aabb of this triangle, transformed by `pos`.
     #[inline]
-    pub fn aabb(&self, pos: &Isometry<T>) -> Aabb {
+    pub fn aabb(&self, pos: &Isometry<T>) -> Aabb<T> {
         self.transformed(pos).local_aabb()
     }
 
     /// Computes the local-space Aabb of this triangle.
     #[inline]
-    pub fn local_aabb(&self) -> Aabb {
+    pub fn local_aabb(&self) -> Aabb<T> {
         let a = self.a.coords;
         let b = self.b.coords;
         let c = self.c.coords;

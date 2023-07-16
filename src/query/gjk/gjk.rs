@@ -5,37 +5,38 @@ use na::{self, ComplexField, Unit};
 use crate::query::gjk::{CSOPoint, ConstantOrigin, VoronoiSimplex};
 use crate::shape::SupportMap;
 // use query::Proximity;
-use crate::math::{Isometry, Point, Real, Vector, DIM};
+use crate::math::{Isometry, Point, Vector, DIM};
 use crate::query::{self, Ray};
+use ad_trait::AD;
 
 use num::{Bounded, Zero};
 
 /// Results of the GJK algorithm.
 #[derive(Clone, Debug, PartialEq)]
-pub enum GJKResult {
+pub enum GJKResult<T: AD> {
     /// Result of the GJK algorithm when the origin is inside of the polytope.
     Intersection,
     /// Result of the GJK algorithm when a projection of the origin on the polytope is found.
     ///
     /// Both points and vector are expressed in the local-space of the first geometry involved
     /// in the GJK execution.
-    ClosestPoints(Point<Real>, Point<Real>, Unit<Vector<Real>>),
+    ClosestPoints(Point<T>, Point<T>, Unit<Vector<T>>),
     /// Result of the GJK algorithm when the origin is too close to the polytope but not inside of it.
     ///
     /// The returned vector is expressed in the local-space of the first geometry involved in the
     /// GJK execution.
-    Proximity(Unit<Vector<Real>>),
+    Proximity(Unit<Vector<T>>),
     /// Result of the GJK algorithm when the origin is too far away from the polytope.
     ///
     /// The returned vector is expressed in the local-space of the first geomety involved in the
     /// GJK execution.
-    NoIntersection(Unit<Vector<Real>>),
+    NoIntersection(Unit<Vector<T>>),
 }
 
 /// The absolute tolerence used by the GJK algorithm.
-pub fn eps_tol() -> Real {
-    let _eps = crate::math::DEFAULT_EPSILON;
-    _eps * 10.0
+pub fn eps_tol<T: AD>() -> T {
+    let _eps = T::constant(crate::math::DEFAULT_EPSILON);
+    _eps * T::constant(10.0)
 }
 
 /// Projects the origin on the boundary of the given shape.
@@ -46,19 +47,19 @@ pub fn eps_tol() -> Real {
 /// the EPA algorithm failed to compute the projection.
 ///
 /// Return the projected point in the local-space of `g`.
-pub fn project_origin<G: ?Sized>(
-    m: &Isometry<Real>,
+pub fn project_origin<G: ?Sized, T: AD>(
+    m: &Isometry<T>,
     g: &G,
     simplex: &mut VoronoiSimplex,
-) -> Option<Point<Real>>
+) -> Option<Point<T>>
 where
-    G: SupportMap,
+    G: SupportMap<T>,
 {
     match closest_points(
         &m.inverse(),
         g,
         &ConstantOrigin,
-        Real::max_value(),
+        T::constant(f64::max_value()),
         true,
         simplex,
     ) {
@@ -83,34 +84,34 @@ where
 /// `GJKResult::Proximity(sep_axis)` where `sep_axis` is a separating axis. If `false` the gjk will
 /// compute the exact distance and return `GJKResult::Projection(point)` if the origin is closer
 /// than `max_dist` but not inside `shape`.
-pub fn closest_points<G1: ?Sized, G2: ?Sized>(
-    pos12: &Isometry<Real>,
+pub fn closest_points<G1: ?Sized, G2: ?Sized, T: AD>(
+    pos12: &Isometry<T>,
     g1: &G1,
     g2: &G2,
-    max_dist: Real,
+    max_dist: T,
     exact_dist: bool,
     simplex: &mut VoronoiSimplex,
-) -> GJKResult
+) -> GJKResult<T>
 where
-    G1: SupportMap,
-    G2: SupportMap,
+    G1: SupportMap<T>,
+    G2: SupportMap<T>,
 {
     let _eps = crate::math::DEFAULT_EPSILON;
-    let _eps_tol: Real = eps_tol();
-    let _eps_rel: Real = ComplexField::sqrt(_eps_tol);
+    let _eps_tol: T = eps_tol();
+    let _eps_rel: T = ComplexField::sqrt(_eps_tol);
 
     // FIXME: reset the simplex if it is empty?
     let mut proj = simplex.project_origin_and_reduce();
 
     let mut old_dir;
 
-    if let Some(proj_dir) = Unit::try_new(proj.coords, 0.0) {
+    if let Some(proj_dir) = Unit::try_new(proj.coords, T::zero()) {
         old_dir = -proj_dir;
     } else {
         return GJKResult::Intersection;
     }
 
-    let mut max_bound = Real::max_value();
+    let mut max_bound = T::constant(f64::max_value());
     let mut dir;
     let mut niter = 0;
 
@@ -141,7 +142,7 @@ where
 
         if min_bound > max_dist {
             return GJKResult::NoIntersection(dir);
-        } else if !exact_dist && min_bound > 0.0 && max_bound <= max_dist {
+        } else if !exact_dist && min_bound > T::zero() && max_bound <= max_dist {
             return GJKResult::Proximity(old_dir);
         } else if max_bound - min_bound <= _eps_rel * max_bound {
             if exact_dist {
@@ -185,14 +186,14 @@ where
 }
 
 /// Casts a ray on a support map using the GJK algorithm.
-pub fn cast_local_ray<G: ?Sized>(
+pub fn cast_local_ray<G: ?Sized, T: AD>(
     shape: &G,
     simplex: &mut VoronoiSimplex,
     ray: &Ray,
-    max_toi: Real,
-) -> Option<(Real, Vector<Real>)>
+    max_toi: T,
+) -> Option<(T, Vector<T>)>
 where
-    G: SupportMap,
+    G: SupportMap<T>,
 {
     let g2 = ConstantOrigin;
     minkowski_ray_cast(&Isometry::identity(), shape, &g2, ray, max_toi, simplex)
@@ -202,19 +203,19 @@ where
 /// `dir` so that `g1` and `g2` just touch.
 ///
 /// The `dir` vector must be expressed in the local-space of the first shape.
-pub fn directional_distance<G1: ?Sized, G2: ?Sized>(
-    pos12: &Isometry<Real>,
+pub fn directional_distance<G1: ?Sized, G2: ?Sized, T: AD>(
+    pos12: &Isometry<T>,
     g1: &G1,
     g2: &G2,
-    dir: &Vector<Real>,
+    dir: &Vector<T>,
     simplex: &mut VoronoiSimplex,
-) -> Option<(Real, Vector<Real>, Point<Real>, Point<Real>)>
+) -> Option<(T, Vector<T>, Point<T>, Point<T>)>
 where
-    G1: SupportMap,
-    G2: SupportMap,
+    G1: SupportMap<T>,
+    G2: SupportMap<T>,
 {
     let ray = Ray::new(Point::origin(), *dir);
-    minkowski_ray_cast(pos12, g1, g2, &ray, Real::max_value(), simplex).map(|(toi, normal)| {
+    minkowski_ray_cast(pos12, g1, g2, &ray, T::constant(f64::max_value()), simplex).map(|(toi, normal)| {
         let witnesses = if !toi.is_zero() {
             result(simplex, simplex.dimension() == DIM)
         } else {
@@ -228,29 +229,29 @@ where
 }
 
 // Ray-cast on the Minkowski Difference `g1 - pos12 * g2`.
-fn minkowski_ray_cast<G1: ?Sized, G2: ?Sized>(
-    pos12: &Isometry<Real>,
+fn minkowski_ray_cast<G1: ?Sized, G2: ?Sized, T: AD>(
+    pos12: &Isometry<T>,
     g1: &G1,
     g2: &G2,
     ray: &Ray,
-    max_toi: Real,
+    max_toi: T,
     simplex: &mut VoronoiSimplex,
-) -> Option<(Real, Vector<Real>)>
+) -> Option<(T, Vector<T>)>
 where
-    G1: SupportMap,
-    G2: SupportMap,
+    G1: SupportMap<T>,
+    G2: SupportMap<T>,
 {
     let _eps = crate::math::DEFAULT_EPSILON;
-    let _eps_tol: Real = eps_tol();
-    let _eps_rel: Real = ComplexField::sqrt(_eps_tol);
+    let _eps_tol: T = eps_tol();
+    let _eps_rel: T = ComplexField::sqrt(_eps_tol);
 
     let ray_length = ray.dir.norm();
 
-    if relative_eq!(ray_length, 0.0) {
+    if relative_eq!(ray_length, T::zero()) {
         return None;
     }
 
-    let mut ltoi = 0.0;
+    let mut ltoi = T::zero();
     let mut curr_ray = Ray::new(ray.origin, ray.dir / ray_length);
     let dir = -curr_ray.dir;
     let mut ldir = dir;
@@ -261,7 +262,7 @@ where
 
     // FIXME: reset the simplex if it is empty?
     let mut proj = simplex.project_origin_and_reduce();
-    let mut max_bound = Real::max_value();
+    let mut max_bound = T::constant(f64::max_value());
     let mut dir;
     let mut niter = 0;
     let mut last_chance = false;
@@ -284,8 +285,8 @@ where
             CSOPoint::from_shapes(pos12, g1, g2, &dir)
         };
 
-        if last_chance && ltoi > 0.0 {
-            // last_chance && ltoi > 0.0 && (support_point.point - curr_ray.origin).dot(&ldir) >= 0.0 {
+        if last_chance && ltoi > T::zero() {
+            // last_chance && ltoi > T::zero() && (support_point.point - curr_ray.origin).dot(&ldir) >= T::zero() {
             return Some((ltoi / ray_length, ldir));
         }
 
@@ -299,21 +300,21 @@ where
         //          > 0             |  > 0  | New higher bound.
         match query::details::ray_toi_with_halfspace(&support_point.point, &dir, &curr_ray) {
             Some(t) => {
-                if dir.dot(&curr_ray.dir) < 0.0 && t > 0.0 {
+                if dir.dot(&curr_ray.dir) < T::zero() && t > T::zero() {
                     // new lower bound
                     ldir = *dir;
                     ltoi += t;
 
                     // NOTE: we divide by ray_length instead of doing max_toi * ray_length
                     // because the multiplication may cause an overflow if max_toi is set
-                    // to Real::max_value() by users that want to have an infinite ray.
+                    // to f64::max_value() by users that want to have an infinite ray.
                     if ltoi / ray_length > max_toi {
                         return None;
                     }
 
                     let shift = curr_ray.dir * t;
                     curr_ray.origin += shift;
-                    max_bound = Real::max_value();
+                    max_bound = T::constant(f64::max_value());
                     simplex.modify_pnts(&|pt| pt.translate_mut(&-shift));
                     last_chance = false;
                 }
@@ -365,7 +366,7 @@ where
     }
 }
 
-fn result(simplex: &VoronoiSimplex, prev: bool) -> (Point<Real>, Point<Real>) {
+fn result<T: AD>(simplex: &VoronoiSimplex, prev: bool) -> (Point<T>, Point<T>) {
     let mut res = (Point::origin(), Point::origin());
     if prev {
         for i in 0..simplex.prev_dimension() + 1 {

@@ -1,28 +1,29 @@
 use super::EPS;
-use crate::math::{Point, Real, Vector};
+use crate::math::{Point, Vector};
 use crate::query;
 use crate::shape::{FeatureId, Segment, Triangle};
 use crate::transformation::polygon_intersection::PolylinePointLocation;
 use crate::utils::WBasis;
+use ad_trait::AD;
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct TriangleTriangleIntersectionPoint {
-    pub p1: Point<Real>,
-    pub p2: Point<Real>,
+pub struct TriangleTriangleIntersectionPoint<T: AD> {
+    pub p1: Point<T>,
+    pub p2: Point<T>,
     pub f1: FeatureId,
     pub f2: FeatureId,
 }
 
 #[derive(Clone, Debug)]
-pub enum TriangleTriangleIntersection {
+pub enum TriangleTriangleIntersection<T: AD> {
     Segment {
-        a: TriangleTriangleIntersectionPoint,
-        b: TriangleTriangleIntersectionPoint,
+        a: TriangleTriangleIntersectionPoint<T>,
+        b: TriangleTriangleIntersectionPoint<T>,
     },
-    Polygon(Vec<TriangleTriangleIntersectionPoint>),
+    Polygon(Vec<TriangleTriangleIntersectionPoint<T>>),
 }
 
-impl Default for TriangleTriangleIntersection {
+impl<T: AD> Default for TriangleTriangleIntersection<T> {
     fn default() -> Self {
         Self::Segment {
             a: Default::default(),
@@ -31,21 +32,21 @@ impl Default for TriangleTriangleIntersection {
     }
 }
 
-pub fn triangle_triangle_intersection(
-    tri1: &Triangle,
-    tri2: &Triangle,
-) -> Option<TriangleTriangleIntersection> {
+pub fn triangle_triangle_intersection<T: AD>(
+    tri1: &Triangle<T>,
+    tri2: &Triangle<T>,
+) -> Option<TriangleTriangleIntersection<T>> {
     let normal1 = tri1.normal()?;
     let normal2 = tri2.normal()?;
 
-    if let Some(intersection_dir) = normal1.cross(&normal2).try_normalize(1.0e-6) {
+    if let Some(intersection_dir) = normal1.cross(&normal2).try_normalize(T::constant(1.0e-6)) {
         let mut range1 = [
-            (Real::MAX, Point::origin(), FeatureId::Unknown),
-            (-Real::MAX, Point::origin(), FeatureId::Unknown),
+            (T::constant(f64::MAX), Point::origin(), FeatureId::Unknown),
+            (T::constant(-f64::MAX), Point::origin(), FeatureId::Unknown),
         ];
         let mut range2 = [
-            (Real::MAX, Point::origin(), FeatureId::Unknown),
-            (-Real::MAX, Point::origin(), FeatureId::Unknown),
+            (T::constant(f64::MAX), Point::origin(), FeatureId::Unknown),
+            (T::constant(-f64::MAX), Point::origin(), FeatureId::Unknown),
         ];
 
         let hits1 = [
@@ -187,7 +188,7 @@ pub fn triangle_triangle_intersection(
         if (tri1.a - tri2.a).dot(&unit_normal2) < EPS {
             let basis = unit_normal2.orthonormal_basis();
             let proj =
-                |vect: Vector<Real>| na::Point2::new(vect.dot(&basis[0]), vect.dot(&basis[1]));
+                |vect: Vector<T>| na::Point2::new(vect.dot(&basis[0]), vect.dot(&basis[1]));
 
             let mut intersections = vec![];
 
@@ -204,7 +205,7 @@ pub fn triangle_triangle_intersection(
                 proj(tri2.c - tri2.a),
             ];
 
-            let convert_loc = |loc, pts: &[Point<Real>; 3]| match loc {
+            let convert_loc = |loc, pts: &[Point<T>; 3]| match loc {
                 PolylinePointLocation::OnVertex(vid) => {
                     (FeatureId::Vertex(vid as u32), pts[vid as usize])
                 }
@@ -256,13 +257,13 @@ pub fn triangle_triangle_intersection(
     }
 }
 
-fn segment_plane_intersection(
-    plane_center: &Point<Real>,
-    plane_normal: &Vector<Real>,
-    segment: &Segment,
+fn segment_plane_intersection<T: AD>(
+    plane_center: &Point<T>,
+    plane_normal: &Vector<T>,
+    segment: &Segment<T>,
     eid: u32,
     vids: (u32, u32),
-) -> Option<(Point<Real>, FeatureId)> {
+) -> Option<(Point<T>, FeatureId)> {
     let dir = segment.b - segment.a;
     let dir_norm = dir.norm();
 

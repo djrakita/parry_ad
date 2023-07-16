@@ -1,26 +1,26 @@
-use crate::math::Real;
 use crate::transformation::voxelization::FillMode;
+use ad_trait::AD;
 
 /// Parameters controlling the VHACD convex decomposition.
 ///
 /// See https://github.com/Unity-Technologies/VHACD#parameters for details.
 #[derive(Debug, Clone, PartialEq)]
-pub struct VHACDParameters {
+pub struct VHACDParameters<T: AD> {
     /// Maximum concavity.
     ///
     /// Default: 0.1 (in 2D), 0.01 (in 3D).
     /// Valid range `[0.0, 1.0]`.
-    pub concavity: Real,
+    pub concavity: T,
     /// Controls the bias toward clipping along symmetry planes.
     ///
     /// Default: 0.05.
     /// Valid Range: `[0.0, 1.0]`.
-    pub alpha: Real,
+    pub alpha: T,
     /// Controls the bias toward clipping along revolution planes.
     ///
     /// Default: 0.05.
     /// Valid Range: `[0.0, 1.0]`.
-    pub beta: Real,
+    pub beta: T,
     /// Resolution used during the voxelization stage.
     ///
     /// Default: 256 (in 2D), 64 (in 3D).
@@ -52,21 +52,21 @@ pub struct VHACDParameters {
     pub max_convex_hulls: u32,
 }
 
-impl Default for VHACDParameters {
+impl<T: AD> Default for VHACDParameters<T> {
     fn default() -> Self {
         Self {
             #[cfg(feature = "dim3")]
             resolution: 64,
             #[cfg(feature = "dim3")]
-            concavity: 0.01,
+            concavity: T::constant(0.01),
             #[cfg(feature = "dim2")]
             resolution: 256,
             #[cfg(feature = "dim2")]
-            concavity: 0.1,
+            concavity: T::constant(0.1),
             plane_downsampling: 4,
             convex_hull_downsampling: 4,
-            alpha: 0.05,
-            beta: 0.05,
+            alpha: T::constant(0.05),
+            beta: T::constant(0.05),
             convex_hull_approximation: true,
             max_convex_hulls: 1024,
             fill_mode: FillMode::FloodFill {

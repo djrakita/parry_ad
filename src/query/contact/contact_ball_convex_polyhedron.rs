@@ -1,20 +1,22 @@
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::query::Contact;
 use crate::shape::{Ball, Shape};
 
 use na::{self, Unit};
+
+use ad_trait::AD;
 
 /// Contact between a ball and a convex polyhedron.
 ///
 /// This function panics if the input shape does not implement
 /// both the ConvexPolyhedron and PointQuery traits.
 #[inline]
-pub fn contact_ball_convex_polyhedron(
-    pos12: &Isometry<Real>,
-    ball1: &Ball,
-    shape2: &(impl Shape + ?Sized),
-    prediction: Real,
-) -> Option<Contact> {
+pub fn contact_ball_convex_polyhedron<T: AD>(
+    pos12: &Isometry<T>,
+    ball1: &Ball<T>,
+    shape2: &(impl Shape<T> + ?Sized),
+    prediction: T,
+) -> Option<Contact<T>> {
     contact_convex_polyhedron_ball(&pos12.inverse(), shape2, ball1, prediction).map(|c| c.flipped())
 }
 
@@ -23,12 +25,12 @@ pub fn contact_ball_convex_polyhedron(
 /// This function panics if the input shape does not implement
 /// both the ConvexPolyhedron and PointQuery traits.
 #[inline]
-pub fn contact_convex_polyhedron_ball(
-    pos12: &Isometry<Real>,
-    shape1: &(impl Shape + ?Sized),
-    ball2: &Ball,
-    prediction: Real,
-) -> Option<Contact> {
+pub fn contact_convex_polyhedron_ball<T: AD>(
+    pos12: &Isometry<T>,
+    shape1: &(impl Shape<T> + ?Sized),
+    ball2: &Ball<T>,
+    prediction: T,
+) -> Option<Contact<T>> {
     let center2_1 = Point::from(pos12.translation.vector);
     let (proj, f1) = shape1.project_local_point_and_get_feature(&center2_1);
 

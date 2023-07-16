@@ -1,7 +1,7 @@
 use ad_trait::AD;
 #[cfg(feature = "dim3")]
 use crate::approx::AbsDiffEq;
-use crate::math::{Isometry, Real, Vector};
+use crate::math::{Isometry, Vector};
 #[cfg(feature = "dim3")]
 use crate::query::sat;
 #[cfg(feature = "dim2")]
@@ -15,7 +15,7 @@ use crate::shape::{Cuboid, SupportMap, Triangle};
 #[cfg(feature = "dim3")]
 #[inline(always)]
 pub fn cuboid_triangle_find_local_separating_edge_twoway<T: AD>(
-    cube1: &Cuboid,
+    cube1: &Cuboid<T>,
     triangle2: &Triangle<T>,
     pos12: &Isometry<T>,
 ) -> (T, Vector<T>) {
@@ -138,7 +138,7 @@ pub fn triangle_cuboid_find_local_separating_normal_oneway<T: AD>(
 #[inline(always)]
 pub fn triangle_cuboid_find_local_separating_normal_oneway<T: AD>(
     triangle1: &Triangle<T>,
-    shape2: &Cuboid,
+    shape2: &Cuboid<T>,
     pos12: &Isometry<T>,
 ) -> (T, Vector<T>) {
     sat::point_cuboid_find_local_separating_normal_oneway(

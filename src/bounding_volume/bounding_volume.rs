@@ -1,15 +1,16 @@
-use crate::math::{Point, Real};
+use crate::math::{Point};
+use ad_trait::AD;
 
 /// Trait of bounding volumes.
 ///
 /// Bounding volumes are coarse approximations of shapes. It usually have constant time
 /// intersection, inclusion test. Two bounding volume must also be mergeable into a bigger bounding
 /// volume.
-pub trait BoundingVolume {
+pub trait BoundingVolume<T: AD> {
     // FIXME: keep that ? What about non-spacial bounding volumes (e.g. bounding cones, curvature
     // bounds, etc.) ?
     /// Returns a point inside of this bounding volume. This is ideally its center.
-    fn center(&self) -> Point<Real>;
+    fn center(&self) -> Point<T>;
 
     /// Checks if this bounding volume intersect with another one.
     fn intersects(&self, _: &Self) -> bool;
@@ -24,14 +25,14 @@ pub trait BoundingVolume {
     fn merged(&self, _: &Self) -> Self;
 
     /// Enlarges this bounding volume.
-    fn loosen(&mut self, _: Real);
+    fn loosen(&mut self, _: T);
 
     /// Creates a new, enlarged version, of this bounding volume.
-    fn loosened(&self, _: Real) -> Self;
+    fn loosened(&self, _: T) -> Self;
 
     /// Tighten this bounding volume.
-    fn tighten(&mut self, _: Real);
+    fn tighten(&mut self, _: T);
 
     /// Creates a new, tightened version, of this bounding volume.
-    fn tightened(&self, _: Real) -> Self;
+    fn tightened(&self, _: T) -> Self;
 }

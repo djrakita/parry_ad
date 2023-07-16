@@ -1,5 +1,5 @@
 use crate::mass_properties::MassProperties;
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::shape::SharedShape;
 use ad_trait::AD;
 

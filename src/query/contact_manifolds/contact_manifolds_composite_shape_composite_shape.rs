@@ -59,11 +59,11 @@ fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
 /// Computes the contact manifolds between two composite shapes.
 pub fn contact_manifolds_composite_shape_composite_shape<'a, ManifoldData, ContactData, T: AD>(
     dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
-    pos12: &Isometry<Real>,
+    pos12: &Isometry<T>,
     mut composite1: &'a dyn SimdCompositeShape<T>,
     mut composite2: &'a dyn SimdCompositeShape<T>,
-    prediction: Real,
-    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
+    prediction: T,
+    manifolds: &mut Vec<ContactManifold<T, ManifoldData, ContactData>>,
     workspace: &mut Option<ContactManifoldsWorkspace>,
 ) where
     ManifoldData: Default + Clone,

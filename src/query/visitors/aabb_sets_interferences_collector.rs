@@ -1,30 +1,31 @@
-use crate::math::{Isometry, Matrix, Real};
+use crate::math::{Isometry, Matrix};
+use ad_trait::AD;
 
 /// Spatial partitioning data structure visitor collecting interferences with a given bounding volume.
-pub struct AabbSetsInterferencesCollector<'a, T: 'a> {
+pub struct AabbSetsInterferencesCollector<'a, T: 'a, A: AD> {
     /// The transform from the local-space of the second bounding volumes to the local space of the first.
-    pub ls_m2: &'a Isometry<Real>,
+    pub ls_m2: &'a Isometry<A>,
     /// The absolute value of the rotation matrix representing `ls_m2.rotation`.
     ///
     /// Equals to `ls_m2.rotation.to_rotation.matrix().matrix().abs()`.
-    pub ls_m2_abs_rot: &'a Matrix<Real>,
+    pub ls_m2_abs_rot: &'a Matrix<A>,
     /// A tolerance applied to the interference tests.
     ///
     /// Aabb pairs closer than `tolerance` will be reported as intersecting.
-    pub tolerence: Real,
+    pub tolerence: A,
     /// The data contained by the nodes with bounding volumes intersecting `self.bv`.
     pub collector: &'a mut Vec<(T, T)>,
 }
 
-impl<'a, T> AabbSetsInterferencesCollector<'a, T> {
+impl<'a, T, A: AD> AabbSetsInterferencesCollector<'a, T, A> {
     /// Creates a new `AabbSetsInterferencesCollector`.
     #[inline]
     pub fn new(
-        tolerence: Real,
-        ls_m2: &'a Isometry<Real>,
-        ls_m2_abs_rot: &'a Matrix<Real>,
+        tolerence: A,
+        ls_m2: &'a Isometry<A>,
+        ls_m2_abs_rot: &'a Matrix<A>,
         collector: &'a mut Vec<(T, T)>,
-    ) -> AabbSetsInterferencesCollector<'a, T> {
+    ) -> AabbSetsInterferencesCollector<'a, T, A> {
         AabbSetsInterferencesCollector {
             tolerence,
             ls_m2,

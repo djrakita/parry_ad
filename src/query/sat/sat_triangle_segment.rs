@@ -1,4 +1,4 @@
-use crate::math::{Isometry, Real, Vector};
+use crate::math::{Isometry, Vector};
 use crate::query::sat;
 use crate::shape::{Segment, SupportMap, Triangle};
 use na::Unit;
@@ -9,7 +9,7 @@ use ad_trait::AD;
 /// Only the normals of `triangle1` are tested.
 pub fn triangle_segment_find_local_separating_normal_oneway<T: AD>(
     triangle1: &Triangle<T>,
-    segment2: &Segment,
+    segment2: &Segment<T>,
     pos12: &Isometry<T>,
 ) -> (T, Vector<T>) {
     if let Some(dir) = triangle1.normal() {
@@ -33,7 +33,7 @@ pub fn triangle_segment_find_local_separating_normal_oneway<T: AD>(
 /// All combinations of edges from the segment and the triangle are taken into
 /// account.
 pub fn segment_triangle_find_local_separating_edge_twoway<T: AD>(
-    segment1: &Segment,
+    segment1: &Segment<T>,
     triangle2: &Triangle<T>,
     pos12: &Isometry<T>,
 ) -> (T, Vector<T>) {

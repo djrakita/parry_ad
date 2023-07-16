@@ -1,5 +1,4 @@
 use crate::bounding_volume::{Aabb, SimdAabb};
-use crate::math::Real;
 use crate::partitioning::visitor::SimdSimultaneousVisitStatus;
 use crate::partitioning::{
     GenericQbvh, QbvhStorage, SimdBestFirstVisitStatus, SimdBestFirstVisitor,
@@ -119,7 +118,7 @@ impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbv
         BFS: SimdBestFirstVisitor<LeafData, SimdAabb<T>>,
         BFS::Result: Clone, // Because we cannot move out of an array…
     {
-        self.traverse_best_first_node(visitor, 0, Real::max_value())
+        self.traverse_best_first_node(visitor, 0, T::constant(f64::max_value()))
     }
 
     /// Performs a best-first-search on the BVH, starting at the given node.
@@ -130,7 +129,7 @@ impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbv
         &self,
         visitor: &mut BFS,
         start_node: u32,
-        init_cost: Real,
+        init_cost: T,
     ) -> Option<(NodeIndex, BFS::Result)>
     where
         BFS: SimdBestFirstVisitor<LeafData, SimdAabb<T>>,
@@ -171,7 +170,7 @@ impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbv
                     results,
                 } => {
                     let bitmask = mask.bitmask();
-                    let weights: [Real; SIMD_WIDTH] = weights.into();
+                    let weights: [T; SIMD_WIDTH] = weights.into();
 
                     for ii in 0..SIMD_WIDTH {
                         if (bitmask & (1 << ii)) != 0 {
@@ -207,7 +206,7 @@ impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbv
     /// the given Aabb:
     // FIXME: implement a visitor pattern to merge intersect_aabb
     // and intersect_ray into a single method.
-    pub fn intersect_aabb(&self, aabb: &Aabb, out: &mut Vec<LeafData>) {
+    pub fn intersect_aabb(&self, aabb: &Aabb<T>, out: &mut Vec<LeafData>) {
         if self.nodes.is_empty() {
             return;
         }
@@ -503,11 +502,12 @@ impl<LeafData: IndexedData + Sync, T: AD> Qbvh<LeafData, T> {
     /// Performs a simultaneous traversal of two Qbvh using
     /// parallelism internally for better performances with large tree.
     pub fn traverse_bvtt_parallel<
+        T: AD,
         LeafData2: IndexedData + Sync,
-        Visitor: ParallelSimdSimultaneousVisitor<LeafData, LeafData2>,
+        Visitor: ParallelSimdSimultaneousVisitor<LeafData, LeafData2, T>,
     >(
         &self,
-        qbvh2: &Qbvh<LeafData2>,
+        qbvh2: &Qbvh<LeafData2, T>,
         visitor: &Visitor,
     ) {
         if !self.nodes.is_empty() && !qbvh2.nodes.is_empty() {
@@ -524,11 +524,12 @@ impl<LeafData: IndexedData + Sync, T: AD> Qbvh<LeafData, T> {
 
     /// Runs a parallel simultaneous traversal of the sub-tree starting at the given nodes.
     pub fn traverse_bvtt_node_parallel<
+        T: AD,
         LeafData2: IndexedData + Sync,
-        Visitor: ParallelSimdSimultaneousVisitor<LeafData, LeafData2>,
+        Visitor: ParallelSimdSimultaneousVisitor<LeafData, LeafData2, T>,
     >(
         &self,
-        qbvh2: &Qbvh<LeafData2>,
+        qbvh2: &Qbvh<LeafData2, T>,
         visitor: &Visitor,
         exit_early: &AtomicBool,
         data: Visitor::Data,

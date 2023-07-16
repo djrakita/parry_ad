@@ -1,21 +1,22 @@
 use crate::mass_properties::MassProperties;
-use crate::math::{Point, Real};
+use crate::math::{Point};
 use crate::shape::Triangle;
+use ad_trait::AD;
 
-impl MassProperties {
+impl<T: AD> MassProperties<T> {
     /// Computes the mass properties of a triangle-mesh.
     pub fn from_trimesh(
-        density: Real,
-        vertices: &[Point<Real>],
+        density: T,
+        vertices: &[Point<T>],
         indices: &[[u32; 3]],
     ) -> MassProperties {
         let (area, com) = trimesh_area_and_center_of_mass(vertices, indices);
 
-        if area == 0.0 {
-            return MassProperties::new(com, 0.0, 0.0);
+        if area == T::zero() {
+            return MassProperties::new(com, T::zero(), T::zero());
         }
 
-        let mut itot = 0.0;
+        let mut itot = T::zero();
 
         for idx in indices {
             let triangle = Triangle::new(
@@ -35,12 +36,12 @@ impl MassProperties {
 }
 
 /// Computes the area and center-of-mass of a triangle-mesh.
-pub fn trimesh_area_and_center_of_mass(
-    vertices: &[Point<Real>],
+pub fn trimesh_area_and_center_of_mass<T: AD>(
+    vertices: &[Point<T>],
     indices: &[[u32; 3]],
-) -> (Real, Point<Real>) {
+) -> (T, Point<T>) {
     let mut res = Point::origin();
-    let mut areasum = 0.0;
+    let mut areasum = T::zero();
 
     for idx in indices {
         let triangle = Triangle::new(
@@ -55,7 +56,7 @@ pub fn trimesh_area_and_center_of_mass(
         areasum += area;
     }
 
-    if areasum == 0.0 {
+    if areasum == T::zero() {
         (areasum, res)
     } else {
         (areasum, res / areasum)

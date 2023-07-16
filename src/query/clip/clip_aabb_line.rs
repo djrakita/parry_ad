@@ -1,18 +1,19 @@
 use crate::bounding_volume::Aabb;
-use crate::math::{Point, Real, Vector, DIM};
+use crate::math::{Point, Vector, DIM};
 use crate::query::Ray;
 use crate::shape::Segment;
 use num::{Bounded, Zero};
+use ad_trait::AD;
 
-impl Aabb {
+impl<T: AD> Aabb<T> {
     /// Computes the intersection of a segment with this Aabb.
     ///
     /// Returns `None` if there is no intersection.
     #[inline]
-    pub fn clip_segment(&self, pa: &Point<Real>, pb: &Point<Real>) -> Option<Segment> {
+    pub fn clip_segment(&self, pa: &Point<T>, pb: &Point<T>) -> Option<Segment<T>> {
         let ab = pb - pa;
         clip_aabb_line(self, pa, &ab)
-            .map(|clip| Segment::new(pa + ab * (clip.0).0.max(0.0), pa + ab * (clip.1).0.min(1.0)))
+            .map(|clip| Segment::new(pa + ab * (clip.0).0.max(T::zero()), pa + ab * (clip.1).0.min(T::one())))
     }
 
     /// Computes the parameters of the two intersection points between a line and this Aabb.
@@ -22,9 +23,9 @@ impl Aabb {
     #[inline]
     pub fn clip_line_parameters(
         &self,
-        orig: &Point<Real>,
-        dir: &Vector<Real>,
-    ) -> Option<(Real, Real)> {
+        orig: &Point<T>,
+        dir: &Vector<T>,
+    ) -> Option<(T, T)> {
         clip_aabb_line(self, orig, dir).map(|clip| ((clip.0).0, (clip.1).0))
     }
 
@@ -32,7 +33,7 @@ impl Aabb {
     ///
     /// Returns `None` if there is no intersection.
     #[inline]
-    pub fn clip_line(&self, orig: &Point<Real>, dir: &Vector<Real>) -> Option<Segment> {
+    pub fn clip_line(&self, orig: &Point<T>, dir: &Vector<T>) -> Option<Segment<T>> {
         clip_aabb_line(self, orig, dir)
             .map(|clip| Segment::new(orig + dir * (clip.0).0, orig + dir * (clip.1).0))
     }
@@ -42,16 +43,16 @@ impl Aabb {
     /// The parameters are such that the point are given by `ray.orig + ray.dir * parameter`.
     /// Returns `None` if there is no intersection.
     #[inline]
-    pub fn clip_ray_parameters(&self, ray: &Ray) -> Option<(Real, Real)> {
+    pub fn clip_ray_parameters(&self, ray: &Ray) -> Option<(T, T)> {
         self.clip_line_parameters(&ray.origin, &ray.dir)
             .and_then(|clip| {
                 let t0 = clip.0;
                 let t1 = clip.1;
 
-                if t1 < 0.0 {
+                if t1 < T::zero() {
                     None
                 } else {
-                    Some((t0.max(0.0), t1))
+                    Some((t0.max(T::zero()), t1))
                 }
             })
     }
@@ -60,20 +61,20 @@ impl Aabb {
     ///
     /// Returns `None` if there is no intersection.
     #[inline]
-    pub fn clip_ray(&self, ray: &Ray) -> Option<Segment> {
+    pub fn clip_ray(&self, ray: &Ray) -> Option<Segment<T>> {
         self.clip_ray_parameters(ray)
             .map(|clip| Segment::new(ray.point_at(clip.0), ray.point_at(clip.1)))
     }
 }
 
 /// Computes the segment given by the intersection of a line and an Aabb.
-pub fn clip_aabb_line(
-    aabb: &Aabb,
-    origin: &Point<Real>,
-    dir: &Vector<Real>,
-) -> Option<((Real, Vector<Real>, isize), (Real, Vector<Real>, isize))> {
-    let mut tmax: Real = Bounded::max_value();
-    let mut tmin: Real = -tmax;
+pub fn clip_aabb_line<T: AD>(
+    aabb: &Aabb<T>,
+    origin: &Point<T>,
+    dir: &Vector<T>,
+) -> Option<((T, Vector<T>, isize), (T, Vector<T>, isize))> {
+    let mut tmax: T = Bounded::max_value();
+    let mut tmin: T = -tmax;
     let mut near_side = 0;
     let mut far_side = 0;
     let mut near_diag = false;
@@ -85,7 +86,7 @@ pub fn clip_aabb_line(
                 return None;
             }
         } else {
-            let denom = 1.0 / dir[i];
+            let denom = T::constant(1.0) / dir[i];
             let flip_sides;
             let mut inter_with_near_halfspace = (aabb.mins[i] - origin[i]) * denom;
             let mut inter_with_far_halfspace = (aabb.maxs[i] - origin[i]) * denom;
@@ -124,7 +125,7 @@ pub fn clip_aabb_line(
                 far_diag = true;
             }
 
-            if tmax < 0.0 || tmin > tmax {
+            if tmax < T::zero() || tmin > tmax {
                 return None;
             }
         }
@@ -136,9 +137,9 @@ pub fn clip_aabb_line(
         let mut normal = Vector::zeros();
 
         if near_side < 0 {
-            normal[(-near_side - 1) as usize] = 1.0;
+            normal[(-near_side - 1) as usize] = T::constant(1.0);
         } else {
-            normal[(near_side - 1) as usize] = -1.0;
+            normal[(near_side - 1) as usize] = -T::constant(1.0);
         }
 
         (tmin, normal, near_side)
@@ -150,9 +151,9 @@ pub fn clip_aabb_line(
         let mut normal = Vector::zeros();
 
         if far_side < 0 {
-            normal[(-far_side - 1) as usize] = -1.0;
+            normal[(-far_side - 1) as usize] = -T::constant(1.0);
         } else {
-            normal[(far_side - 1) as usize] = 1.0;
+            normal[(far_side - 1) as usize] = T::constant(1.0);
         }
 
         (tmax, normal, far_side)

@@ -1,15 +1,16 @@
-use crate::math::{Isometry, Point, Real};
+use crate::math::{Isometry, Point};
 use crate::query::{ContactManifold, TrackedContact};
 use crate::shape::{Ball, PackedFeatureId, Shape};
 use na::Unit;
+use ad_trait::AD;
 
 /// Computes the contact manifold between a convex shape and a ball, both represented as a `Shape` trait-object.
-pub fn contact_manifold_convex_ball_shapes<ManifoldData, ContactData>(
-    pos12: &Isometry<Real>,
-    shape1: &dyn Shape,
-    shape2: &dyn Shape,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+pub fn contact_manifold_convex_ball_shapes<ManifoldData, ContactData, T: AD>(
+    pos12: &Isometry<T>,
+    shape1: &dyn Shape<T>,
+    shape2: &dyn Shape<T>,
+    prediction: T,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
 ) where
     ContactData: Default + Copy,
 {
@@ -21,15 +22,15 @@ pub fn contact_manifold_convex_ball_shapes<ManifoldData, ContactData>(
 }
 
 /// Computes the contact manifold between a convex shape and a ball.
-pub fn contact_manifold_convex_ball<'a, ManifoldData, ContactData, S1>(
-    pos12: &Isometry<Real>,
+pub fn contact_manifold_convex_ball<'a, ManifoldData, ContactData, S1, T: AD>(
+    pos12: &Isometry<T>,
     shape1: &'a S1,
-    ball2: &'a Ball,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+    ball2: &'a Ball<T>,
+    prediction: T,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
     flipped: bool,
 ) where
-    S1: ?Sized + Shape,
+    S1: ?Sized + Shape<T>,
     ContactData: Default + Copy,
 {
     let local_p2_1 = Point::from(pos12.translation.vector);

@@ -1,15 +1,16 @@
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::{sat, ClosestPoints, PointQuery};
 use crate::shape::{Cuboid, SupportMap};
+use ad_trait::AD;
 
 /// Closest points between two cuboids.
 #[inline]
-pub fn closest_points_cuboid_cuboid(
-    pos12: &Isometry<Real>,
-    cuboid1: &Cuboid,
-    cuboid2: &Cuboid,
-    margin: Real,
-) -> ClosestPoints {
+pub fn closest_points_cuboid_cuboid<T: AD>(
+    pos12: &Isometry<T>,
+    cuboid1: &Cuboid<T>,
+    cuboid2: &Cuboid<T>,
+    margin: T,
+) -> ClosestPoints<T> {
     let pos21 = pos12.inverse();
 
     let sep1 = sat::cuboid_cuboid_find_local_separating_normal_oneway(cuboid1, cuboid2, &pos12);
@@ -30,7 +31,7 @@ pub fn closest_points_cuboid_cuboid(
         return ClosestPoints::Disjoint;
     }
 
-    if sep1.0 <= 0.0 && sep2.0 <= 0.0 && sep3.0 <= 0.0 {
+    if sep1.0 <= T::zero() && sep2.0 <= T::zero() && sep3.0 <= T::zero() {
         return ClosestPoints::Intersecting;
     }
 

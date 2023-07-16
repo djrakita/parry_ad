@@ -1,5 +1,5 @@
 use crate::bounding_volume::Aabb;
-use crate::math::{Isometry, Point, Real, UnitVector, Vector};
+use crate::math::{Isometry, Point, UnitVector, Vector};
 use crate::query::visitors::BoundingVolumeIntersectionsVisitor;
 use crate::query::{IntersectResult, PointQuery, SplitResult};
 use crate::shape::{Cuboid, FeatureId, Polyline, Segment, Shape, TriMesh, TriMeshFlags, Triangle};
@@ -369,8 +369,8 @@ impl<T: AD> TriMesh<T> {
         &self,
         position: &Isometry<T>,
         axis: &UnitVector<T>,
-        bias: Real,
-        epsilon: Real,
+        bias: T,
+        epsilon: T,
     ) -> IntersectResult<Polyline<T>> {
         let local_axis = position.inverse_transform_unit_vector(axis);
         let added_bias = -position.translation.vector.dot(&axis);

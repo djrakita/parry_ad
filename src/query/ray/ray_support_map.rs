@@ -2,7 +2,6 @@ use na;
 #[cfg(not(feature = "std"))]
 use na::ComplexField; // for .abs()
 
-use crate::math::Real;
 #[cfg(feature = "dim2")]
 use crate::query;
 use crate::query::gjk::{self, CSOPoint, VoronoiSimplex};
@@ -15,18 +14,20 @@ use crate::shape::{Capsule, FeatureId, Segment, SupportMap};
 #[cfg(feature = "dim3")]
 use crate::shape::{Cone, Cylinder};
 
+use ad_trait::AD;
+
 use num::Zero;
 
 /// Cast a ray on a shape using the GJK algorithm.
-pub fn local_ray_intersection_with_support_map_with_params<G: ?Sized>(
+pub fn local_ray_intersection_with_support_map_with_params<G: ?Sized, T: AD>(
     shape: &G,
-    simplex: &mut VoronoiSimplex,
-    ray: &Ray,
-    max_toi: Real,
+    simplex: &mut VoronoiSimplex<T>,
+    ray: &Ray<T>,
+    max_toi: T,
     solid: bool,
-) -> Option<RayIntersection>
+) -> Option<RayIntersection<T>>
 where
-    G: SupportMap,
+    G: SupportMap<T>,
 {
     let supp = shape.local_support_point(&-ray.dir);
     simplex.reset(CSOPoint::single_point(supp - ray.origin.coords));
@@ -39,7 +40,7 @@ where
                 // the ray is inside of the shape.
                 let ndir = ray.dir.normalize();
                 let supp = shape.local_support_point(&ndir);
-                let eps = na::convert::<f64, Real>(0.001f64);
+                let eps = T::constant(0.001f64);
                 let shift = (supp - ray.origin).dot(&ndir) + eps;
                 let new_ray = Ray::new(ray.origin + ndir * shift, -ray.dir);
 
@@ -66,13 +67,13 @@ where
 }
 
 #[cfg(feature = "dim3")]
-impl RayCast for Cylinder {
+impl<T: AD> RayCast<T> for Cylinder<T> {
     fn cast_local_ray_and_get_normal(
         &self,
-        ray: &Ray,
-        max_toi: Real,
+        ray: &Ray<T>,
+        max_toi: T,
         solid: bool,
-    ) -> Option<RayIntersection> {
+    ) -> Option<RayIntersection<T>> {
         local_ray_intersection_with_support_map_with_params(
             self,
             &mut VoronoiSimplex::new(),
@@ -84,13 +85,13 @@ impl RayCast for Cylinder {
 }
 
 #[cfg(feature = "dim3")]
-impl RayCast for Cone {
+impl<T: AD> RayCast<T> for Cone<T> {
     fn cast_local_ray_and_get_normal(
         &self,
-        ray: &Ray,
-        max_toi: Real,
+        ray: &Ray<T>,
+        max_toi: T,
         solid: bool,
-    ) -> Option<RayIntersection> {
+    ) -> Option<RayIntersection<T>> {
         local_ray_intersection_with_support_map_with_params(
             self,
             &mut VoronoiSimplex::new(),
@@ -101,13 +102,13 @@ impl RayCast for Cone {
     }
 }
 
-impl RayCast for Capsule {
+impl<T: AD> RayCast<T> for Capsule<T> {
     fn cast_local_ray_and_get_normal(
         &self,
-        ray: &Ray,
-        max_toi: Real,
+        ray: &Ray<T>,
+        max_toi: T,
         solid: bool,
-    ) -> Option<RayIntersection> {
+    ) -> Option<RayIntersection<T>> {
         local_ray_intersection_with_support_map_with_params(
             self,
             &mut VoronoiSimplex::new(),
@@ -120,13 +121,13 @@ impl RayCast for Capsule {
 
 #[cfg(feature = "dim3")]
 #[cfg(feature = "std")]
-impl RayCast for ConvexPolyhedron {
+impl<T: AD> RayCast<T> for ConvexPolyhedron<T> {
     fn cast_local_ray_and_get_normal(
         &self,
-        ray: &Ray,
-        max_toi: Real,
+        ray: &Ray<T>,
+        max_toi: T,
         solid: bool,
-    ) -> Option<RayIntersection> {
+    ) -> Option<RayIntersection<T>> {
         local_ray_intersection_with_support_map_with_params(
             self,
             &mut VoronoiSimplex::new(),
@@ -139,11 +140,11 @@ impl RayCast for ConvexPolyhedron {
 
 #[cfg(feature = "dim2")]
 #[cfg(feature = "std")]
-impl RayCast for ConvexPolygon {
+impl<T: AD> RayCast<T> for ConvexPolygon<T> {
     fn cast_local_ray_and_get_normal(
         &self,
-        ray: &Ray,
-        max_toi: Real,
+        ray: &Ray<T>,
+        max_toi: T,
         solid: bool,
     ) -> Option<RayIntersection> {
         local_ray_intersection_with_support_map_with_params(
@@ -157,13 +158,13 @@ impl RayCast for ConvexPolygon {
 }
 
 #[allow(unused_variables)]
-impl RayCast for Segment {
+impl<T: AD> RayCast<T> for Segment<T> {
     fn cast_local_ray_and_get_normal(
         &self,
-        ray: &Ray,
-        max_toi: Real,
+        ray: &Ray<T>,
+        max_toi: T,
         solid: bool,
-    ) -> Option<RayIntersection> {
+    ) -> Option<RayIntersection<T>> {
         #[cfg(feature = "dim2")]
         {
             use crate::math::Vector;
@@ -174,7 +175,7 @@ impl RayCast for Segment {
                 &ray.dir,
                 &self.a,
                 &seg_dir,
-                crate::math::DEFAULT_EPSILON,
+                T::constant(crate::math::DEFAULT_EPSILON),
             );
 
             if parallel {
@@ -189,7 +190,7 @@ impl RayCast for Segment {
                     let dist1 = dpos.dot(&ray.dir);
                     let dist2 = dist1 + seg_dir.dot(&ray.dir);
 
-                    match (dist1 >= 0.0, dist2 >= 0.0) {
+                    match (dist1 >= T::zero(), dist2 >= T::zero()) {
                         (true, true) => {
                             let toi = dist1.min(dist2) / ray.dir.norm_squared();
                             if toi > max_toi {
@@ -206,7 +207,7 @@ impl RayCast for Segment {
                         }
                         (true, false) | (false, true) => {
                             // The ray origin lies on the segment.
-                            Some(RayIntersection::new(0.0, normal, FeatureId::Face(0)))
+                            Some(RayIntersection::new(T::zero(), normal, FeatureId::Face(0)))
                         }
                         (false, false) => {
                             // The segment is behind the ray.
@@ -217,10 +218,10 @@ impl RayCast for Segment {
                     // The rays never intersect.
                     None
                 }
-            } else if s >= 0.0 && s <= max_toi && t >= 0.0 && t <= 1.0 {
+            } else if s >= T::zero() && s <= max_toi && t >= T::zero() && t <= T::one() {
                 let normal = self.normal().map(|n| *n).unwrap_or_else(Vector::zeros);
 
-                if normal.dot(&ray.dir) > 0.0 {
+                if normal.dot(&ray.dir) > T::zero() {
                     Some(RayIntersection::new(s, -normal, FeatureId::Face(1)))
                 } else {
                     Some(RayIntersection::new(s, normal, FeatureId::Face(0)))

@@ -1,5 +1,5 @@
 use crate::bounding_volume::SimdAabb;
-use crate::math::{Isometry, Real, SimdBool, SimdReal, Vector, SIMD_WIDTH};
+use crate::math::{Isometry, Vector, SIMD_WIDTH};
 use crate::partitioning::{SimdBestFirstVisitStatus, SimdBestFirstVisitor};
 use crate::query::QueryDispatcher;
 use crate::shape::{Shape, TypedSimdCompositeShape};
@@ -12,8 +12,8 @@ pub fn distance_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(
     dispatcher: &D,
     pos12: &Isometry<T>,
     g1: &G1,
-    g2: &dyn Shape,
-) -> Real
+    g2: &dyn Shape<T>,
+) -> T
 where
     D: QueryDispatcher,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
@@ -30,7 +30,7 @@ where
 pub fn distance_shape_composite_shape<D: ?Sized, G2: ?Sized, T: AD>(
     dispatcher: &D,
     pos12: &Isometry<T>,
-    g1: &dyn Shape,
+    g1: &dyn Shape<T>,
     g2: &G2,
 ) -> T
 where
@@ -48,7 +48,7 @@ pub struct CompositeShapeAgainstAnyDistanceVisitor<'a, D: ?Sized, G1: ?Sized + '
     dispatcher: &'a D,
     pos12: &'a Isometry<T>,
     g1: &'a G1,
-    g2: &'a dyn Shape,
+    g2: &'a dyn Shape<T>,
 }
 
 impl<'a, D: ?Sized, G1: ?Sized + 'a, T: AD> CompositeShapeAgainstAnyDistanceVisitor<'a, D, G1, T> {
@@ -57,7 +57,7 @@ impl<'a, D: ?Sized, G1: ?Sized + 'a, T: AD> CompositeShapeAgainstAnyDistanceVisi
         dispatcher: &'a D,
         pos12: &'a Isometry<T>,
         g1: &'a G1,
-        g2: &'a dyn Shape,
+        g2: &'a dyn Shape<T>,
     ) -> Self {
         let ls_aabb2 = g2.compute_aabb(pos12);
 
@@ -72,7 +72,7 @@ impl<'a, D: ?Sized, G1: ?Sized + 'a, T: AD> CompositeShapeAgainstAnyDistanceVisi
     }
 }
 
-impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>>
+impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>, T>
     for CompositeShapeAgainstAnyDistanceVisitor<'a, D, G1, T>
 where
     D: QueryDispatcher,
@@ -85,14 +85,14 @@ where
         best: T,
         bv: &SimdAabb<T>,
         data: Option<[Option<&G1::PartId>; SIMD_WIDTH]>,
-    ) -> SimdBestFirstVisitStatus<Self::Result> {
+    ) -> SimdBestFirstVisitStatus<Self::Result, T> {
         // Compute the minkowski sum of the two Aabbs.
         let msum = SimdAabb {
             mins: bv.mins + self.msum_shift + (-self.msum_margin),
             maxs: bv.maxs + self.msum_shift + self.msum_margin,
         };
         let dist = msum.distance_to_origin();
-        let mask = dist.simd_lt(SimdReal::splat(best));
+        let mask = dist.simd_lt(best);
 
         if let Some(data) = data {
             let bitmask = mask.bitmask();
@@ -126,8 +126,8 @@ where
             }
 
             SimdBestFirstVisitStatus::MaybeContinue {
-                weights: SimdReal::from(weights),
-                mask: SimdBool::from(mask),
+                weights: weights[0],
+                mask: mask[0],
                 results,
             }
         } else {

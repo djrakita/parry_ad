@@ -1,3 +1,4 @@
+/*
 use num_traits::float::FloatCore;
 use std::cmp::Ordering;
 
@@ -68,3 +69,4 @@ fn xor_msb_float(fa: Real, fb: Real) -> i16 {
 fn msdb(x: u64, y: u64) -> i16 {
     64i16 - (x ^ y).leading_zeros() as i16
 }
+*/

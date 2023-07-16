@@ -1,6 +1,6 @@
 use ad_trait::AD;
 use crate::bounding_volume::{BoundingSphere, SimdAabb};
-use crate::math::{Real, SimdBool, SimdReal, SIMD_WIDTH};
+use crate::math::{SIMD_WIDTH};
 use crate::partitioning::{SimdBestFirstVisitStatus, SimdBestFirstVisitor};
 use crate::query::{self, details::NonlinearTOIMode, NonlinearRigidMotion, QueryDispatcher, TOI};
 use crate::shape::{Ball, Shape, TypedSimdCompositeShape};
@@ -10,10 +10,10 @@ use simba::simd::SimdValue;
 /// Time Of Impact of a composite shape with any other shape, under a rigid motion (translation + rotation).
 pub fn nonlinear_time_of_impact_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(
     dispatcher: &D,
-    motion1: &NonlinearRigidMotion,
+    motion1: &NonlinearRigidMotion<T>,
     g1: &G1,
-    motion2: &NonlinearRigidMotion,
-    g2: &dyn Shape,
+    motion2: &NonlinearRigidMotion<T>,
+    g2: &dyn Shape<T>,
     start_time: T,
     end_time: T,
     stop_at_penetration: bool,
@@ -41,9 +41,9 @@ where
 /// Time Of Impact of any shape with a composite shape, under a rigid motion (translation + rotation).
 pub fn nonlinear_time_of_impact_shape_composite_shape<D: ?Sized, G2: ?Sized, T: AD>(
     dispatcher: &D,
-    motion1: &NonlinearRigidMotion,
-    g1: &dyn Shape,
-    motion2: &NonlinearRigidMotion,
+    motion1: &NonlinearRigidMotion<T>,
+    g1: &dyn Shape<T>,
+    motion2: &NonlinearRigidMotion<T>,
     g2: &G2,
     start_time: T,
     end_time: T,
@@ -68,16 +68,16 @@ where
 
 /// A visitor used to determine the non-linear time of impact between a composite shape and another shape.
 pub struct NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D: ?Sized, G1: ?Sized + 'a, T: AD> {
-    sphere2: BoundingSphere,
+    sphere2: BoundingSphere<T>,
     start_time: T,
     end_time: T,
     stop_at_penetration: bool,
 
     dispatcher: &'a D,
-    motion1: &'a NonlinearRigidMotion,
-    motion2: &'a NonlinearRigidMotion,
+    motion1: &'a NonlinearRigidMotion<T>,
+    motion2: &'a NonlinearRigidMotion<T>,
     g1: &'a G1,
-    g2: &'a dyn Shape,
+    g2: &'a dyn Shape<T>,
 }
 
 impl<'a, D: ?Sized, G1: ?Sized, T: AD> NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
@@ -89,10 +89,10 @@ where
     /// a composite shape and another shape.
     pub fn new(
         dispatcher: &'a D,
-        motion1: &'a NonlinearRigidMotion,
+        motion1: &'a NonlinearRigidMotion<T>,
         g1: &'a G1,
-        motion2: &'a NonlinearRigidMotion,
-        g2: &'a dyn Shape,
+        motion2: &'a NonlinearRigidMotion<T>,
+        g2: &'a dyn Shape<T>,
         start_time: T,
         end_time: T,
         stop_at_penetration: bool,
@@ -111,7 +111,7 @@ where
     }
 }
 
-impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>>
+impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>, T>
     for NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
 where
     D: QueryDispatcher,
@@ -125,7 +125,7 @@ where
         best: T,
         bv: &SimdAabb<T>,
         data: Option<[Option<&G1::PartId>; SIMD_WIDTH]>,
-    ) -> SimdBestFirstVisitStatus<Self::Result> {
+    ) -> SimdBestFirstVisitStatus<Self::Result, T> {
         let mut weights = [T::zero(); SIMD_WIDTH];
         let mut mask = [false; SIMD_WIDTH];
         let mut results = [None; SIMD_WIDTH];
@@ -201,8 +201,8 @@ where
         }
 
         SimdBestFirstVisitStatus::MaybeContinue {
-            weights: SimdReal::from(weights),
-            mask: SimdBool::from(mask),
+            weights: weights[0],
+            mask: mask[0],
             results,
         }
     }

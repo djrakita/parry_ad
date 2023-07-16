@@ -1,4 +1,4 @@
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::query::Contact;
 use crate::shape::Ball;
 use na::{self, ComplexField, Unit};
@@ -6,12 +6,12 @@ use num::Zero;
 
 /// Contact between balls.
 #[inline]
-pub fn contact_ball_ball(
-    pos12: &Isometry<Real>,
-    b1: &Ball,
-    b2: &Ball,
-    prediction: Real,
-) -> Option<Contact> {
+pub fn contact_ball_ball<T: AD>(
+    pos12: &Isometry<T>,
+    b1: &Ball<T>,
+    b2: &Ball<T>,
+    prediction: T,
+) -> Option<Contact<T>> {
     let r1 = b1.radius;
     let r2 = b2.radius;
     let center2_1 = pos12.translation.vector;

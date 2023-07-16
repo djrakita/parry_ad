@@ -18,7 +18,7 @@ where
 {
     /// Creates a new `BoundingVolumeIntersectionsVisitor`.
     #[inline]
-    pub fn new(bv: &Aabb, callback: F) -> BoundingVolumeIntersectionsVisitor<T, F, A> {
+    pub fn new(bv: &Aabb<A>, callback: F) -> BoundingVolumeIntersectionsVisitor<T, F, A> {
         BoundingVolumeIntersectionsVisitor {
             bv: SimdAabb::splat(*bv),
             callback,

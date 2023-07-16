@@ -1,16 +1,17 @@
 use crate::bounding_volume::Aabb;
-use crate::math::{Point, Real, Vector, DIM};
+use crate::math::{Point, Vector, DIM};
 use crate::num::{Bounded, Zero};
 use crate::query::{PointProjection, PointQuery};
 use crate::shape::FeatureId;
 use na;
+use ad_trait::AD;
 
-impl Aabb {
+impl<T: AD> Aabb<T> {
     fn do_project_local_point(
         &self,
-        pt: &Point<Real>,
+        pt: &Point<T>,
         solid: bool,
-    ) -> (bool, Point<Real>, Vector<Real>) {
+    ) -> (bool, Point<T>, Vector<T>) {
         let mins_pt = self.mins - pt;
         let pt_maxs = pt - self.maxs;
         let shift = mins_pt.sup(&na::zero()) - pt_maxs.sup(&na::zero());
@@ -22,7 +23,7 @@ impl Aabb {
         } else if solid {
             (true, *pt, shift)
         } else {
-            let _max: Real = Bounded::max_value();
+            let _max: T = T::constant(Bounded::max_value());
             let mut best = -_max;
             let mut is_mins = false;
             let mut best_id = 0;
@@ -44,7 +45,7 @@ impl Aabb {
                 }
             }
 
-            let mut shift: Vector<Real> = na::zero();
+            let mut shift: Vector<T> = na::zero();
 
             if is_mins {
                 shift[best_id] = best;
@@ -57,9 +58,9 @@ impl Aabb {
     }
 }
 
-impl PointQuery for Aabb {
+impl<T: AD> PointQuery for Aabb<T> {
     #[inline]
-    fn project_local_point(&self, pt: &Point<Real>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection {
         let (inside, ls_pt, _) = self.do_project_local_point(pt, solid);
         PointProjection::new(inside, ls_pt)
     }
@@ -69,7 +70,7 @@ impl PointQuery for Aabb {
     #[inline]
     fn project_local_point_and_get_feature(
         &self,
-        pt: &Point<Real>,
+        pt: &Point<T>,
     ) -> (PointProjection, FeatureId) {
         let (inside, ls_pt, shift) = self.do_project_local_point(pt, false);
         let proj = PointProjection::new(inside, ls_pt);
@@ -132,7 +133,7 @@ impl PointQuery for Aabb {
     }
 
     #[inline]
-    fn distance_to_local_point(&self, pt: &Point<Real>, solid: bool) -> Real {
+    fn distance_to_local_point(&self, pt: &Point<T>, solid: bool) -> T {
         let mins_pt = self.mins - pt;
         let pt_maxs = pt - self.maxs;
         let shift = mins_pt.sup(&pt_maxs).sup(&na::zero());

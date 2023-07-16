@@ -1,8 +1,9 @@
 use crate::bounding_volume::Aabb;
-use crate::math::Real;
 use crate::query::SplitResult;
+use ad_trait::AD;
 
-impl Aabb {
+
+impl<T: AD> Aabb<T> {
     /// Splits this Aabb along the given canonical axis.
     ///
     /// This will split the Aabb by a plane with a normal with it’s `axis`-th component set to 1.
@@ -13,7 +14,7 @@ impl Aabb {
     /// Returns the result of the split. The first Aabb returned is the piece lying on the negative
     /// half-space delimited by the splitting plane. The second Aabb returned is the piece lying on the
     /// positive half-space delimited by the splitting plane.
-    pub fn canonical_split(&self, axis: usize, bias: Real, epsilon: Real) -> SplitResult<Self> {
+    pub fn canonical_split(&self, axis: usize, bias: T, epsilon: T) -> SplitResult<Self> {
         if self.mins[axis] >= bias - epsilon {
             SplitResult::Positive
         } else if self.maxs[axis] <= bias + epsilon {

@@ -1,4 +1,4 @@
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::{
     self,
     gjk::{GJKResult, VoronoiSimplex},
@@ -6,15 +6,16 @@ use crate::query::{
 };
 use crate::shape::{PackedFeatureId, PolygonalFeature, PolygonalFeatureMap, Shape};
 use na::Unit;
+use ad_trait::AD;
 
 /// Computes the contact manifold between two convex shapes implementing the `PolygonalSupportMap`
 /// trait, both represented as `Shape` trait-objects.
-pub fn contact_manifold_pfm_pfm_shapes<ManifoldData, ContactData>(
-    pos12: &Isometry<Real>,
-    shape1: &dyn Shape,
-    shape2: &dyn Shape,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+pub fn contact_manifold_pfm_pfm_shapes<ManifoldData, ContactData, T: AD>(
+    pos12: &Isometry<T>,
+    shape1: &dyn Shape<T>,
+    shape2: &dyn Shape<T>,
+    prediction: T,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
 ) where
     ManifoldData: Default,
     ContactData: Default + Copy,
@@ -36,24 +37,24 @@ pub fn contact_manifold_pfm_pfm_shapes<ManifoldData, ContactData>(
 }
 
 /// Computes the contact manifold between two convex shapes implementing the `PolygonalSupportMap` trait.
-pub fn contact_manifold_pfm_pfm<'a, ManifoldData, ContactData, S1, S2>(
-    pos12: &Isometry<Real>,
+pub fn contact_manifold_pfm_pfm<'a, ManifoldData, ContactData, S1, S2, T: AD>(
+    pos12: &Isometry<T>,
     pfm1: &'a S1,
-    border_radius1: Real,
+    border_radius1: T,
     pfm2: &'a S2,
-    border_radius2: Real,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+    border_radius2: T,
+    prediction: T,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
 ) where
-    S1: ?Sized + PolygonalFeatureMap,
-    S2: ?Sized + PolygonalFeatureMap,
+    S1: ?Sized + PolygonalFeatureMap<T>,
+    S2: ?Sized + PolygonalFeatureMap<T>,
     ManifoldData: Default,
     ContactData: Default + Copy,
 {
     // We use very small thresholds for the manifold update because something to high would
     // cause numerical drifts with the effect of introducing bumps in
     // what should have been smooth rolling motions.
-    if manifold.try_update_contacts_eps(&pos12, crate::utils::COS_1_DEGREES, 1.0e-6) {
+    if manifold.try_update_contacts_eps(&pos12, crate::utils::COS_1_DEGREES, T::constant(1.0e-6)) {
         return;
     }
 
@@ -109,7 +110,7 @@ pub fn contact_manifold_pfm_pfm<'a, ManifoldData, ContactData, S1, S2>(
             }
 
             // Adjust points to take the radius into account.
-            if border_radius1 != 0.0 || border_radius2 != 0.0 {
+            if border_radius1 != T::zero() || border_radius2 != T::zero() {
                 for contact in &mut manifold.points {
                     contact.local_p1 += *local_n1 * border_radius1;
                     contact.local_p2 += *local_n2 * border_radius2;
@@ -126,7 +127,7 @@ pub fn contact_manifold_pfm_pfm<'a, ManifoldData, ContactData, S1, S2>(
         }
         _ => {
             // Reset the cached direction.
-            manifold.local_n1.fill(0.0);
+            manifold.local_n1.fill(T::zero());
         }
     }
 

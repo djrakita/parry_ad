@@ -1,29 +1,29 @@
-use crate::math::Real;
 use crate::shape::Capsule;
 use crate::transformation::utils;
 use na::{self, Point3};
+use ad_trait::AD;
 
-impl Capsule {
+impl<T: AD> Capsule<T> {
     /// Discretize the boundary of this capsule as a triangle-mesh.
     pub fn to_trimesh(
         &self,
         ntheta_subdiv: u32,
         nphi_subdiv: u32,
-    ) -> (Vec<Point3<Real>>, Vec<[u32; 3]>) {
-        let diameter = self.radius * 2.0;
-        let height = self.half_height() * 2.0;
+    ) -> (Vec<Point3<T>>, Vec<[u32; 3]>) {
+        let diameter = self.radius * T::constant(2.0);
+        let height = self.half_height() * T::constant(2.0);
         let (vtx, idx) = canonical_capsule(diameter, height, ntheta_subdiv, nphi_subdiv);
         (utils::transformed(vtx, self.canonical_transform()), idx)
     }
 }
 
 /// Generates a capsule.
-pub(crate) fn canonical_capsule(
-    caps_diameter: Real,
-    cylinder_height: Real,
+pub(crate) fn canonical_capsule<T: AD>(
+    caps_diameter: T,
+    cylinder_height: T,
     ntheta_subdiv: u32,
     nphi_subdiv: u32,
-) -> (Vec<Point3<Real>>, Vec<[u32; 3]>) {
+) -> (Vec<Point3<T>>, Vec<[u32; 3]>) {
     let (coords, indices) = super::ball_to_trimesh::unit_hemisphere(ntheta_subdiv, nphi_subdiv / 2);
     let mut bottom_coords = coords.clone();
     let mut bottom_indices = indices.clone();
@@ -32,7 +32,7 @@ pub(crate) fn canonical_capsule(
     let mut top_coords = coords;
     let mut top_indices = indices;
 
-    let half_height = cylinder_height * 0.5;
+    let half_height = cylinder_height * T::constant(0.5);
 
     // shift the top
     for coord in top_coords.iter_mut() {

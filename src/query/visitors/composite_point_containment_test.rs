@@ -1,5 +1,5 @@
 use crate::bounding_volume::SimdAabb;
-use crate::math::{Point, Real, SimdReal, SIMD_WIDTH};
+use crate::math::{Point, SIMD_WIDTH};
 use crate::partitioning::{SimdVisitStatus, SimdVisitor};
 use crate::query::point::point_query::PointQuery;
 use crate::shape::TypedSimdCompositeShape;
@@ -8,19 +8,19 @@ use simba::simd::{SimdBool as _, SimdValue};
 use ad_trait::AD;
 
 /// Visitor for checking if a composite shape contains a specific point.
-pub struct CompositePointContainmentTest<'a, S: 'a> {
+pub struct CompositePointContainmentTest<'a, S: 'a, T: AD> {
     /// The composite shape on which the point containment test should be performed.
     pub shape: &'a S,
     /// The point to be tested.
-    pub point: &'a Point<Real>,
+    pub point: &'a Point<T>,
     /// A traversal will set this to `true` if the point is inside of `self.shape`.
     pub found: bool,
 }
 
-impl<'a, S> CompositePointContainmentTest<'a, S> {
+impl<'a, S, T: AD> CompositePointContainmentTest<'a, S, T> {
     /// Creates a new visitor for the testing containment of the given `point`
     /// into the given `shape`.
-    pub fn new(shape: &'a S, point: &'a Point<Real>) -> Self {
+    pub fn new(shape: &'a S, point: &'a Point<T>) -> Self {
         Self {
             shape,
             point,
@@ -30,7 +30,7 @@ impl<'a, S> CompositePointContainmentTest<'a, S> {
 }
 
 impl<'a, S: TypedSimdCompositeShape<T>, T: AD> SimdVisitor<S::PartId, SimdAabb<T>>
-    for CompositePointContainmentTest<'a, S>
+    for CompositePointContainmentTest<'a, S, T>
 {
     #[inline]
     fn visit(
@@ -38,7 +38,7 @@ impl<'a, S: TypedSimdCompositeShape<T>, T: AD> SimdVisitor<S::PartId, SimdAabb<T
         bv: &SimdAabb<T>,
         b: Option<[Option<&S::PartId>; SIMD_WIDTH]>,
     ) -> SimdVisitStatus {
-        let simd_point: Point<SimdReal> = Point::splat(*self.point);
+        let simd_point: Point<T> = *self.point;
         let mask = bv.contains_local_point(&simd_point);
 
         if let Some(data) = b {

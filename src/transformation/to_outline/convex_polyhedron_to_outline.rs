@@ -1,3 +1,4 @@
+/*
 use crate::math::Real;
 use crate::shape::ConvexPolyhedron;
 use na::Point3;
@@ -20,3 +21,4 @@ impl ConvexPolyhedron {
         (self.points().to_vec(), indices)
     }
 }
+*/

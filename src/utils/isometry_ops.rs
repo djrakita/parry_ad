@@ -1,27 +1,28 @@
-use crate::math::{Isometry, Point, Real, SimdReal, Vector};
+use crate::math::{Isometry, Point, Vector};
 use na::SimdComplexField;
 use na::Unit; // for .abs()
+use ad_trait::AD;
 
 #[cfg(not(feature = "std"))]
 use na::ComplexField;
 
 /// Extra operations with isometries.
-pub trait IsometryOps<T> {
+pub trait IsometryOps<T: AD> {
     /// Transform a vector by the absolute value of the homogeneous matrix
     /// equivalent to `self`.
     fn absolute_transform_vector(&self, v: &Vector<T>) -> Vector<T>;
 }
 
-impl IsometryOps<Real> for Isometry<Real> {
+impl<T: AD> IsometryOps<T> for Isometry<T> {
     #[inline]
-    fn absolute_transform_vector(&self, v: &Vector<Real>) -> Vector<Real> {
+    fn absolute_transform_vector(&self, v: &Vector<T>) -> Vector<T> {
         self.rotation.to_rotation_matrix().into_inner().abs() * *v
     }
 }
 
-impl IsometryOps<SimdReal> for Isometry<SimdReal> {
+impl<T: AD> IsometryOps<T> for Isometry<T> {
     #[inline]
-    fn absolute_transform_vector(&self, v: &Vector<SimdReal>) -> Vector<SimdReal> {
+    fn absolute_transform_vector(&self, v: &Vector<T>) -> Vector<T> {
         self.rotation
             .to_rotation_matrix()
             .into_inner()
@@ -32,28 +33,28 @@ impl IsometryOps<SimdReal> for Isometry<SimdReal> {
 
 /// Various operations usable with `Option<Isometry>` and `Option<&Isometry>`
 /// where `None` is assumed to be equivalent to the identity.
-pub trait IsometryOpt {
+pub trait IsometryOpt<T: AD> {
     /// Computes `self.inverse() * rhs`.
-    fn inv_mul(self, rhs: &Isometry<Real>) -> Isometry<Real>;
+    fn inv_mul(self, rhs: &Isometry<T>) -> Isometry<T>;
     /// Computes `rhs * self`.
-    fn prepend_to(self, rhs: &Isometry<Real>) -> Isometry<Real>;
+    fn prepend_to(self, rhs: &Isometry<T>) -> Isometry<T>;
     /// Computes `self * p`.
-    fn transform_point(self, p: &Point<Real>) -> Point<Real>;
+    fn transform_point(self, p: &Point<T>) -> Point<T>;
     /// Computes `self * v`.
-    fn transform_vector(self, v: &Vector<Real>) -> Vector<Real>;
+    fn transform_vector(self, v: &Vector<T>) -> Vector<T>;
     /// Computes `self * v`.
-    fn transform_unit_vector(self, v: &Unit<Vector<Real>>) -> Unit<Vector<Real>>;
+    fn transform_unit_vector(self, v: &Unit<Vector<T>>) -> Unit<Vector<T>>;
     /// Computes `self.inverse() * p`.
-    fn inverse_transform_point(self, p: &Point<Real>) -> Point<Real>;
+    fn inverse_transform_point(self, p: &Point<T>) -> Point<T>;
     /// Computes `self.inverse() * v`.
-    fn inverse_transform_vector(self, v: &Vector<Real>) -> Vector<Real>;
+    fn inverse_transform_vector(self, v: &Vector<T>) -> Vector<T>;
     /// Computes `self.inverse() * v`.
-    fn inverse_transform_unit_vector(self, v: &Unit<Vector<Real>>) -> Unit<Vector<Real>>;
+    fn inverse_transform_unit_vector(self, v: &Unit<Vector<T>>) -> Unit<Vector<T>>;
 }
 
-impl<'a> IsometryOpt for Option<&'a Isometry<Real>> {
+impl<'a, T: AD> IsometryOpt<T> for Option<&'a Isometry<T>> {
     #[inline]
-    fn inv_mul(self, rhs: &Isometry<Real>) -> Isometry<Real> {
+    fn inv_mul(self, rhs: &Isometry<T>) -> Isometry<T> {
         if let Some(iso) = self {
             iso.inv_mul(&rhs)
         } else {
@@ -62,7 +63,7 @@ impl<'a> IsometryOpt for Option<&'a Isometry<Real>> {
     }
 
     #[inline]
-    fn prepend_to(self, rhs: &Isometry<Real>) -> Isometry<Real> {
+    fn prepend_to(self, rhs: &Isometry<T>) -> Isometry<T> {
         if let Some(iso) = self {
             rhs * iso
         } else {
@@ -71,7 +72,7 @@ impl<'a> IsometryOpt for Option<&'a Isometry<Real>> {
     }
 
     #[inline]
-    fn transform_point(self, p: &Point<Real>) -> Point<Real> {
+    fn transform_point(self, p: &Point<T>) -> Point<T> {
         if let Some(iso) = self {
             iso * p
         } else {
@@ -80,7 +81,7 @@ impl<'a> IsometryOpt for Option<&'a Isometry<Real>> {
     }
 
     #[inline]
-    fn transform_vector(self, v: &Vector<Real>) -> Vector<Real> {
+    fn transform_vector(self, v: &Vector<T>) -> Vector<T> {
         if let Some(iso) = self {
             iso * v
         } else {
@@ -89,7 +90,7 @@ impl<'a> IsometryOpt for Option<&'a Isometry<Real>> {
     }
 
     #[inline]
-    fn transform_unit_vector(self, v: &Unit<Vector<Real>>) -> Unit<Vector<Real>> {
+    fn transform_unit_vector(self, v: &Unit<Vector<T>>) -> Unit<Vector<T>> {
         if let Some(iso) = self {
             iso * v
         } else {
@@ -98,7 +99,7 @@ impl<'a> IsometryOpt for Option<&'a Isometry<Real>> {
     }
 
     #[inline]
-    fn inverse_transform_point(self, p: &Point<Real>) -> Point<Real> {
+    fn inverse_transform_point(self, p: &Point<T>) -> Point<T> {
         if let Some(iso) = self {
             iso.inverse_transform_point(p)
         } else {
@@ -107,7 +108,7 @@ impl<'a> IsometryOpt for Option<&'a Isometry<Real>> {
     }
 
     #[inline]
-    fn inverse_transform_vector(self, v: &Vector<Real>) -> Vector<Real> {
+    fn inverse_transform_vector(self, v: &Vector<T>) -> Vector<T> {
         if let Some(iso) = self {
             iso.inverse_transform_vector(v)
         } else {
@@ -116,7 +117,7 @@ impl<'a> IsometryOpt for Option<&'a Isometry<Real>> {
     }
 
     #[inline]
-    fn inverse_transform_unit_vector(self, v: &Unit<Vector<Real>>) -> Unit<Vector<Real>> {
+    fn inverse_transform_unit_vector(self, v: &Unit<Vector<T>>) -> Unit<Vector<T>> {
         if let Some(iso) = self {
             iso.inverse_transform_unit_vector(v)
         } else {
@@ -125,9 +126,9 @@ impl<'a> IsometryOpt for Option<&'a Isometry<Real>> {
     }
 }
 
-impl IsometryOpt for Option<Isometry<Real>> {
+impl<T: AD> IsometryOpt<T> for Option<Isometry<T>> {
     #[inline]
-    fn inv_mul(self, rhs: &Isometry<Real>) -> Isometry<Real> {
+    fn inv_mul(self, rhs: &Isometry<T>) -> Isometry<T> {
         if let Some(iso) = self {
             iso.inv_mul(&rhs)
         } else {
@@ -136,7 +137,7 @@ impl IsometryOpt for Option<Isometry<Real>> {
     }
 
     #[inline]
-    fn prepend_to(self, rhs: &Isometry<Real>) -> Isometry<Real> {
+    fn prepend_to(self, rhs: &Isometry<T>) -> Isometry<T> {
         if let Some(iso) = self {
             rhs * iso
         } else {
@@ -145,7 +146,7 @@ impl IsometryOpt for Option<Isometry<Real>> {
     }
 
     #[inline]
-    fn transform_point(self, p: &Point<Real>) -> Point<Real> {
+    fn transform_point(self, p: &Point<T>) -> Point<T> {
         if let Some(iso) = self {
             iso * p
         } else {
@@ -154,7 +155,7 @@ impl IsometryOpt for Option<Isometry<Real>> {
     }
 
     #[inline]
-    fn transform_vector(self, v: &Vector<Real>) -> Vector<Real> {
+    fn transform_vector(self, v: &Vector<T>) -> Vector<T> {
         if let Some(iso) = self {
             iso * v
         } else {
@@ -163,7 +164,7 @@ impl IsometryOpt for Option<Isometry<Real>> {
     }
 
     #[inline]
-    fn transform_unit_vector(self, v: &Unit<Vector<Real>>) -> Unit<Vector<Real>> {
+    fn transform_unit_vector(self, v: &Unit<Vector<T>>) -> Unit<Vector<T>> {
         if let Some(iso) = self {
             iso * v
         } else {
@@ -172,7 +173,7 @@ impl IsometryOpt for Option<Isometry<Real>> {
     }
 
     #[inline]
-    fn inverse_transform_point(self, p: &Point<Real>) -> Point<Real> {
+    fn inverse_transform_point(self, p: &Point<T>) -> Point<T> {
         if let Some(iso) = self {
             iso.inverse_transform_point(p)
         } else {
@@ -181,7 +182,7 @@ impl IsometryOpt for Option<Isometry<Real>> {
     }
 
     #[inline]
-    fn inverse_transform_vector(self, v: &Vector<Real>) -> Vector<Real> {
+    fn inverse_transform_vector(self, v: &Vector<T>) -> Vector<T> {
         if let Some(iso) = self {
             iso.inverse_transform_vector(v)
         } else {
@@ -190,7 +191,7 @@ impl IsometryOpt for Option<Isometry<Real>> {
     }
 
     #[inline]
-    fn inverse_transform_unit_vector(self, v: &Unit<Vector<Real>>) -> Unit<Vector<Real>> {
+    fn inverse_transform_unit_vector(self, v: &Unit<Vector<T>>) -> Unit<Vector<T>> {
         if let Some(iso) = self {
             iso.inverse_transform_unit_vector(v)
         } else {

@@ -1,5 +1,5 @@
 use crate::bounding_volume::SimdAabb;
-use crate::math::{Real, SimdReal, SIMD_WIDTH};
+use crate::math::{SIMD_WIDTH};
 use crate::partitioning::{SimdVisitStatus, SimdVisitor};
 use crate::query::{Ray, SimdRay};
 use simba::simd::{SimdBool as _, SimdValue};
@@ -7,30 +7,30 @@ use std::marker::PhantomData;
 use ad_trait::AD;
 
 /// Bounding Volume Tree visitor collecting intersections with a given ray.
-pub struct RayIntersectionsVisitor<'a, T, F> {
-    simd_ray: SimdRay,
-    max_toi: SimdReal,
+pub struct RayIntersectionsVisitor<'a, T, F, A: AD> {
+    simd_ray: SimdRay<A>,
+    max_toi: A,
     callback: &'a mut F,
     _phantom: PhantomData<T>,
 }
 
-impl<'a, T, F> RayIntersectionsVisitor<'a, T, F>
+impl<'a, T, F, A: AD> RayIntersectionsVisitor<'a, T, F, A>
 where
     F: FnMut(&T) -> bool,
 {
     /// Creates a new `RayIntersectionsVisitor`.
     #[inline]
-    pub fn new(ray: &Ray, max_toi: Real, callback: &'a mut F) -> RayIntersectionsVisitor<'a, T, F> {
+    pub fn new(ray: &Ray<A>, max_toi: A, callback: &'a mut F) -> RayIntersectionsVisitor<'a, T, F, A> {
         RayIntersectionsVisitor {
             simd_ray: SimdRay::splat(*ray),
-            max_toi: SimdReal::splat(max_toi),
+            max_toi: max_toi,
             callback,
             _phantom: PhantomData,
         }
     }
 }
 
-impl<'a, T, F, A: AD> SimdVisitor<T, SimdAabb<A>> for RayIntersectionsVisitor<'a, T, F>
+impl<'a, T, F, A: AD> SimdVisitor<T, SimdAabb<A>> for RayIntersectionsVisitor<'a, T, F, A>
 where
     F: FnMut(&T) -> bool,
 {

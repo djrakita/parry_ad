@@ -1,7 +1,8 @@
 use crate::bounding_volume::Aabb;
-use crate::math::{Point, Real, Vector};
+use crate::math::{Point, Vector};
+use ad_trait::AD;
 
-impl Aabb {
+impl<T: AD> Aabb<T> {
     /// Computes the intersections between this Aabb and the given polygon.
     ///
     /// The results is written into `points` directly. The input points are
@@ -9,7 +10,7 @@ impl Aabb {
     /// In order to avoid internal allocations, uses `self.clip_polygon_with_workspace`
     /// instead.
     #[inline]
-    pub fn clip_polygon(&self, points: &mut Vec<Point<Real>>) {
+    pub fn clip_polygon(&self, points: &mut Vec<Point<T>>) {
         let mut workspace = Vec::new();
         self.clip_polygon_with_workspace(points, &mut workspace)
     }
@@ -21,8 +22,8 @@ impl Aabb {
     #[inline]
     pub fn clip_polygon_with_workspace(
         &self,
-        points: &mut Vec<Point<Real>>,
-        workspace: &mut Vec<Point<Real>>,
+        points: &mut Vec<Point<T>>,
+        workspace: &mut Vec<Point<T>>,
     ) {
         super::clip_halfspace_polygon(&self.mins, &-Vector::x(), &points, workspace);
         super::clip_halfspace_polygon(&self.maxs, &Vector::x(), &workspace, points);

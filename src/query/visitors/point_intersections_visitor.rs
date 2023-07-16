@@ -1,5 +1,5 @@
 use crate::bounding_volume::SimdAabb;
-use crate::math::{Point, Real, SimdReal, SIMD_WIDTH};
+use crate::math::{Point, SIMD_WIDTH};
 use crate::partitioning::{SimdVisitStatus, SimdVisitor};
 use simba::simd::{SimdBool as _, SimdValue};
 use std::marker::PhantomData;
@@ -8,20 +8,20 @@ use ad_trait::AD;
 // FIXME: add a point cost fn.
 
 /// Spatial partitioning structure visitor collecting nodes that may contain a given point.
-pub struct PointIntersectionsVisitor<'a, T, F> {
-    simd_point: Point<SimdReal>,
+pub struct PointIntersectionsVisitor<'a, T, F, A: AD> {
+    simd_point: Point<A>,
     /// Callback executed for each leaf which Aabb contains `self.point`.
     callback: &'a mut F,
     _phantom: PhantomData<T>,
 }
 
-impl<'a, T, F> PointIntersectionsVisitor<'a, T, F>
+impl<'a, T, F, A: AD> PointIntersectionsVisitor<'a, T, F, A>
 where
     F: FnMut(&T) -> bool,
 {
     /// Creates a new `PointIntersectionsVisitor`.
     #[inline]
-    pub fn new(point: &'a Point<Real>, callback: &'a mut F) -> PointIntersectionsVisitor<'a, T, F> {
+    pub fn new(point: &'a Point<A>, callback: &'a mut F) -> PointIntersectionsVisitor<'a, T, F, A> {
         PointIntersectionsVisitor {
             simd_point: Point::splat(*point),
             callback,
@@ -30,7 +30,7 @@ where
     }
 }
 
-impl<'a, T, F, A: AD> SimdVisitor<T, SimdAabb<A>> for PointIntersectionsVisitor<'a, T, F>
+impl<'a, T, F, A: AD> SimdVisitor<T, SimdAabb<A>> for PointIntersectionsVisitor<'a, T, F, A>
 where
     F: FnMut(&T) -> bool,
 {

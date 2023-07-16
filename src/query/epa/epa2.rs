@@ -6,19 +6,21 @@ use std::collections::BinaryHeap;
 use na::{self, Unit};
 use num::Bounded;
 
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::query::gjk::{self, CSOPoint, ConstantOrigin, VoronoiSimplex};
 use crate::shape::SupportMap;
 use crate::utils;
 
+use ad_trait::AD;
+
 #[derive(Copy, Clone, PartialEq)]
-struct FaceId {
+struct FaceId<T: AD> {
     id: usize,
-    neg_dist: Real,
+    neg_dist: T,
 }
 
-impl FaceId {
-    fn new(id: usize, neg_dist: Real) -> Option<Self> {
+impl<T: AD> FaceId<T> {
+    fn new(id: usize, neg_dist: T) -> Option<Self> {
         if neg_dist > gjk::eps_tol() {
             None
         } else {
@@ -27,16 +29,16 @@ impl FaceId {
     }
 }
 
-impl Eq for FaceId {}
+impl<T: AD> Eq for FaceId<T> {}
 
-impl PartialOrd for FaceId {
+impl<T: AD> PartialOrd for FaceId<T> {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.neg_dist.partial_cmp(&other.neg_dist)
     }
 }
 
-impl Ord for FaceId {
+impl<T: AD> Ord for FaceId<T> {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         if self.neg_dist < other.neg_dist {
@@ -50,15 +52,15 @@ impl Ord for FaceId {
 }
 
 #[derive(Clone, Debug)]
-struct Face {
+struct Face<T: AD> {
     pts: [usize; 2],
-    normal: Unit<Vector<Real>>,
-    proj: Point<Real>,
-    bcoords: [Real; 2],
+    normal: Unit<Vector<T>>,
+    proj: Point<T>,
+    bcoords: [T; 2],
     deleted: bool,
 }
 
-impl Face {
+impl<T: AD> Face<T> {
     pub fn new(vertices: &[CSOPoint], pts: [usize; 2]) -> (Self, bool) {
         if let Some((proj, bcoords)) =
             project_origin(&vertices[pts[0]].point, &vertices[pts[1]].point)
@@ -74,8 +76,8 @@ impl Face {
 
     pub fn new_with_proj(
         vertices: &[CSOPoint],
-        proj: Point<Real>,
-        bcoords: [Real; 2],
+        proj: Point<T>,
+        bcoords: [T; 2],
         pts: [usize; 2],
     ) -> Self {
         let normal;
@@ -99,7 +101,7 @@ impl Face {
         }
     }
 
-    pub fn closest_points(&self, vertices: &[CSOPoint]) -> (Point<Real>, Point<Real>) {
+    pub fn closest_points(&self, vertices: &[CSOPoint]) -> (Point<T>, Point<T>) {
         (
             vertices[self.pts[0]].orig1 * self.bcoords[0]
                 + vertices[self.pts[1]].orig1.coords * self.bcoords[1],
@@ -110,13 +112,13 @@ impl Face {
 }
 
 /// The Expanding Polytope Algorithm in 2D.
-pub struct EPA {
+pub struct EPA<T: AD> {
     vertices: Vec<CSOPoint>,
     faces: Vec<Face>,
     heap: BinaryHeap<FaceId>,
 }
 
-impl EPA {
+impl<T: AD> EPA<T> {
     /// Creates a new instance of the 2D Expanding Polytope Algorithm.
     pub fn new() -> Self {
         EPA {
@@ -143,10 +145,10 @@ impl EPA {
     /// Return the projected point in the local-space of `g`.
     pub fn project_origin<G: ?Sized>(
         &mut self,
-        m: &Isometry<Real>,
+        m: &Isometry<T>,
         g: &G,
         simplex: &VoronoiSimplex,
-    ) -> Option<Point<Real>>
+    ) -> Option<Point<T>>
     where
         G: SupportMap,
     {
@@ -160,17 +162,17 @@ impl EPA {
     /// Returns `None` if the EPA fails to converge or if `g1` and `g2` are not penetrating.
     pub fn closest_points<G1: ?Sized, G2: ?Sized>(
         &mut self,
-        pos12: &Isometry<Real>,
+        pos12: &Isometry<T>,
         g1: &G1,
         g2: &G2,
         simplex: &VoronoiSimplex,
-    ) -> Option<(Point<Real>, Point<Real>, Unit<Vector<Real>>)>
+    ) -> Option<(Point<T>, Point<T>, Unit<Vector<T>>)>
     where
         G1: SupportMap,
         G2: SupportMap,
     {
-        let _eps: Real = crate::math::DEFAULT_EPSILON;
-        let _eps_tol = _eps * 100.0;
+        let _eps = T::consant(crate::math::DEFAULT_EPSILON);
+        let _eps_tol = _eps * T::constant(100.0);
 
         self.reset();
 
@@ -279,7 +281,7 @@ impl EPA {
         }
 
         let mut niter = 0;
-        let mut max_dist = Real::max_value();
+        let mut max_dist = T::constant(f64::max_value());
         let mut best_face_id = *self.heap.peek().unwrap();
 
         /*
@@ -350,19 +352,19 @@ impl EPA {
     }
 }
 
-fn project_origin(a: &Point<Real>, b: &Point<Real>) -> Option<(Point<Real>, [Real; 2])> {
+fn project_origin<T: AD>(a: &Point<T>, b: &Point<T>) -> Option<(Point<T>, [T; 2])> {
     let ab = *b - *a;
     let ap = -a.coords;
     let ab_ap = ab.dot(&ap);
     let sqnab = ab.norm_squared();
 
-    if sqnab == 0.0 {
+    if sqnab == T::zero() {
         return None;
     }
 
     let position_on_segment;
 
-    let _eps: Real = gjk::eps_tol();
+    let _eps = T::constant(gjk::eps_tol());
 
     if ab_ap < -_eps || ab_ap > sqnab + _eps {
         // Voronoï region of vertex 'a' or 'b'.
@@ -373,6 +375,6 @@ fn project_origin(a: &Point<Real>, b: &Point<Real>) -> Option<(Point<Real>, [Rea
 
         let res = *a + ab * position_on_segment;
 
-        Some((res, [1.0 - position_on_segment, position_on_segment]))
+        Some((res, [T::constant(1.0) - position_on_segment, position_on_segment]))
     }
 }

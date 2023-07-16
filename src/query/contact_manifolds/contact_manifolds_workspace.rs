@@ -7,12 +7,14 @@ use crate::query::contact_manifolds::{
     TriMeshShapeContactManifoldsWorkspace,
 };
 
+use ad_trait::AD;
+
 #[derive(Copy, Clone)]
 #[cfg_attr(feature = "serde-serialize", derive(Serialize))]
 /// Enum representing workspace data of a specific type.
-pub enum TypedWorkspaceData<'a> {
+pub enum TypedWorkspaceData<'a, T: AD> {
     /// A trimesh workspace.
-    TriMeshShapeContactManifoldsWorkspace(&'a TriMeshShapeContactManifoldsWorkspace),
+    TriMeshShapeContactManifoldsWorkspace(&'a TriMeshShapeContactManifoldsWorkspace<T>),
     /// A heightfield vs. shape workspace.
     HeightfieldShapeContactManifoldsWorkspace(&'a HeightFieldShapeContactManifoldsWorkspace),
     /// A heightfield vs. composite shape workspace.
@@ -32,8 +34,8 @@ pub enum TypedWorkspaceData<'a> {
 // NOTE: must match the TypedWorkspaceData enum.
 #[cfg(feature = "serde-serialize")]
 #[derive(Deserialize)]
-enum DeserializableWorkspaceData {
-    TriMeshShapeContactManifoldsWorkspace(TriMeshShapeContactManifoldsWorkspace),
+enum DeserializableWorkspaceData<T: AD> {
+    TriMeshShapeContactManifoldsWorkspace(TriMeshShapeContactManifoldsWorkspace<T>),
     HeightfieldShapeContactManifoldsWorkspace(HeightFieldShapeContactManifoldsWorkspace),
     HeightfieldCompositeShapeContactManifoldsWorkspace(
         HeightFieldCompositeShapeContactManifoldsWorkspace,
@@ -46,7 +48,7 @@ enum DeserializableWorkspaceData {
 }
 
 #[cfg(feature = "serde-serialize")]
-impl DeserializableWorkspaceData {
+impl<T: AD> DeserializableWorkspaceData<T> {
     pub fn into_contact_manifold_workspace(self) -> Option<ContactManifoldsWorkspace> {
         match self {
             DeserializableWorkspaceData::TriMeshShapeContactManifoldsWorkspace(w) => {
@@ -70,34 +72,34 @@ impl DeserializableWorkspaceData {
 }
 
 /// Data from a [`ContactManifoldsWorkspace`].
-pub trait WorkspaceData: DowncastSync {
+pub trait WorkspaceData<T: AD>: DowncastSync {
     /// Gets the underlying workspace as an enum.
-    fn as_typed_workspace_data(&self) -> TypedWorkspaceData;
+    fn as_typed_workspace_data(&self) -> TypedWorkspaceData<T>;
 
     /// Clones `self`.
-    fn clone_dyn(&self) -> Box<dyn WorkspaceData>;
+    fn clone_dyn(&self) -> Box<dyn WorkspaceData<T>>;
 }
 
 impl_downcast!(sync WorkspaceData);
 
 // Note we have this newtype because it simplifies the serialization/deserialization code.
 /// A serializable workspace used by some contact-manifolds computation algorithms.
-pub struct ContactManifoldsWorkspace(pub Box<dyn WorkspaceData>);
+pub struct ContactManifoldsWorkspace<T: AD>(pub Box<dyn WorkspaceData<T>>);
 
-impl Clone for ContactManifoldsWorkspace {
+impl<T: AD> Clone for ContactManifoldsWorkspace<T> {
     fn clone(&self) -> Self {
         ContactManifoldsWorkspace(self.0.clone_dyn())
     }
 }
 
-impl<T: WorkspaceData> From<T> for ContactManifoldsWorkspace {
+impl<T: WorkspaceData<A>, A: AD> From<T> for ContactManifoldsWorkspace<A> {
     fn from(data: T) -> Self {
-        Self(Box::new(data) as Box<dyn WorkspaceData>)
+        Self(Box::new(data) as Box<dyn WorkspaceData<A>>)
     }
 }
 
 #[cfg(feature = "serde-serialize")]
-impl serde::Serialize for ContactManifoldsWorkspace {
+impl<T: AD> serde::Serialize for ContactManifoldsWorkspace<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -107,7 +109,7 @@ impl serde::Serialize for ContactManifoldsWorkspace {
 }
 
 #[cfg(feature = "serde-serialize")]
-impl<'de> serde::Deserialize<'de> for ContactManifoldsWorkspace {
+impl<'de, T: AD> serde::Deserialize<'de> for ContactManifoldsWorkspace<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,

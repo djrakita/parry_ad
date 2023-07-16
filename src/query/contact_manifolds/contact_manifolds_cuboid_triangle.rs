@@ -1,18 +1,18 @@
 #[cfg(feature = "dim2")]
 use crate::math::Vector;
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::{sat, ContactManifold};
 use crate::shape::PolygonalFeature;
 use crate::shape::{Cuboid, Shape, Triangle};
 use ad_trait::AD;
 
 /// Computes the contact manifold between a cuboid and a triangle represented as `Shape` trait-objects.
-pub fn contact_manifold_cuboid_triangle_shapes<ManifoldData, ContactData>(
-    pos12: &Isometry<Real>,
-    shape1: &dyn Shape,
-    shape2: &dyn Shape,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+pub fn contact_manifold_cuboid_triangle_shapes<ManifoldData, ContactData, T: AD>(
+    pos12: &Isometry<T>,
+    shape1: &dyn Shape<T>,
+    shape2: &dyn Shape<T>,
+    prediction: T,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
 ) where
     ContactData: Default + Copy,
 {
@@ -43,10 +43,10 @@ pub fn contact_manifold_cuboid_triangle_shapes<ManifoldData, ContactData>(
 pub fn contact_manifold_cuboid_triangle<'a, ManifoldData, ContactData, T: AD>(
     pos12: &Isometry<T>,
     pos21: &Isometry<T>,
-    cuboid1: &'a Cuboid,
+    cuboid1: &'a Cuboid<T>,
     triangle2: &'a Triangle<T>,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+    prediction: T,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
     flipped: bool,
 ) where
     ContactData: Default + Copy,

@@ -1,19 +1,20 @@
 use na::Unit;
 
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::query::{self, Ray, TOIStatus, TOI};
 use crate::shape::Ball;
 use num::Zero;
+use ad_trait::AD;
 
 /// Time Of Impact of two balls under translational movement.
 #[inline]
-pub fn time_of_impact_ball_ball(
-    pos12: &Isometry<Real>,
-    vel12: &Vector<Real>,
-    b1: &Ball,
-    b2: &Ball,
-    max_toi: Real,
-) -> Option<TOI> {
+pub fn time_of_impact_ball_ball<T: AD>(
+    pos12: &Isometry<T>,
+    vel12: &Vector<T>,
+    b1: &Ball<T>,
+    b2: &Ball<T>,
+    max_toi: T,
+) -> Option<TOI<T>> {
     let rsum = b1.radius + b2.radius;
     let radius = rsum;
     let center = Point::from(-pos12.translation.vector);

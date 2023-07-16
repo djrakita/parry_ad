@@ -1,6 +1,6 @@
 //! Three-dimensional penetration depth queries using the Expanding Polytope Algorithm.
 
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::query::gjk::{self, CSOPoint, ConstantOrigin, VoronoiSimplex};
 use crate::query::PointQueryWithLocation;
 use crate::shape::{SupportMap, Triangle, TrianglePointLocation};
@@ -9,15 +9,16 @@ use na::{self, Unit};
 use num::Bounded;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
+use ad_trait::AD;
 
 #[derive(Copy, Clone, PartialEq)]
-struct FaceId {
+struct FaceId<T: AD> {
     id: usize,
-    neg_dist: Real,
+    neg_dist: T,
 }
 
-impl FaceId {
-    fn new(id: usize, neg_dist: Real) -> Option<Self> {
+impl<T: AD> FaceId<T> {
+    fn new(id: usize, neg_dist: T) -> Option<Self> {
         if neg_dist > gjk::eps_tol() {
             None
         } else {
@@ -26,16 +27,16 @@ impl FaceId {
     }
 }
 
-impl Eq for FaceId {}
+impl<T: AD> Eq for FaceId<T> {}
 
-impl PartialOrd for FaceId {
+impl<T: AD> PartialOrd for FaceId<T> {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.neg_dist.partial_cmp(&other.neg_dist)
     }
 }
 
-impl Ord for FaceId {
+impl<T: AD> Ord for FaceId<T> {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         if self.neg_dist < other.neg_dist {
@@ -49,18 +50,18 @@ impl Ord for FaceId {
 }
 
 #[derive(Clone, Debug)]
-struct Face {
+struct Face<T: AD> {
     pts: [usize; 3],
     adj: [usize; 3],
-    normal: Unit<Vector<Real>>,
-    bcoords: [Real; 3],
+    normal: Unit<Vector<T>>,
+    bcoords: [T; 3],
     deleted: bool,
 }
 
-impl Face {
+impl<T: AD> Face<T> {
     pub fn new_with_proj(
         vertices: &[CSOPoint],
-        bcoords: [Real; 3],
+        bcoords: [T; 3],
         pts: [usize; 3],
         adj: [usize; 3],
     ) -> Self {
@@ -95,17 +96,17 @@ impl Face {
             vertices[pts[1]].point,
             vertices[pts[2]].point,
         );
-        let (_, loc) = tri.project_local_point_and_get_location(&Point::<Real>::origin(), true);
+        let (_, loc) = tri.project_local_point_and_get_location(&Point::<T>::origin(), true);
 
         match loc {
             TrianglePointLocation::OnFace(_, bcoords) => {
                 (Self::new_with_proj(vertices, bcoords, pts, adj), true)
             }
-            _ => (Self::new_with_proj(vertices, [0.0; 3], pts, adj), false),
+            _ => (Self::new_with_proj(vertices, [T::zero(); 3], pts, adj), false),
         }
     }
 
-    pub fn closest_points(&self, vertices: &[CSOPoint]) -> (Point<Real>, Point<Real>) {
+    pub fn closest_points(&self, vertices: &[CSOPoint]) -> (Point<T>, Point<T>) {
         (
             vertices[self.pts[0]].orig1 * self.bcoords[0]
                 + vertices[self.pts[1]].orig1.coords * self.bcoords[1]
@@ -159,14 +160,14 @@ impl SilhouetteEdge {
 }
 
 /// The Expanding Polytope Algorithm in 3D.
-pub struct EPA {
+pub struct EPA<T: AD> {
     vertices: Vec<CSOPoint>,
-    faces: Vec<Face>,
+    faces: Vec<Face<T>>,
     silhouette: Vec<SilhouetteEdge>,
-    heap: BinaryHeap<FaceId>,
+    heap: BinaryHeap<FaceId<T>>,
 }
 
-impl EPA {
+impl<T: AD> EPA<T> {
     /// Creates a new instance of the 3D Expanding Polytope Algorithm.
     pub fn new() -> Self {
         EPA {
@@ -194,12 +195,12 @@ impl EPA {
     /// Return the projected point in the local-space of `g`.
     pub fn project_origin<G: ?Sized>(
         &mut self,
-        m: &Isometry<Real>,
+        m: &Isometry<T>,
         g: &G,
         simplex: &VoronoiSimplex,
-    ) -> Option<Point<Real>>
+    ) -> Option<Point<T>>
     where
-        G: SupportMap,
+        G: SupportMap<T>,
     {
         self.closest_points(&m.inverse(), g, &ConstantOrigin, simplex)
             .map(|(p, _, _)| p)
@@ -211,17 +212,17 @@ impl EPA {
     /// Returns `None` if the EPA fails to converge or if `g1` and `g2` are not penetrating.
     pub fn closest_points<G1: ?Sized, G2: ?Sized>(
         &mut self,
-        pos12: &Isometry<Real>,
+        pos12: &Isometry<T>,
         g1: &G1,
         g2: &G2,
         simplex: &VoronoiSimplex,
-    ) -> Option<(Point<Real>, Point<Real>, Unit<Vector<Real>>)>
+    ) -> Option<(Point<T>, Point<T>, Unit<Vector<T>>)>
     where
-        G1: SupportMap,
-        G2: SupportMap,
+        G1: SupportMap<T>,
+        G2: SupportMap<T>,
     {
-        let _eps = crate::math::DEFAULT_EPSILON;
-        let _eps_tol = _eps * 100.0;
+        let _eps = T::constant(crate::math::DEFAULT_EPSILON);
+        let _eps_tol = _eps * T::constant(100.0);
 
         self.reset();
 
@@ -233,15 +234,15 @@ impl EPA {
         }
 
         if simplex.dimension() == 0 {
-            let mut n: Vector<Real> = na::zero();
-            n[1] = 1.0;
+            let mut n: Vector<T> = na::zero();
+            n[1] = T::one();
             return Some((Point::origin(), Point::origin(), Unit::new_unchecked(n)));
         } else if simplex.dimension() == 3 {
             let dp1 = self.vertices[1] - self.vertices[0];
             let dp2 = self.vertices[2] - self.vertices[0];
             let dp3 = self.vertices[3] - self.vertices[0];
 
-            if dp1.cross(&dp2).dot(&dp3) > 0.0 {
+            if dp1.cross(&dp2).dot(&dp3) > T::zero() {
                 self.vertices.swap(1, 2)
             }
 
@@ -308,12 +309,12 @@ impl EPA {
             self.faces.push(face1);
             self.faces.push(face2);
 
-            self.heap.push(FaceId::new(0, 0.0)?);
-            self.heap.push(FaceId::new(1, 0.0)?);
+            self.heap.push(FaceId::new(0, T::zero())?);
+            self.heap.push(FaceId::new(1, T::zero())?);
         }
 
         let mut niter = 0;
-        let mut max_dist = Real::max_value();
+        let mut max_dist = T::constant(f64::max_value());
         let mut best_face_id = *self.heap.peek().unwrap();
 
         /*

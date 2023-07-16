@@ -1,6 +1,6 @@
 use ad_trait::AD;
 use crate::mass_properties::MassProperties;
-use crate::math::{Matrix, Point, Real, DIM};
+use crate::math::{Matrix, Point, DIM};
 use crate::shape::Tetrahedron;
 use num::Zero;
 
@@ -193,13 +193,13 @@ mod test {
         for k in 0..3 {
             let i1 = mprops1.principal_inertia_local_frame
                 * mprops1.principal_inertia().component_mul(
-                    &(mprops1.principal_inertia_local_frame.inverse() * Vector::ith(k, 1.0)),
+                    &(mprops1.principal_inertia_local_frame.inverse() * Vector::ith(k, T::constant(1.0))),
                 );
             let i2 = mprops2.principal_inertia_local_frame
                 * mprops2.principal_inertia().component_mul(
-                    &(mprops2.principal_inertia_local_frame.inverse() * Vector::ith(k, 1.0)),
+                    &(mprops2.principal_inertia_local_frame.inverse() * Vector::ith(k, T::constant(1.0))),
                 );
-            assert_relative_eq!(i1, i2, epsilon = 0.5)
+            assert_relative_eq!(i1, i2, epsilon = T::constant(0.5))
         }
     }
 
@@ -213,7 +213,7 @@ mod test {
 
         let mut trimesh = cuboid.to_trimesh();
         let mprops = MassProperties::from_trimesh(1.0, &trimesh.0, &trimesh.1);
-        assert_relative_eq!(mprops.mass(), 48.0, epsilon = 1.0e-4);
+        assert_relative_eq!(mprops.mass(), T::constant(48.0), epsilon = T::constant(1.0e-4));
         assert_relative_eq!(
             (mprops.principal_inertia_local_frame * mprops.principal_inertia()).abs(),
             Vector::new(208.0, 160.0, 80.0),

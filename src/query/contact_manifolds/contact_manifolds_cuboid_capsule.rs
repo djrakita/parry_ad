@@ -1,3 +1,4 @@
+/*
 use crate::math::{Isometry, Real, Vector};
 use crate::query::{sat, ContactManifold};
 #[cfg(feature = "dim3")]
@@ -173,3 +174,4 @@ pub fn contact_manifold_cuboid_capsule<'a, ManifoldData, ContactData>(
     // Transfer impulses.
     manifold.match_contacts(&old_manifold_points);
 }
+*/

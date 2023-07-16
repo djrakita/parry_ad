@@ -1,21 +1,22 @@
-use crate::math::{Isometry, Real, Vector};
+use crate::math::{Isometry, Vector};
 use crate::query::{ContactManifold, TrackedContact};
 #[cfg(feature = "dim2")]
 use crate::shape::SegmentPointLocation;
 use crate::shape::{Capsule, PackedFeatureId, Shape};
 use approx::AbsDiffEq;
 use na::Unit;
+use ad_trait::AD;
 
 #[cfg(not(feature = "std"))]
 use na::ComplexField; // for .abs()
 
 /// Computes the contact manifold between two capsules given as `Shape` trait-objects.
-pub fn contact_manifold_capsule_capsule_shapes<ManifoldData, ContactData>(
-    pos12: &Isometry<Real>,
-    shape1: &dyn Shape,
-    shape2: &dyn Shape,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+pub fn contact_manifold_capsule_capsule_shapes<T: AD, ManifoldData, ContactData>(
+    pos12: &Isometry<T>,
+    shape1: &dyn Shape<T>,
+    shape2: &dyn Shape<T>,
+    prediction: T,
+    manifold: &mut ContactManifold<T, ManifoldData, ContactData>,
 ) where
     ContactData: Default + Copy,
 {
@@ -26,12 +27,12 @@ pub fn contact_manifold_capsule_capsule_shapes<ManifoldData, ContactData>(
 
 /// Computes the contact manifold between two capsules.
 #[cfg(feature = "dim2")]
-pub fn contact_manifold_capsule_capsule<'a, ManifoldData, ContactData>(
-    pos12: &Isometry<Real>,
-    capsule1: &'a Capsule,
-    capsule2: &'a Capsule,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+pub fn contact_manifold_capsule_capsule<'a, T: AD, ManifoldData, ContactData>(
+    pos12: &Isometry<T>,
+    capsule1: &'a Capsule<T>,
+    capsule2: &'a Capsule<T>,
+    prediction: T,
+    manifold: &mut ContactManifold<T, ManifoldData, ContactData>,
 ) where
     ContactData: Default + Copy,
 {
@@ -64,7 +65,7 @@ pub fn contact_manifold_capsule_capsule<'a, ManifoldData, ContactData>(
     let local_p2_1 = seg2_1.a * bcoords2[0] + seg2_1.b.coords * bcoords2[1];
 
     let local_n1 =
-        Unit::try_new(local_p2_1 - local_p1, Real::default_epsilon()).unwrap_or(Vector::y_axis());
+        Unit::try_new(local_p2_1 - local_p1, T::constant(f64::default_epsilon())).unwrap_or(Vector::y_axis());
     let dist = (local_p2_1 - local_p1).dot(&local_n1);
 
     if dist <= prediction + capsule1.radius + capsule2.radius {
@@ -98,7 +99,7 @@ pub fn contact_manifold_capsule_capsule<'a, ManifoldData, ContactData>(
                 *local_n1,
             ) {
                 let contact =
-                    if (clip_a.0 - local_p1).norm_squared() > Real::default_epsilon() * 100.0 {
+                    if (clip_a.0 - local_p1).norm_squared() > T::constant(f64::default_epsilon() * 100.0) {
                         // Use clip_a as the second contact.
                         TrackedContact::new(
                             clip_a.0,
@@ -134,12 +135,12 @@ pub fn contact_manifold_capsule_capsule<'a, ManifoldData, ContactData>(
 
 /// Computes the contact manifold between two capsules.
 #[cfg(feature = "dim3")]
-pub fn contact_manifold_capsule_capsule<'a, ManifoldData, ContactData>(
-    pos12: &Isometry<Real>,
-    capsule1: &'a Capsule,
-    capsule2: &'a Capsule,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+pub fn contact_manifold_capsule_capsule<'a, T: AD, ManifoldData, ContactData>(
+    pos12: &Isometry<T>,
+    capsule1: &'a Capsule<T>,
+    capsule2: &'a Capsule<T>,
+    prediction: T,
+    manifold: &mut ContactManifold<T, ManifoldData, ContactData>,
 ) where
     ContactData: Default + Copy,
 {
@@ -157,7 +158,7 @@ pub fn contact_manifold_capsule_capsule<'a, ManifoldData, ContactData>(
     let local_p2_1 = seg2_1.a * bcoords2[0] + seg2_1.b.coords * bcoords2[1];
 
     let local_n1 =
-        Unit::try_new(local_p2_1 - local_p1, Real::default_epsilon()).unwrap_or(Vector::y_axis());
+        Unit::try_new(local_p2_1 - local_p1, T::constant(f64::default_epsilon())).unwrap_or(Vector::y_axis());
     let dist = (local_p2_1 - local_p1).dot(&local_n1) - capsule1.radius - capsule2.radius;
 
     if dist <= prediction {

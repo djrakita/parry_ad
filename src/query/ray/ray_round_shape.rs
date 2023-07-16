@@ -1,15 +1,15 @@
-use crate::math::Real;
 use crate::query::gjk::VoronoiSimplex;
 use crate::query::{Ray, RayCast, RayIntersection};
 use crate::shape::{RoundShape, SupportMap};
+use ad_trait::AD;
 
-impl<S: SupportMap> RayCast for RoundShape<S> {
+impl<S: SupportMap<T>, T: AD> RayCast<T> for RoundShape<S, T> {
     fn cast_local_ray_and_get_normal(
         &self,
-        ray: &Ray,
-        max_toi: Real,
+        ray: &Ray<T>,
+        max_toi: T,
         solid: bool,
-    ) -> Option<RayIntersection> {
+    ) -> Option<RayIntersection<T>> {
         crate::query::details::local_ray_intersection_with_support_map_with_params(
             self,
             &mut VoronoiSimplex::new(),

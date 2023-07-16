@@ -1,5 +1,5 @@
 use ad_trait::AD;
-use crate::math::{Isometry, Real, Vector};
+use crate::math::{Isometry, Vector};
 use crate::query::{QueryDispatcher, Ray, Unsupported, TOI};
 use crate::shape::{GenericHeightField, HeightFieldStorage, Shape};
 #[cfg(feature = "dim3")]
@@ -7,15 +7,15 @@ use crate::{bounding_volume::Aabb, query::RayCast};
 
 /// Time Of Impact between a moving shape and a heightfield.
 #[cfg(feature = "dim2")]
-pub fn time_of_impact_heightfield_shape<Storage, D: ?Sized>(
+pub fn time_of_impact_heightfield_shape<Storage, D: ?Sized, T: AD>(
     dispatcher: &D,
-    pos12: &Isometry<Real>,
-    vel12: &Vector<Real>,
+    pos12: &Isometry<T>,
+    vel12: &Vector<T>,
     heightfield1: &GenericHeightField<Storage>,
-    g2: &dyn Shape,
-    max_toi: Real,
+    g2: &dyn Shape<T>,
+    max_toi: T,
     stop_at_penetration: bool,
-) -> Result<Option<TOI>, Unsupported>
+) -> Result<Option<TOI<T>>, Unsupported>
 where
     Storage: HeightFieldStorage,
     D: QueryDispatcher,
@@ -25,7 +25,7 @@ where
 
     let mut curr_range = heightfield1.unclamped_elements_range_in_local_aabb(&aabb2_1);
     // Enlarge the range by 1 to account for movement within a cell.
-    let right = ray.dir.x > 0.0;
+    let right = ray.dir.x > T::zero();
 
     if right {
         curr_range.end += 1;
@@ -46,7 +46,7 @@ where
             if let Some(hit) =
                 dispatcher.time_of_impact(pos12, vel12, &seg, g2, max_toi, stop_at_penetration)?
             {
-                if hit.toi < best_hit.map(|toi| toi.toi).unwrap_or(Real::MAX) {
+                if hit.toi < best_hit.map(|toi| toi.toi).unwrap_or(T::constant(f64::MAX)) {
                     best_hit = Some(hit);
                 }
             }
@@ -56,7 +56,7 @@ where
     /*
      * Test other segments in the path of the ray.
      */
-    if ray.dir.x == 0.0 {
+    if ray.dir.x == T::zero() {
         return Ok(best_hit);
     }
 
@@ -74,12 +74,12 @@ where
 
         if right {
             curr_elt += 1;
-            curr_param = (cell_width * na::convert::<f64, Real>(curr_elt as f64) + start_x
+            curr_param = (cell_width * na::convert::<f64, T>(curr_elt as f64) + start_x
                 - ray.origin.x)
                 / ray.dir.x;
         } else {
             curr_param =
-                (ray.origin.x - cell_width * na::convert::<f64, Real>(curr_elt as f64) - start_x)
+                (ray.origin.x - cell_width * na::convert::<f64, T>(curr_elt as f64) - start_x)
                     / ray.dir.x;
             curr_elt -= 1;
         }
@@ -93,7 +93,7 @@ where
             if let Some(hit) =
                 dispatcher.time_of_impact(pos12, vel12, &seg, g2, max_toi, stop_at_penetration)?
             {
-                if hit.toi < best_hit.map(|toi| toi.toi).unwrap_or(Real::MAX) {
+                if hit.toi < best_hit.map(|toi| toi.toi).unwrap_or(T::constant(f64::MAX)) {
                     best_hit = Some(hit);
                 }
             }
@@ -110,12 +110,12 @@ pub fn time_of_impact_heightfield_shape<Storage, D: ?Sized, T: AD>(
     pos12: &Isometry<T>,
     vel12: &Vector<T>,
     heightfield1: &GenericHeightField<Storage, T>,
-    g2: &dyn Shape,
+    g2: &dyn Shape<T>,
     max_toi: T,
     stop_at_penetration: bool,
-) -> Result<Option<TOI>, Unsupported>
+) -> Result<Option<TOI<T>>, Unsupported>
 where
-    Storage: HeightFieldStorage,
+    Storage: HeightFieldStorage<T>,
     D: QueryDispatcher,
 {
     let aabb1 = heightfield1.local_aabb();
@@ -136,7 +136,7 @@ where
     let (mut curr_range_i, mut curr_range_j) =
         heightfield1.unclamped_elements_range_in_local_aabb(&aabb2_1);
     let (ncells_i, ncells_j) = heightfield1.num_cells_ij();
-    let mut best_hit = None::<TOI>;
+    let mut best_hit = None::<TOI<T>>;
 
     /*
      * Enlarge the ranges by 1 to account for any movement within one cell.
@@ -286,13 +286,13 @@ pub fn time_of_impact_shape_heightfield<Storage, D: ?Sized, T: AD>(
     dispatcher: &D,
     pos12: &Isometry<T>,
     vel12: &Vector<T>,
-    g1: &dyn Shape,
+    g1: &dyn Shape<T>,
     heightfield2: &GenericHeightField<Storage, T>,
     max_toi: T,
     stop_at_penetration: bool,
-) -> Result<Option<TOI>, Unsupported>
+) -> Result<Option<TOI<T>>, Unsupported>
 where
-    Storage: HeightFieldStorage,
+    Storage: HeightFieldStorage<T>,
     D: QueryDispatcher,
 {
     Ok(time_of_impact_heightfield_shape(

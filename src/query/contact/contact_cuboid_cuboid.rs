@@ -1,17 +1,18 @@
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::{sat, Contact, PointQuery};
 use crate::shape::{Cuboid, SupportMap};
 use approx::AbsDiffEq;
 use na::Unit;
+use ad_trait::AD;
 
 /// Contact between two cuboids.
 #[inline]
-pub fn contact_cuboid_cuboid(
-    pos12: &Isometry<Real>,
-    cuboid1: &Cuboid,
-    cuboid2: &Cuboid,
-    prediction: Real,
-) -> Option<Contact> {
+pub fn contact_cuboid_cuboid<T: AD>(
+    pos12: &Isometry<T>,
+    cuboid1: &Cuboid<T>,
+    cuboid2: &Cuboid<T>,
+    prediction: T,
+) -> Option<Contact<T>> {
     let pos21 = pos12.inverse();
 
     let sep1 = sat::cuboid_cuboid_find_local_separating_normal_oneway(cuboid1, cuboid2, &pos12);
@@ -47,7 +48,7 @@ pub fn contact_cuboid_cuboid(
 
         // NOTE: we had to recompute the normal because we can't use
         // the separation vector for the case where we have a vertex-vertex contact.
-        if separation < 0.0 || normalized_dir.is_none() {
+        if separation < T::zero() || normalized_dir.is_none() {
             // Penetration or contact lying on the boundary exactly.
             normal1 = Unit::new_unchecked(sep1.1);
             dist = separation;
@@ -86,7 +87,7 @@ pub fn contact_cuboid_cuboid(
 
         // NOTE: we had to recompute the normal because we can't use
         // the separation vector for the case where we have a vertex-vertex contact.
-        if separation < 0.0 || normalized_dir.is_none() {
+        if separation < T::zero() || normalized_dir.is_none() {
             // Penetration or contact lying on the boundary exactly.
             normal2 = Unit::new_unchecked(sep2.1);
             dist = separation;

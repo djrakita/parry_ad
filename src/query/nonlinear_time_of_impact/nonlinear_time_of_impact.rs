@@ -1,8 +1,8 @@
-use crate::math::Real;
 use crate::query::{
     DefaultQueryDispatcher, NonlinearRigidMotion, QueryDispatcher, Unsupported, TOI,
 };
 use crate::shape::Shape;
+use ad_trait::AD;
 
 /// Computes the smallest time of impact of two shapes under translational an rotational movements.
 ///
@@ -20,13 +20,13 @@ use crate::shape::Shape;
 ///    would result in tunnelling. If it does not (i.e. we have a separating velocity along
 ///    that normal) then the nonlinear shape-casting will attempt to find another impact,
 ///    at a time `> start_time` that could result in tunnelling.
-pub fn nonlinear_time_of_impact(
-    motion1: &NonlinearRigidMotion,
-    g1: &dyn Shape,
-    motion2: &NonlinearRigidMotion,
-    g2: &dyn Shape,
-    start_time: Real,
-    end_time: Real,
+pub fn nonlinear_time_of_impact<T: AD>(
+    motion1: &NonlinearRigidMotion<T>,
+    g1: &dyn Shape<T>,
+    motion2: &NonlinearRigidMotion<T>,
+    g2: &dyn Shape<T>,
+    start_time: T,
+    end_time: T,
     stop_at_penetration: bool,
 ) -> Result<Option<TOI>, Unsupported> {
     DefaultQueryDispatcher.nonlinear_time_of_impact(

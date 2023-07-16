@@ -1,16 +1,17 @@
-use crate::math::{Point, Real};
+use crate::math::{Point};
 use crate::query::{PointProjection, PointQuery};
 use crate::shape::{Cylinder, FeatureId};
 use na;
+use ad_trait::AD;
 
-impl PointQuery for Cylinder {
+impl<T: AD> PointQuery for Cylinder<T> {
     #[inline]
-    fn project_local_point(&self, pt: &Point<Real>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection {
         // Project on the basis.
         let mut dir_from_basis_center = pt.coords.xz();
         let planar_dist_from_basis_center = dir_from_basis_center.normalize_mut();
 
-        if planar_dist_from_basis_center <= crate::math::DEFAULT_EPSILON {
+        if planar_dist_from_basis_center <= T::constant(crate::math::DEFAULT_EPSILON) {
             dir_from_basis_center = na::Vector2::x();
         }
 
@@ -73,7 +74,7 @@ impl PointQuery for Cylinder {
     #[inline]
     fn project_local_point_and_get_feature(
         &self,
-        pt: &Point<Real>,
+        pt: &Point<T>,
     ) -> (PointProjection, FeatureId) {
         // TODO: get the actual feature.
         (self.project_local_point(pt, false), FeatureId::Unknown)

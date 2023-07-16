@@ -1,14 +1,15 @@
-use crate::math::{Isometry, Real, Vector};
+use crate::math::{Isometry, Vector};
 use crate::query::{ContactManifold, TrackedContact};
 use crate::shape::{Ball, PackedFeatureId, Shape};
+use ad_trait::AD;
 
 /// Computes the contact manifold between two balls given as `Shape` trait-objects.
-pub fn contact_manifold_ball_ball_shapes<ManifoldData, ContactData: Default + Copy>(
-    pos12: &Isometry<Real>,
-    shape1: &dyn Shape,
-    shape2: &dyn Shape,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+pub fn contact_manifold_ball_ball_shapes<T: AD, ManifoldData, ContactData: Default + Copy>(
+    pos12: &Isometry<T>,
+    shape1: &dyn Shape<T>,
+    shape2: &dyn Shape<T>,
+    prediction: T,
+    manifold: &mut ContactManifold<T, ManifoldData, ContactData>,
 ) {
     if let (Some(ball1), Some(ball2)) = (shape1.as_ball(), shape2.as_ball()) {
         contact_manifold_ball_ball(pos12, ball1, ball2, prediction, manifold);
@@ -16,12 +17,12 @@ pub fn contact_manifold_ball_ball_shapes<ManifoldData, ContactData: Default + Co
 }
 
 /// Computes the contact manifold between two balls.
-pub fn contact_manifold_ball_ball<ManifoldData, ContactData: Default + Copy>(
-    pos12: &Isometry<Real>,
-    ball1: &Ball,
-    ball2: &Ball,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+pub fn contact_manifold_ball_ball<T: AD, ManifoldData, ContactData: Default + Copy>(
+    pos12: &Isometry<T>,
+    ball1: &Ball<T>,
+    ball2: &Ball<T>,
+    prediction: T,
+    manifold: &mut ContactManifold<T, ManifoldData, ContactData>,
 ) {
     let radius_a = ball1.radius;
     let radius_b = ball2.radius;
@@ -31,7 +32,7 @@ pub fn contact_manifold_ball_ball<ManifoldData, ContactData: Default + Copy>(
     let dist = center_dist - radius_a - radius_b;
 
     if dist < prediction {
-        let local_n1 = if center_dist != 0.0 {
+        let local_n1 = if center_dist != T::zero() {
             dcenter / center_dist
         } else {
             Vector::y()

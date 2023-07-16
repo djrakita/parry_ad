@@ -1,11 +1,11 @@
 use ad_trait::AD;
 use crate::mass_properties::MassProperties;
-use crate::math::{Point, PrincipalAngularInertia, Real, Vector};
+use crate::math::{Point, PrincipalAngularInertia, Vector};
 
 impl<T: AD> MassProperties<T> {
     pub(crate) fn cuboid_volume_unit_inertia(
         half_extents: Vector<T>,
-    ) -> (Real, PrincipalAngularInertia<T>) {
+    ) -> (T, PrincipalAngularInertia<T>) {
         #[cfg(feature = "dim2")]
         {
             let volume = half_extents.x * half_extents.y * T::constant(4.0);

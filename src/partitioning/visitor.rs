@@ -1,17 +1,17 @@
 use ad_trait::AD;
-use crate::math::{Real, SimdBool, SimdReal, SIMD_WIDTH};
+use crate::math::{SIMD_WIDTH};
 use crate::partitioning::qbvh::QbvhNode;
 use crate::partitioning::SimdNodeIndex;
 
 /// The next action to be taken by a BVH traversal algorithm after having visited a node with some data.
-pub enum SimdBestFirstVisitStatus<Res> {
+pub enum SimdBestFirstVisitStatus<Res, T: AD> {
     /// The traversal can continue.
     MaybeContinue {
         /// The weight associated to each child of the node being traversed.
-        weights: SimdReal,
+        weights: T,
         /// Each lane indicates if the corresponding child of the node being traversed
         /// should be traversed too.
-        mask: SimdBool,
+        mask: bool,
         /// Optional results associated to each child of the node being traversed.
         results: [Option<Res>; SIMD_WIDTH],
     },
@@ -23,24 +23,24 @@ pub enum SimdBestFirstVisitStatus<Res> {
 }
 
 /// Trait implemented by cost functions used by the best-first search on a `BVT`.
-pub trait SimdBestFirstVisitor<LeafData, SimdBV> {
+pub trait SimdBestFirstVisitor<LeafData, SimdBV, T: AD> {
     /// The result of a best-first traversal.
     type Result;
 
     /// Compute the next action to be taken by the best-first-search after visiting a node containing the given bounding volume.
     fn visit(
         &mut self,
-        best_cost_so_far: Real,
+        best_cost_so_far: T,
         bv: &SimdBV,
         value: Option<[Option<&LeafData>; SIMD_WIDTH]>,
-    ) -> SimdBestFirstVisitStatus<Self::Result>;
+    ) -> SimdBestFirstVisitStatus<Self::Result, T>;
 }
 
 /// The status of the spatial partitioning structure traversal.
 pub enum SimdVisitStatus {
     /// The traversal should continue on the children of the currently visited nodes for which
     /// the boolean lane is set to `1`.
-    MaybeContinue(SimdBool),
+    MaybeContinue(bool),
     /// The traversal should exit immediately.
     ExitEarly,
 }
@@ -49,7 +49,7 @@ pub enum SimdVisitStatus {
 pub enum SimdSimultaneousVisitStatus {
     /// The traversal should continue on the children of the currently visited nodes for which
     /// the boolean lane is set to `1`.
-    MaybeContinue([SimdBool; SIMD_WIDTH]),
+    MaybeContinue([bool; SIMD_WIDTH]),
     /// The traversal should exit immediately.
     ExitEarly,
 }

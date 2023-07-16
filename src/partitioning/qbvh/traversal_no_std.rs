@@ -1,5 +1,4 @@
 use crate::bounding_volume::{Aabb, SimdAabb};
-use crate::math::Real;
 use crate::partitioning::visitor::SimdSimultaneousVisitStatus;
 use crate::partitioning::{
     GenericQbvh, QbvhStorage, SimdBestFirstVisitStatus, SimdBestFirstVisitor,
@@ -13,7 +12,7 @@ use simba::simd::SimdBool;
 
 use super::{IndexedData, NodeIndex, Qbvh};
 
-impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData, Storage> {
+impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>, T: AD> GenericQbvh<LeafData, T, Storage> {
     /// Performs a depth-first traversal on the BVH.
     ///
     /// # Return
@@ -78,7 +77,7 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
         BFS: SimdBestFirstVisitor<LeafData, SimdAabb>,
         BFS::Result: Clone, // Because we cannot move out of an array…
     {
-        self.traverse_best_first_node(visitor, 0, Real::MAX)
+        self.traverse_best_first_node(visitor, 0, T::constant(f64::MAX))
     }
 
     /// Performs a best-first-search on the BVH.
@@ -89,7 +88,7 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
         &self,
         visitor: &mut BFS,
         start_node: u32,
-        init_cost: Real,
+        init_cost: T,
     ) -> Option<(NodeIndex, BFS::Result)>
     where
         BFS: SimdBestFirstVisitor<LeafData, SimdAabb>,
@@ -107,7 +106,7 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
         //       See https://math.stackexchange.com/a/2739663 for the max
         //       stack depth on a depth-first search.
         let mut stack: ArrayVec<_, 64> = ArrayVec::new();
-        stack.push(WeightedValue::new(start_node, -best_cost / 2.0));
+        stack.push(WeightedValue::new(start_node, -best_cost / T::constant(2.0)));
 
         self.traverse_best_first_node_recursive(visitor, &mut stack, &mut best_cost, &mut result);
         result
@@ -117,7 +116,7 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
         &self,
         visitor: &mut BFS,
         stack: &mut ArrayVec<WeightedValue<u32>, 64>,
-        best_cost: &mut Real,
+        best_cost: &mut T,
         best_result: &mut Option<(NodeIndex, BFS::Result)>,
     ) where
         BFS: SimdBestFirstVisitor<LeafData, SimdAabb>,
@@ -153,7 +152,7 @@ impl<LeafData: IndexedData, Storage: QbvhStorage<LeafData>> GenericQbvh<LeafData
                     results,
                 } => {
                     let bitmask = mask.bitmask();
-                    let weights: [Real; SIMD_WIDTH] = weights.into();
+                    let weights: [T; SIMD_WIDTH] = weights.into();
 
                     for ii in 0..SIMD_WIDTH {
                         if (bitmask & (1 << ii)) != 0 {

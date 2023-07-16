@@ -1,5 +1,5 @@
 use crate::bounding_volume::SimdAabb;
-use crate::math::{Point, Real, SimdBool, SimdReal, SIMD_WIDTH};
+use crate::math::{Point, SIMD_WIDTH};
 use crate::partitioning::{SimdBestFirstVisitStatus, SimdBestFirstVisitor};
 use crate::query::{PointProjection, PointQuery};
 use crate::shape::SimdCompositeShape;
@@ -8,16 +8,16 @@ use simba::simd::{SimdBool as _, SimdPartialOrd, SimdValue};
 use ad_trait::AD;
 
 /// Best-first traversal visitor for computing the point closest to a composite shape.
-pub struct CompositeClosestPointVisitor<'a, S: 'a> {
+pub struct CompositeClosestPointVisitor<'a, S: 'a, T: AD> {
     shape: &'a S,
-    point: &'a Point<Real>,
-    simd_point: Point<SimdReal>,
+    point: &'a Point<T>,
+    simd_point: Point<T>,
     solid: bool,
 }
 
-impl<'a, S> CompositeClosestPointVisitor<'a, S> {
+impl<'a, S, T: AD> CompositeClosestPointVisitor<'a, S, T> {
     /// Initializes a visitor that allows the computation of the point closest to `point` on `shape`.
-    pub fn new(shape: &'a S, point: &'a Point<Real>, solid: bool) -> Self {
+    pub fn new(shape: &'a S, point: &'a Point<T>, solid: bool) -> Self {
         CompositeClosestPointVisitor {
             shape,
             point,
@@ -27,20 +27,20 @@ impl<'a, S> CompositeClosestPointVisitor<'a, S> {
     }
 }
 
-impl<'a, S: SimdCompositeShape<T> + PointQuery, T: AD> SimdBestFirstVisitor<u32, SimdAabb<T>>
-    for CompositeClosestPointVisitor<'a, S>
+impl<'a, S: SimdCompositeShape<T> + PointQuery<T>, T: AD> SimdBestFirstVisitor<u32, SimdAabb<T>, T>
+    for CompositeClosestPointVisitor<'a, S, T>
 {
-    type Result = PointProjection;
+    type Result = PointProjection<T>;
 
     #[inline]
     fn visit(
         &mut self,
-        best: Real,
+        best: T,
         aabb: &SimdAabb<T>,
         data: Option<[Option<&u32>; SIMD_WIDTH]>,
-    ) -> SimdBestFirstVisitStatus<Self::Result> {
+    ) -> SimdBestFirstVisitStatus<Self::Result, T> {
         let dist = aabb.distance_to_local_point(&self.simd_point);
-        let mask = dist.simd_lt(SimdReal::splat(best));
+        let mask = dist.simd_lt(best);
 
         if let Some(data) = data {
             let bitmask = mask.bitmask();
@@ -66,8 +66,8 @@ impl<'a, S: SimdCompositeShape<T> + PointQuery, T: AD> SimdBestFirstVisitor<u32,
             }
 
             SimdBestFirstVisitStatus::MaybeContinue {
-                weights: SimdReal::from(weights),
-                mask: SimdBool::from(mask),
+                weights: weights[0],
+                mask: mask[0],
                 results,
             }
         } else {

@@ -1,18 +1,19 @@
-use crate::math::{Point, Real, Vector};
+use crate::math::{Point, Vector};
 use crate::query::{PointProjection, PointQuery, PointQueryWithLocation};
 use crate::shape::{FeatureId, Tetrahedron, TetrahedronPointLocation};
+use ad_trait::AD;
 
-impl PointQuery for Tetrahedron {
+impl<T: AD> PointQuery<T> for Tetrahedron<T> {
     #[inline]
-    fn project_local_point(&self, pt: &Point<Real>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection<T> {
         self.project_local_point_and_get_location(pt, solid).0
     }
 
     #[inline]
     fn project_local_point_and_get_feature(
         &self,
-        pt: &Point<Real>,
-    ) -> (PointProjection, FeatureId) {
+        pt: &Point<T>,
+    ) -> (PointProjection<T>, FeatureId) {
         let (proj, loc) = self.project_local_point_and_get_location(pt, false);
         let feature = match loc {
             TetrahedronPointLocation::OnVertex(i) => FeatureId::Vertex(i),
@@ -25,15 +26,15 @@ impl PointQuery for Tetrahedron {
     }
 }
 
-impl PointQueryWithLocation for Tetrahedron {
-    type Location = TetrahedronPointLocation;
+impl<T: AD> PointQueryWithLocation<T> for Tetrahedron<T> {
+    type Location = TetrahedronPointLocation<T>;
 
     #[inline]
     fn project_local_point_and_get_location(
         &self,
-        pt: &Point<Real>,
+        pt: &Point<T>,
         solid: bool,
-    ) -> (PointProjection, Self::Location) {
+    ) -> (PointProjection<T>, Self::Location) {
         let ab = self.b - self.a;
         let ac = self.c - self.a;
         let ad = self.d - self.a;
@@ -46,7 +47,7 @@ impl PointQueryWithLocation for Tetrahedron {
         let ap_ac = ap.dot(&ac);
         let ap_ad = ap.dot(&ad);
 
-        let _0: Real = 0.0;
+        let _0: T = T::zero();
 
         if ap_ab <= _0 && ap_ac <= _0 && ap_ad <= _0 {
             // Voronoï region of `a`.
@@ -99,21 +100,21 @@ impl PointQueryWithLocation for Tetrahedron {
         #[inline(always)]
         fn check_edge(
             i: usize,
-            a: &Point<Real>,
-            _: &Point<Real>,
-            nabc: &Vector<Real>,
-            nabd: &Vector<Real>,
-            ap: &Vector<Real>,
-            ab: &Vector<Real>,
-            ap_ab: Real, /*ap_ac: Real, ap_ad: Real,*/
-            bp_ab: Real, /*bp_ac: Real, bp_ad: Real*/
+            a: &Point<T>,
+            _: &Point<T>,
+            nabc: &Vector<T>,
+            nabd: &Vector<T>,
+            ap: &Vector<T>,
+            ab: &Vector<T>,
+            ap_ab: T, /*ap_ac: T, ap_ad: T,*/
+            bp_ab: T, /*bp_ac: T, bp_ad: T*/
         ) -> (
-            Real,
-            Real,
-            Option<(PointProjection, TetrahedronPointLocation)>,
+            T,
+            T,
+            Option<(PointProjection<T>, TetrahedronPointLocation<T>)>,
         ) {
-            let _0: Real = 0.0;
-            let _1: Real = 1.0;
+            let _0: T = T::zero();
+            let _1: T = T::one();
 
             let ab_ab = ap_ab - bp_ab;
 
@@ -243,23 +244,23 @@ impl PointQueryWithLocation for Tetrahedron {
         #[inline(always)]
         fn check_face(
             i: usize,
-            a: &Point<Real>,
-            b: &Point<Real>,
-            c: &Point<Real>,
-            ap: &Vector<Real>,
-            bp: &Vector<Real>,
-            cp: &Vector<Real>,
-            ab: &Vector<Real>,
-            ac: &Vector<Real>,
-            ad: &Vector<Real>,
-            dabc: Real,
-            dbca: Real,
-            dacb: Real,
-            /* ap_ab: Real, bp_ab: Real, cp_ab: Real,
-            ap_ac: Real, bp_ac: Real, cp_ac: Real, */
-        ) -> Option<(PointProjection, TetrahedronPointLocation)> {
-            let _0: Real = 0.0;
-            let _1: Real = 1.0;
+            a: &Point<T>,
+            b: &Point<T>,
+            c: &Point<T>,
+            ap: &Vector<T>,
+            bp: &Vector<T>,
+            cp: &Vector<T>,
+            ab: &Vector<T>,
+            ac: &Vector<T>,
+            ad: &Vector<T>,
+            dabc: T,
+            dbca: T,
+            dacb: T,
+            /* ap_ab: T, bp_ab: T, cp_ab: T,
+            ap_ac: T, bp_ac: T, cp_ac: T, */
+        ) -> Option<(PointProjection<T>, TetrahedronPointLocation<T>)> {
+            let _0: T = T::zero();
+            let _1: T = T::one();
 
             if dabc < _0 && dbca < _0 && dacb < _0 {
                 let n = ab.cross(ac); // TODO: is is possible to avoid this cross product?

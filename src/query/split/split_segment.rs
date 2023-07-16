@@ -1,8 +1,8 @@
-use crate::math::{Point, Real, UnitVector, Vector};
+use crate::math::{Point, UnitVector, Vector};
 use crate::query::SplitResult;
 use crate::shape::Segment;
 
-impl Segment {
+impl<T: AD> Segment<T> {
     /// Splits this segment along the given canonical axis.
     ///
     /// This will split the segment by a plane with a normal with it’s `axis`-th component set to 1.
@@ -13,7 +13,7 @@ impl Segment {
     /// Returns the result of the split. The first shape returned is the piece lying on the negative
     /// half-space delimited by the splitting plane. The second shape returned is the piece lying on the
     /// positive half-space delimited by the splitting plane.
-    pub fn canonical_split(&self, axis: usize, bias: Real, epsilon: Real) -> SplitResult<Self> {
+    pub fn canonical_split(&self, axis: usize, bias: T, epsilon: T) -> SplitResult<Self> {
         // TODO: optimize this.
         self.local_split(&Vector::ith_axis(axis), bias, epsilon)
     }
@@ -22,9 +22,9 @@ impl Segment {
     /// the `bias` (i.e. the plane passes through the point equal to `normal * bias`).
     pub fn local_split(
         &self,
-        local_axis: &UnitVector<Real>,
-        bias: Real,
-        epsilon: Real,
+        local_axis: &UnitVector<T>,
+        bias: T,
+        epsilon: T,
     ) -> SplitResult<Self> {
         self.local_split_and_get_intersection(local_axis, bias, epsilon)
             .0
@@ -38,21 +38,21 @@ impl Segment {
     /// parallel or near-parallel to the segment.
     pub fn local_split_and_get_intersection(
         &self,
-        local_axis: &UnitVector<Real>,
-        bias: Real,
-        epsilon: Real,
-    ) -> (SplitResult<Self>, Option<(Point<Real>, Real)>) {
+        local_axis: &UnitVector<T>,
+        bias: T,
+        epsilon: T,
+    ) -> (SplitResult<Self>, Option<(Point<T>, T)>) {
         let dir = self.b - self.a;
         let a = bias - local_axis.dot(&self.a.coords);
         let b = local_axis.dot(&dir);
         let bcoord = a / b;
         let dir_norm = dir.norm();
 
-        if relative_eq!(b, 0.0)
+        if relative_eq!(b, T::zero())
             || bcoord * dir_norm <= epsilon
             || bcoord * dir_norm >= dir_norm - epsilon
         {
-            if a >= 0.0 {
+            if a >= T::zero() {
                 (SplitResult::Negative, None)
             } else {
                 (SplitResult::Positive, None)
@@ -61,7 +61,7 @@ impl Segment {
             let intersection = self.a + dir * bcoord;
             let s1 = Segment::new(self.a, intersection);
             let s2 = Segment::new(intersection, self.b);
-            if a >= 0.0 {
+            if a >= T::zero() {
                 (SplitResult::Pair(s1, s2), Some((intersection, bcoord)))
             } else {
                 (SplitResult::Pair(s2, s1), Some((intersection, bcoord)))

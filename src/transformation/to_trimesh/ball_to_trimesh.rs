@@ -1,29 +1,30 @@
-use crate::math::{Point, Real, Vector, DIM};
+use crate::math::{Point, Vector, DIM};
 use crate::shape::Ball;
 use crate::transformation::utils;
 use na::{self, ComplexField, Point3, RealField};
+use ad_trait::AD;
 
-impl Ball {
+impl<T: AD> Ball<T> {
     /// Discretize the boundary of this ball as a triangle-mesh.
     pub fn to_trimesh(
         &self,
         ntheta_subdiv: u32,
         nphi_subdiv: u32,
-    ) -> (Vec<Point3<Real>>, Vec<[u32; 3]>) {
-        let diameter = self.radius * 2.0;
+    ) -> (Vec<Point3<T>>, Vec<[u32; 3]>) {
+        let diameter = self.radius * T::constant(2.0);
         let (vtx, idx) = unit_sphere(ntheta_subdiv, nphi_subdiv);
         (utils::scaled(vtx, Vector::repeat(diameter)), idx)
     }
 }
 
-fn unit_sphere(ntheta_subdiv: u32, nphi_subdiv: u32) -> (Vec<Point3<Real>>, Vec<[u32; 3]>) {
-    let dtheta = Real::two_pi() / (ntheta_subdiv as Real);
-    let dphi = Real::pi() / (nphi_subdiv as Real);
+fn unit_sphere<T: AD>(ntheta_subdiv: u32, nphi_subdiv: u32) -> (Vec<Point3<T>>, Vec<[u32; 3]>) {
+    let dtheta = T::constant(f64::two_pi() / (ntheta_subdiv as f64));
+    let dphi = T::constant(f64::pi() / (nphi_subdiv as f64));
 
     let mut coords = Vec::new();
-    let mut curr_phi: Real = -Real::frac_pi_2() + dphi;
+    let mut curr_phi = T::constant(-f64::frac_pi_2()) + dphi;
 
-    coords.push(Point::new(0.0, -1.0, 0.0));
+    coords.push(Point::new(T::zero(), T::constant(-1.0), T::zero()));
 
     for _ in 1..nphi_subdiv {
         utils::push_circle(
@@ -36,7 +37,7 @@ fn unit_sphere(ntheta_subdiv: u32, nphi_subdiv: u32) -> (Vec<Point3<Real>>, Vec<
         curr_phi = curr_phi + dphi;
     }
 
-    coords.push(Point::new(0.0, 1.0, 0.0));
+    coords.push(Point::new(T::zero(), T::one(), T::zero()));
 
     let mut idx = Vec::new();
 
@@ -59,21 +60,21 @@ fn unit_sphere(ntheta_subdiv: u32, nphi_subdiv: u32) -> (Vec<Point3<Real>>, Vec<
         &mut idx,
     );
 
-    (utils::scaled(coords, Vector::repeat(0.5)), idx)
+    (utils::scaled(coords, Vector::repeat(T::constant(0.5))), idx)
 }
 
 /// Creates an hemisphere with a diameter of 1.
-pub(crate) fn unit_hemisphere(
+pub(crate) fn unit_hemisphere<T: AD>(
     ntheta_subdiv: u32,
     nphi_subdiv: u32,
-) -> (Vec<Point<Real>>, Vec<[u32; DIM]>) {
-    let two_pi = Real::two_pi();
-    let pi_two = Real::frac_pi_2();
-    let dtheta = two_pi / (ntheta_subdiv as Real);
-    let dphi = pi_two / (nphi_subdiv as Real);
+) -> (Vec<Point<T>>, Vec<[u32; DIM]>) {
+    let two_pi = T::constant(f64::two_pi());
+    let pi_two = T::constant(f64::frac_pi_2());
+    let dtheta = two_pi / T::constant(ntheta_subdiv as f64);
+    let dphi = pi_two / T::constant(nphi_subdiv as f64);
 
     let mut coords = Vec::new();
-    let mut curr_phi: Real = 0.0;
+    let mut curr_phi = T::zero();
 
     for _ in 0..nphi_subdiv {
         utils::push_circle(
@@ -86,7 +87,7 @@ pub(crate) fn unit_hemisphere(
         curr_phi = curr_phi + dphi;
     }
 
-    coords.push(Point::new(0.0, 1.0, 0.0));
+    coords.push(Point::new(T::zero(), T::one(), T::zero()));
 
     let mut idx = Vec::new();
 
@@ -106,5 +107,5 @@ pub(crate) fn unit_hemisphere(
         &mut idx,
     );
 
-    (utils::scaled(coords, Vector::repeat(0.5)), idx)
+    (utils::scaled(coords, Vector::repeat(T::constant(0.5))), idx)
 }

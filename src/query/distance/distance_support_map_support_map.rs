@@ -1,4 +1,4 @@
-use crate::math::{Isometry, Real, Vector};
+use crate::math::{Isometry, Vector};
 use crate::query::gjk::{self, CSOPoint, GJKResult, VoronoiSimplex};
 use crate::shape::SupportMap;
 
@@ -6,14 +6,14 @@ use na::{self, Unit};
 use num::Bounded;
 
 /// Distance between support-mapped shapes.
-pub fn distance_support_map_support_map<G1: ?Sized, G2: ?Sized>(
-    pos12: &Isometry<Real>,
+pub fn distance_support_map_support_map<G1: ?Sized, G2: ?Sized, T: AD>(
+    pos12: &Isometry<T>,
     g1: &G1,
     g2: &G2,
-) -> Real
+) -> T
 where
-    G1: SupportMap,
-    G2: SupportMap,
+    G1: SupportMap<T>,
+    G2: SupportMap<T>,
 {
     distance_support_map_support_map_with_params(pos12, g1, g2, &mut VoronoiSimplex::new(), None)
 }
@@ -21,16 +21,16 @@ where
 /// Distance between support-mapped shapes.
 ///
 /// This allows a more fine grained control other the underlying GJK algorigtm.
-pub fn distance_support_map_support_map_with_params<G1: ?Sized, G2: ?Sized>(
-    pos12: &Isometry<Real>,
+pub fn distance_support_map_support_map_with_params<G1: ?Sized, G2: ?Sized, T: AD>(
+    pos12: &Isometry<T>,
     g1: &G1,
     g2: &G2,
     simplex: &mut VoronoiSimplex,
-    init_dir: Option<Vector<Real>>,
-) -> Real
+    init_dir: Option<Vector<T>>,
+) -> T
 where
-    G1: SupportMap,
-    G2: SupportMap,
+    G1: SupportMap<T>,
+    G2: SupportMap<T>,
 {
     // FIXME: or m2.translation - m1.translation ?
     let dir = init_dir.unwrap_or_else(|| -pos12.translation.vector);
@@ -47,9 +47,9 @@ where
     }
 
     match gjk::closest_points(pos12, g1, g2, Real::max_value(), true, simplex) {
-        GJKResult::Intersection => 0.0,
+        GJKResult::Intersection => T::zero(),
         GJKResult::ClosestPoints(p1, p2, _) => na::distance(&p1, &p2),
         GJKResult::Proximity(_) => unreachable!(),
-        GJKResult::NoIntersection(_) => 0.0, // FIXME: GJK did not converge.
+        GJKResult::NoIntersection(_) => T::zero(), // FIXME: GJK did not converge.
     }
 }

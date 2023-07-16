@@ -2,7 +2,7 @@
 
 use ad_trait::AD;
 use crate::bounding_volume::SimdAabb;
-use crate::math::{Point, Real, SimdReal, SIMD_WIDTH};
+use crate::math::{Point, SIMD_WIDTH};
 use crate::partitioning::{SimdBestFirstVisitStatus, SimdBestFirstVisitor};
 use crate::query::visitors::CompositePointContainmentTest;
 use crate::query::{PointProjection, PointQuery, PointQueryWithLocation};
@@ -22,14 +22,14 @@ use crate::shape::{Compound, Polyline};
 #[cfg(feature = "std")]
 impl<T: AD> PointQuery for Polyline<T> {
     #[inline]
-    fn project_local_point(&self, point: &Point<Real>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, point: &Point<T>, solid: bool) -> PointProjection {
         self.project_local_point_and_get_location(point, solid).0
     }
 
     #[inline]
     fn project_local_point_and_get_feature(
         &self,
-        point: &Point<Real>,
+        point: &Point<T>,
     ) -> (PointProjection, FeatureId) {
         let mut visitor =
             PointCompositeShapeProjWithFeatureBestFirstVisitor::new(self, point, false);
@@ -42,23 +42,23 @@ impl<T: AD> PointQuery for Polyline<T> {
     // FIXME: implement distance_to_point too?
 
     #[inline]
-    fn contains_local_point(&self, point: &Point<Real>) -> bool {
+    fn contains_local_point(&self, point: &Point<T>) -> bool {
         let mut visitor = CompositePointContainmentTest::new(self, point);
         let _ = self.qbvh().traverse_depth_first(&mut visitor);
         visitor.found
     }
 }
 
-impl<Storage: TriMeshStorage, T: AD> PointQuery for GenericTriMesh<Storage, T> {
+impl<Storage: TriMeshStorage<T>, T: AD> PointQuery for GenericTriMesh<Storage, T> {
     #[inline]
-    fn project_local_point(&self, point: &Point<Real>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, point: &Point<T>, solid: bool) -> PointProjection {
         self.project_local_point_and_get_location(point, solid).0
     }
 
     #[inline]
     fn project_local_point_and_get_feature(
         &self,
-        point: &Point<Real>,
+        point: &Point<T>,
     ) -> (PointProjection, FeatureId) {
         #[cfg(feature = "dim3")]
         if self.pseudo_normals().is_some() {
@@ -78,7 +78,7 @@ impl<Storage: TriMeshStorage, T: AD> PointQuery for GenericTriMesh<Storage, T> {
     // FIXME: implement distance_to_point too?
 
     #[inline]
-    fn contains_local_point(&self, point: &Point<Real>) -> bool {
+    fn contains_local_point(&self, point: &Point<T>) -> bool {
         #[cfg(feature = "dim3")]
         if self.pseudo_normals.is_some() {
             // If we can, in 3D, take the pseudo-normals into account.
@@ -96,9 +96,9 @@ impl<Storage: TriMeshStorage, T: AD> PointQuery for GenericTriMesh<Storage, T> {
     /// Projects a point on `self` transformed by `m`, unless the projection lies further than the given max distance.
     fn project_local_point_with_max_dist(
         &self,
-        pt: &Point<Real>,
+        pt: &Point<T>,
         solid: bool,
-        max_dist: Real,
+        max_dist: T,
     ) -> Option<PointProjection> {
         self.project_local_point_and_get_location_with_max_dist(pt, solid, max_dist)
             .map(|proj| proj.0)
@@ -131,7 +131,7 @@ impl<T: AD> PointQuery for Compound<T> {
 
 #[cfg(feature = "std")]
 impl<T: AD> PointQueryWithLocation for Polyline<T> {
-    type Location = (u32, SegmentPointLocation);
+    type Location = (u32, SegmentPointLocation<T>);
 
     #[inline]
     fn project_local_point_and_get_location(
@@ -145,7 +145,7 @@ impl<T: AD> PointQueryWithLocation for Polyline<T> {
     }
 }
 
-impl<Storage: TriMeshStorage, T: AD> PointQueryWithLocation for GenericTriMesh<Storage, T> {
+impl<Storage: TriMeshStorage<T>, T: AD> PointQueryWithLocation for GenericTriMesh<Storage, T> {
     type Location = (u32, TrianglePointLocation<T>);
 
     #[inline]

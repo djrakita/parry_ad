@@ -1,5 +1,5 @@
 use crate::mass_properties::MassProperties;
-use crate::math::{Point, Real};
+use crate::math::{Point};
 #[cfg(feature = "dim3")]
 use crate::shape::Capsule;
 use ad_trait::AD;

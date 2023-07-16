@@ -16,14 +16,14 @@ use ad_trait::AD;
     archive(check_bytes)
 )]
 #[derive(Clone)]
-pub struct TriMeshShapeContactManifoldsWorkspace {
+pub struct TriMeshShapeContactManifoldsWorkspace<T: AD> {
     interferences: Vec<u32>,
-    local_aabb2: Aabb,
+    local_aabb2: Aabb<T>,
     old_interferences: Vec<u32>,
     internal_edges: InternalEdgesFixer,
 }
 
-impl TriMeshShapeContactManifoldsWorkspace {
+impl<T: AD> TriMeshShapeContactManifoldsWorkspace<T> {
     pub fn new() -> Self {
         Self {
             interferences: Vec::new(),
@@ -38,10 +38,10 @@ impl TriMeshShapeContactManifoldsWorkspace {
 pub fn contact_manifolds_trimesh_shape_shapes<ManifoldData, ContactData, T: AD>(
     dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
     pos12: &Isometry<T>,
-    shape1: &dyn Shape,
-    shape2: &dyn Shape,
+    shape1: &dyn Shape<T>,
+    shape2: &dyn Shape<T>,
     prediction: T,
-    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
+    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
     workspace: &mut Option<ContactManifoldsWorkspace>,
 ) where
     ManifoldData: Default,
@@ -65,10 +65,10 @@ pub fn contact_manifolds_trimesh_shape_shapes<ManifoldData, ContactData, T: AD>(
     }
 }
 
-fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
+fn ensure_workspace_exists<T: AD>(workspace: &mut Option<ContactManifoldsWorkspace>) {
     if workspace
         .as_mut()
-        .and_then(|w| w.0.downcast_mut::<TriMeshShapeContactManifoldsWorkspace>())
+        .and_then(|w| w.0.downcast_mut::<TriMeshShapeContactManifoldsWorkspace<T>>())
         .is_some()
     {
         return;
@@ -84,9 +84,9 @@ pub fn contact_manifolds_trimesh_shape<ManifoldData, ContactData, T: AD>(
     dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
     pos12: &Isometry<T>,
     trimesh1: &TriMesh<T>,
-    shape2: &dyn Shape,
+    shape2: &dyn Shape<T>,
     prediction: T,
-    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
+    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
     workspace: &mut Option<ContactManifoldsWorkspace>,
     flipped: bool,
 ) where
@@ -94,7 +94,7 @@ pub fn contact_manifolds_trimesh_shape<ManifoldData, ContactData, T: AD>(
     ContactData: Default + Copy,
 {
     ensure_workspace_exists(workspace);
-    let workspace: &mut TriMeshShapeContactManifoldsWorkspace =
+    let workspace: &mut TriMeshShapeContactManifoldsWorkspace<T> =
         workspace.as_mut().unwrap().0.downcast_mut().unwrap();
 
     /*
@@ -107,7 +107,7 @@ pub fn contact_manifolds_trimesh_shape<ManifoldData, ContactData, T: AD>(
 
     if !same_local_aabb2 {
         let extra_margin =
-            (new_local_aabb2.maxs - new_local_aabb2.mins).map(|e| (e / 10.0).min(0.1));
+            (new_local_aabb2.maxs - new_local_aabb2.mins).map(|e| (e / T::constant(10.0)).min(T::constant(0.1)));
         new_local_aabb2.mins -= extra_margin;
         new_local_aabb2.maxs += extra_margin;
 
@@ -210,7 +210,7 @@ pub fn contact_manifolds_trimesh_shape<ManifoldData, ContactData, T: AD>(
     );
 }
 
-impl WorkspaceData for TriMeshShapeContactManifoldsWorkspace {
+impl<T: AD> WorkspaceData for TriMeshShapeContactManifoldsWorkspace<T> {
     fn as_typed_workspace_data(&self) -> TypedWorkspaceData {
         TypedWorkspaceData::TriMeshShapeContactManifoldsWorkspace(self)
     }

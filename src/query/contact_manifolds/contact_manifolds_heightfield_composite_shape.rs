@@ -1,6 +1,6 @@
 use ad_trait::AD;
 use crate::bounding_volume::BoundingVolume;
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::contact_manifolds::contact_manifolds_workspace::{
     TypedWorkspaceData, WorkspaceData,
 };
@@ -73,7 +73,7 @@ pub fn contact_manifolds_heightfield_composite_shape<ManifoldData, ContactData, 
     heightfield1: &HeightField<T>,
     composite2: &dyn SimdCompositeShape<T>,
     prediction: T,
-    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
+    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
     workspace: &mut Option<ContactManifoldsWorkspace>,
     flipped: bool,
 ) where

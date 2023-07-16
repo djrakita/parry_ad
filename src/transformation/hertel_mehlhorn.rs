@@ -1,8 +1,9 @@
 //! Hertel-Mehlhorn algorithm for convex partitioning.
 //! Based on https://github.com/ivanfratric/polypartition, contributed by embotech AG.
 
-use crate::math::{Point, Real};
+use crate::math::{Point};
 use crate::utils::point_in_triangle::{corner_direction, Orientation};
+use ad_trait::AD;
 
 /// Checks if the counter-clockwise polygon `poly` has an edge going counter-clockwise from `p1` to `p2`.
 /// Returns the edge point's indices in the second polygon. Returns `None` if none were found.
@@ -27,7 +28,7 @@ fn find_edge_index_in_polygon(p1: u32, p2: u32, indices: &[u32]) -> Option<(usiz
 /// partitioning.
 ///
 /// This algorithm is described in https://people.mpi-inf.mpg.de/~mehlhorn/ftp/FastTriangulation.pdf
-pub fn hertel_mehlhorn(vertices: &[Point<Real>], indices: &[[u32; 3]]) -> Vec<Vec<Point<Real>>> {
+pub fn hertel_mehlhorn<T: AD>(vertices: &[Point<T>], indices: &[[u32; 3]]) -> Vec<Vec<Point<T>>> {
     hertel_mehlhorn_idx(vertices, indices)
         .into_iter()
         .map(|poly_indices| {
@@ -40,7 +41,7 @@ pub fn hertel_mehlhorn(vertices: &[Point<Real>], indices: &[[u32; 3]]) -> Vec<Ve
 }
 
 /// Internal implementation of the Hertel-Mehlhorn algorithm that returns the polygon indices.
-pub fn hertel_mehlhorn_idx(vertices: &[Point<Real>], indices: &[[u32; 3]]) -> Vec<Vec<u32>> {
+pub fn hertel_mehlhorn_idx<T: AD>(vertices: &[Point<T>], indices: &[[u32; 3]]) -> Vec<Vec<u32>> {
     let mut indices: Vec<Vec<u32>> = indices.iter().map(|indices| indices.to_vec()).collect();
     // Iterate over all polygons.
     let mut i_poly1 = 0;

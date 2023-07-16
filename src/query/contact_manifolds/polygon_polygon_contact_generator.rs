@@ -1,8 +1,9 @@
+/*
 #![allow(dead_code)] // TODO: remove this once we support polygons.
 
 use crate::geometry::contact_generator::PrimitiveContactGenerationContext;
 use crate::geometry::{sat, Contact, ContactData, ContactManifold, ContactManifoldData, Polygon};
-use crate::math::{Isometry, Point, Real};
+use crate::math::{Isometry, Point};
 #[cfg(feature = "dim2")]
 use crate::{math::Vector, utils};
 use parry::query;
@@ -148,3 +149,5 @@ fn generate_contacts<'a>(
         manifold.points.clear();
     }
 }
+
+*/

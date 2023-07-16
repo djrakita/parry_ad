@@ -1,11 +1,11 @@
-use crate::math::Real;
 use crate::shape::RoundConvexPolygon;
 use crate::transformation::utils;
 use na::{self, Point2};
+use ad_trait::AD;
 
-impl RoundConvexPolygon {
+impl<T: AD> RoundConvexPolygon<T> {
     /// Discretize the boundary of this round convex polygon as a polygonal line.
-    pub fn to_polyline(&self, border_subdivs: u32) -> Vec<Point2<Real>> {
+    pub fn to_polyline(&self, border_subdivs: u32) -> Vec<Point2<T>> {
         let mut out_vtx = vec![];
         let pts = self.inner_shape.points();
         let ns = self.inner_shape.normals();

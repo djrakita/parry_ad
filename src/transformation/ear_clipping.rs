@@ -2,19 +2,20 @@
 //! Based on https://github.com/ivanfratric/polypartition, contributed by embotech AG.
 
 use crate::{
-    math::{Point, Real},
+    math::{Point},
     utils::point_in_triangle::{corner_direction, is_point_in_triangle, Orientation},
 };
+use ad_trait::AD;
 
 /// The information stored for each vertex in the ear clipping algorithm.
 #[derive(Clone, Default)]
-struct VertexInfo {
+struct VertexInfo<T: AD> {
     /// Whether the vertex is still active i.e. it has not been clipped yet.
     is_active: bool,
     /// Whether the vertex is the tip of an ear and should be clipped.
     is_ear: bool,
     /// How small the angle of the ear is. Ears with a smaller angle are clipped first.
-    pointiness: Real,
+    pointiness: T,
     /// The index of the previous vertex.
     p_prev: usize,
     /// The index of the next vertex.
@@ -22,7 +23,7 @@ struct VertexInfo {
 }
 
 /// Updates the fields `pointiness` and `is_ear` for a given vertex index.
-fn update_vertex(idx: usize, vertex_info: &mut VertexInfo, points: &[Point<Real>]) -> bool {
+fn update_vertex<T: AD>(idx: usize, vertex_info: &mut VertexInfo<T>, points: &[Point<T>]) -> bool {
     // Get the point and its neighbors.
     let p = points[idx];
     let p1 = points[vertex_info.p_prev];
@@ -54,7 +55,7 @@ fn update_vertex(idx: usize, vertex_info: &mut VertexInfo, points: &[Point<Real>
 }
 
 /// Ear clipping triangulation algorithm.
-pub(crate) fn triangulate_ear_clipping(vertices: &[Point<Real>]) -> Option<Vec<[u32; 3]>> {
+pub(crate) fn triangulate_ear_clipping<T: AD>(vertices: &[Point<T>]) -> Option<Vec<[u32; 3]>> {
     let n_vertices = vertices.len();
 
     // Create a new vector to hold the information about vertices.

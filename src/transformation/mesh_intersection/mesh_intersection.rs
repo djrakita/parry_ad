@@ -1,24 +1,25 @@
 use super::{MeshIntersectionError, TriangleTriangleIntersection, EPS};
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::query::{visitors::BoundingVolumeIntersectionsSimultaneousVisitor, PointQuery};
 use crate::shape::{FeatureId, TriMesh, Triangle};
 use crate::utils::WBasis;
 use na::{Point2, Vector2};
 use spade::{handles::FixedVertexHandle, ConstrainedDelaunayTriangulation, Triangulation as _};
 use std::collections::{HashMap, HashSet};
+use ad_trait::AD;
 
 /// Computes the intersection of two meshes.
 ///
 /// The meshes must be oriented, have their half-edge topology computed, and must not be self-intersecting.
 /// The result mesh vertex coordinates are given in the local-space of `mesh1`.
-pub fn intersect_meshes(
-    pos1: &Isometry<Real>,
-    mesh1: &TriMesh,
+pub fn intersect_meshes<T: AD>(
+    pos1: &Isometry<T>,
+    mesh1: &TriMesh<T>,
     flip1: bool,
-    pos2: &Isometry<Real>,
-    mesh2: &TriMesh,
+    pos2: &Isometry<T>,
+    mesh2: &TriMesh<T>,
     flip2: bool,
-) -> Result<Option<TriMesh>, MeshIntersectionError> {
+) -> Result<Option<TriMesh<T>>, MeshIntersectionError> {
     if mesh1.topology().is_none() || mesh2.topology().is_none() {
         return Err(MeshIntersectionError::MissingTopology);
     }
@@ -157,10 +158,10 @@ pub fn intersect_meshes(
     }
 }
 
-fn extract_connected_components(
-    pos12: &Isometry<Real>,
-    mesh1: &TriMesh,
-    mesh2: &TriMesh,
+fn extract_connected_components<T: AD>(
+    pos12: &Isometry<T>,
+    mesh1: &TriMesh<T>,
+    mesh2: &TriMesh<T>,
     flip2: bool,
     deleted_faces1: &HashSet<u32>,
     new_indices1: &mut Vec<[u32; 3]>,
@@ -261,18 +262,18 @@ struct SpadeInfo {
     handle: FixedVertexHandle,
 }
 
-struct Triangulation {
-    delaunay: ConstrainedDelaunayTriangulation<spade::Point2<Real>>,
-    basis: [Vector<Real>; 2],
+struct Triangulation<T: AD> {
+    delaunay: ConstrainedDelaunayTriangulation<spade::Point2<T>>,
+    basis: [Vector<T>; 2],
     vtx_handles: [FixedVertexHandle; 3],
-    ref_pt: Point<Real>,
-    ref_proj: [Point2<Real>; 3],
-    normalization: na::Matrix2<Real>,
+    ref_pt: Point<T>,
+    ref_proj: [Point2<T>; 3],
+    normalization: na::Matrix2<T>,
 }
 
-impl Triangulation {
-    fn new(triangle: Triangle) -> Self {
-        let mut delaunay = ConstrainedDelaunayTriangulation::<spade::Point2<Real>>::new();
+impl<T: AD> Triangulation<T> {
+    fn new(triangle: Triangle<T>) -> Self {
+        let mut delaunay = ConstrainedDelaunayTriangulation::<spade::Point2<T>>::new();
         let normal = triangle.normal().unwrap();
         let basis = normal.orthonormal_basis();
 
@@ -317,7 +318,7 @@ impl Triangulation {
         }
     }
 
-    fn project(&self, pt: Point<Real>, orig_fid: FeatureId) -> spade::Point2<Real> {
+    fn project(&self, pt: Point<T>, orig_fid: FeatureId) -> spade::Point2<T> {
         let dpt = pt - self.ref_pt;
         let mut proj =
             self.normalization * Point2::new(dpt.dot(&self.basis[0]), dpt.dot(&self.basis[1]));
@@ -339,7 +340,7 @@ impl Triangulation {
                 // NOTE: this is not ideal though, so we should find a way to simply
                 //       delete spurious triangles that are outside of the intersection
                 //       curve.
-                proj = a + ab * param + shift * EPS * 10.0;
+                proj = a + ab * param + shift * T::constant(EPS * 10.0);
             }
             _ => {}
         }
@@ -348,13 +349,13 @@ impl Triangulation {
     }
 }
 
-fn cut_and_triangulate_intersections(
-    pos12: &Isometry<Real>,
-    mesh1: &TriMesh,
+fn cut_and_triangulate_intersections<T: AD>(
+    pos12: &Isometry<T>,
+    mesh1: &TriMesh<T>,
     flip1: bool,
-    mesh2: &TriMesh,
+    mesh2: &TriMesh<T>,
     flip2: bool,
-    new_vertices12: &mut Vec<Point<Real>>,
+    new_vertices12: &mut Vec<Point<T>>,
     new_indices12: &mut Vec<[u32; 3]>,
     intersections: &mut Vec<(u32, u32)>,
 ) {
@@ -489,7 +490,7 @@ fn cut_and_triangulate_intersections(
     );
 }
 
-fn convert_fid(mesh: &TriMesh, tri: u32, fid: FeatureId) -> FeatureId {
+fn convert_fid<T: AD>(mesh: &TriMesh<T>, tri: u32, fid: FeatureId) -> FeatureId {
     match fid {
         FeatureId::Edge(eid) => {
             let topology = mesh.topology().unwrap();
@@ -505,13 +506,13 @@ fn convert_fid(mesh: &TriMesh, tri: u32, fid: FeatureId) -> FeatureId {
     }
 }
 
-fn unified_vertex(
-    mesh1: &TriMesh,
-    mesh2: &TriMesh,
-    new_vertices12: &[Point<Real>],
-    pos12: &Isometry<Real>,
+fn unified_vertex<T: AD>(
+    mesh1: &TriMesh<T>,
+    mesh2: &TriMesh<T>,
+    new_vertices12: &[Point<T>],
+    pos12: &Isometry<T>,
     vid: u32,
-) -> Point<Real> {
+) -> Point<T> {
     let base_id2 = mesh1.vertices().len() as u32;
     let base_id12 = (mesh1.vertices().len() + mesh2.vertices().len()) as u32;
 
@@ -524,17 +525,17 @@ fn unified_vertex(
     }
 }
 
-fn extract_result(
-    pos12: &Isometry<Real>,
-    mesh1: &TriMesh,
+fn extract_result<T: AD>(
+    pos12: &Isometry<T>,
+    mesh1: &TriMesh<T>,
     flip1: bool,
-    mesh2: &TriMesh,
+    mesh2: &TriMesh<T>,
     flip2: bool,
     spade_handle_to_intersection: &[HashMap<(u32, FixedVertexHandle), (FeatureId, FeatureId)>; 2],
-    intersection_points: &HashMap<(FeatureId, FeatureId), [Point<Real>; 2]>,
-    triangulations1: &HashMap<u32, Triangulation>,
-    triangulations2: &HashMap<u32, Triangulation>,
-    new_vertices12: &mut Vec<Point<Real>>,
+    intersection_points: &HashMap<(FeatureId, FeatureId), [Point<T>; 2]>,
+    triangulations1: &HashMap<u32, Triangulation<T>>,
+    triangulations2: &HashMap<u32, Triangulation<T>>,
+    new_vertices12: &mut Vec<Point<T>>,
     new_indices12: &mut Vec<[u32; 3]>,
 ) {
     // Base ids for indexing in the first mesh vertices, second mesh vertices, and new vertices, as if they
@@ -589,9 +590,9 @@ fn extract_result(
             let center = tri.center();
             let projection = mesh2.project_point(&pos12, &tri.center(), false);
 
-            if !tri.is_affinely_dependent_eps(EPS * 10.0)
+            if !tri.is_affinely_dependent_eps(T::constant(EPS * 10.0))
                 && ((flip2 ^ projection.is_inside)
-                    || (projection.point - center).norm() <= EPS * 10.0)
+                    || (projection.point - center).norm() <= T::constant(EPS * 10.0))
             {
                 if flip1 {
                     idx.swap(1, 2);
@@ -625,9 +626,9 @@ fn extract_result(
             //       If the center lies on the other mesh, then that we have a duplicate face that was already
             //       added in the previous loop.
             let projection = mesh1.project_local_point(&center, false);
-            if !tri.is_affinely_dependent_eps(EPS * 10.0)
+            if !tri.is_affinely_dependent_eps(T::constant(EPS * 10.0))
                 && ((flip1 ^ projection.is_inside)
-                    && (projection.point - center).norm() > EPS * 10.0)
+                    && (projection.point - center).norm() > T::constant(EPS * 10.0))
             {
                 if flip2 {
                     idx.swap(1, 2);

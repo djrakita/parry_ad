@@ -1,9 +1,10 @@
-use crate::math::{Point, Real};
+use crate::math::{Point};
 use crate::shape::Ball;
+use ad_trait::AD;
 
 /// Intersection test between balls.
 #[inline]
-pub fn intersection_test_ball_ball(center12: &Point<Real>, b1: &Ball, b2: &Ball) -> bool {
+pub fn intersection_test_ball_ball<T: AD>(center12: &Point<T>, b1: &Ball<T>, b2: &Ball<T>) -> bool {
     let r1 = b1.radius;
     let r2 = b2.radius;
     let distance_squared = center12.coords.norm_squared();

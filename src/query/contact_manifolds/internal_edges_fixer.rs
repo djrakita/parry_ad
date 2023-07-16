@@ -35,7 +35,7 @@ impl InternalEdgesFixer {
     #[cfg(feature = "dim3")]
     pub fn remove_invalid_contacts<ManifoldData, ContactData, T: AD>(
         &mut self,
-        manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
+        manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
         flipped: bool,
         get_triangle: impl Fn(u32) -> Triangle<T>,
         get_triangle_indices: impl Fn(u32) -> [u32; 3],
@@ -74,7 +74,7 @@ impl InternalEdgesFixer {
                         // We check normal collinearity with an epsilon because sometimes,
                         // because of rounding errors, a contact may be identified as a face
                         // contact where it’s really just an edge contact.
-                        if normal.dot(&tri_normal).abs() > 1.0 - 1.0e-4 {
+                        if normal.dot(&tri_normal).abs() > T::constant(1.0 - 1.0e-4) {
                             let _ = self.vertex_set.insert(tri_idx[0], ());
                             let _ = self.vertex_set.insert(tri_idx[1], ());
                             let _ = self.vertex_set.insert(tri_idx[2], ());

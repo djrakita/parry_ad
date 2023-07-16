@@ -1,10 +1,10 @@
-use crate::math::Real;
 use crate::shape::HeightField;
 use na::Point2;
+use ad_trait::AD;
 
-impl HeightField {
+impl<T: AD> HeightField<T> {
     /// Rasterize this heightfield as a (potentially discontinuous) polyline.
-    pub fn to_polyline(&self) -> (Vec<Point2<Real>>, Vec<[u32; 2]>) {
+    pub fn to_polyline(&self) -> (Vec<Point2<T>>, Vec<[u32; 2]>) {
         let mut vertices = vec![];
         let mut indices = vec![];
 

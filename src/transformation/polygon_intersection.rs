@@ -1,8 +1,8 @@
 use na::Point2;
 
-use crate::math::Real;
 use crate::shape::{SegmentPointLocation, Triangle, TriangleOrientation};
 use crate::utils::{self, SegmentsIntersection};
+use ad_trait::AD;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum InFlag {
@@ -12,16 +12,16 @@ enum InFlag {
 }
 
 /// Location of a point on a polyline.
-pub enum PolylinePointLocation {
+pub enum PolylinePointLocation<T: AD> {
     /// Point on a vertex.
     OnVertex(usize),
     /// Point on an edge.
-    OnEdge(usize, usize, [Real; 2]),
+    OnEdge(usize, usize, [T; 2]),
 }
 
-impl PolylinePointLocation {
+impl<T: AD> PolylinePointLocation<T> {
     /// Computes the point corresponding to this location.
-    pub fn to_point(&self, pts: &[Point2<Real>]) -> Point2<Real> {
+    pub fn to_point(&self, pts: &[Point2<T>]) -> Point2<T> {
         match self {
             PolylinePointLocation::OnVertex(i) => pts[*i],
             PolylinePointLocation::OnEdge(i1, i2, bcoords) => {
@@ -30,7 +30,7 @@ impl PolylinePointLocation {
         }
     }
 
-    fn from_segment_point_location(a: usize, b: usize, loc: SegmentPointLocation) -> Self {
+    fn from_segment_point_location(a: usize, b: usize, loc: SegmentPointLocation<T>) -> Self {
         match loc {
             SegmentPointLocation::OnVertex(0) => PolylinePointLocation::OnVertex(a),
             SegmentPointLocation::OnVertex(1) => PolylinePointLocation::OnVertex(b),
@@ -43,10 +43,10 @@ impl PolylinePointLocation {
 /// Computes the intersection points of two convex polygons.
 ///
 /// The resulting polygon is output vertex-by-vertex to the `out` closure.
-pub fn convex_polygons_intersection_points(
-    poly1: &[Point2<Real>],
-    poly2: &[Point2<Real>],
-    out: &mut Vec<Point2<Real>>,
+pub fn convex_polygons_intersection_points<T: AD>(
+    poly1: &[Point2<T>],
+    poly2: &[Point2<T>],
+    out: &mut Vec<Point2<T>>,
 ) {
     convex_polygons_intersection(poly1, poly2, |loc1, loc2| {
         if let Some(loc1) = loc1 {
@@ -60,12 +60,12 @@ pub fn convex_polygons_intersection_points(
 /// Computes the intersection of two convex polygons.
 ///
 /// The resulting polygon is output vertex-by-vertex to the `out` closure.
-pub fn convex_polygons_intersection(
-    poly1: &[Point2<Real>],
-    poly2: &[Point2<Real>],
-    mut out: impl FnMut(Option<PolylinePointLocation>, Option<PolylinePointLocation>),
+pub fn convex_polygons_intersection<T: AD>(
+    poly1: &[Point2<T>],
+    poly2: &[Point2<T>],
+    mut out: impl FnMut(Option<PolylinePointLocation<T>>, Option<PolylinePointLocation<T>>),
 ) {
-    const EPS: Real = Real::EPSILON * 100.0;
+    const EPS: T = T::constant(f64::EPSILON * 100.0);
 
     // FIXME: this does not handle correctly the case where the
     // first triangle of the polygon is degenerate.
@@ -147,7 +147,7 @@ pub fn convex_polygons_intersection(
                     second_loc2,
                 } => {
                     // Special case: edge1 & edge2 overlap and oppositely oriented.
-                    if dir_edge1.dot(&dir_edge2) < 0.0 {
+                    if dir_edge1.dot(&dir_edge2) < T::zero() {
                         let loc1 =
                             PolylinePointLocation::from_segment_point_location(a1, a2, first_loc1);
                         let loc2 =

@@ -1,22 +1,23 @@
-use crate::math::{Isometry, Real, Vector};
+use crate::math::{Isometry, Vector};
 use crate::query::{Ray, RayCast, TOIStatus, TOI};
 use crate::shape::{HalfSpace, SupportMap};
+use ad_trait::AD;
 
 /// Time Of Impact of a halfspace with a support-mapped shape under translational movement.
-pub fn time_of_impact_halfspace_support_map<G: ?Sized>(
-    pos12: &Isometry<Real>,
-    vel12: &Vector<Real>,
-    halfspace: &HalfSpace,
+pub fn time_of_impact_halfspace_support_map<G: ?Sized, T: AD>(
+    pos12: &Isometry<T>,
+    vel12: &Vector<T>,
+    halfspace: &HalfSpace<T>,
     other: &G,
-    max_toi: Real,
+    max_toi: T,
     stop_at_penetration: bool,
-) -> Option<TOI>
+) -> Option<TOI<T>>
 where
-    G: SupportMap,
+    G: SupportMap<T>,
 {
     // FIXME: add method to get only the local support point.
     // This would avoid the `inverse_transform_point` later.
-    if !stop_at_penetration && vel12.dot(&halfspace.normal) > 0.0 {
+    if !stop_at_penetration && vel12.dot(&halfspace.normal) > T::zero() {
         return None;
     }
 
@@ -33,7 +34,7 @@ where
         let witness2 = support_point;
         let mut witness1 = ray.point_at(toi);
 
-        if support_point.coords.dot(&halfspace.normal) < 0.0 {
+        if support_point.coords.dot(&halfspace.normal) < T::zero() {
             status = TOIStatus::Penetrating
         } else {
             // Project the witness point to the halfspace.
@@ -56,16 +57,16 @@ where
 }
 
 /// Time Of Impact of a halfspace with a support-mapped shape under translational movement.
-pub fn time_of_impact_support_map_halfspace<G: ?Sized>(
-    pos12: &Isometry<Real>,
-    vel12: &Vector<Real>,
+pub fn time_of_impact_support_map_halfspace<G: ?Sized, T: AD>(
+    pos12: &Isometry<T>,
+    vel12: &Vector<T>,
     other: &G,
-    halfspace: &HalfSpace,
-    max_toi: Real,
+    halfspace: &HalfSpace<T>,
+    max_toi: T,
     stop_at_penetration: bool,
-) -> Option<TOI>
+) -> Option<TOI<T>>
 where
-    G: SupportMap,
+    G: SupportMap<T>,
 {
     time_of_impact_halfspace_support_map(
         &pos12.inverse(),

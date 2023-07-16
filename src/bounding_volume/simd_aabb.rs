@@ -138,22 +138,22 @@ impl<T: AD> SimdAabb<T> {
     }
 
     /// The center of all the Aabbs represented by `self``.
-    pub fn center(&self) -> Point<SimdReal> {
+    pub fn center(&self) -> Point<T> {
         na::center(&self.mins, &self.maxs)
     }
 
     /// The half-extents of all the Aabbs represented by `self``.
-    pub fn half_extents(&self) -> Vector<SimdReal> {
-        (self.maxs - self.mins) * SimdReal::splat(0.5)
+    pub fn half_extents(&self) -> Vector<T> {
+        (self.maxs - self.mins) * T::constant(0.5)
     }
 
     /// The radius of all the Aabbs represented by `self``.
-    pub fn radius(&self) -> SimdReal {
+    pub fn radius(&self) -> T {
         (self.maxs - self.mins).norm()
     }
 
     /// Return the Aabb of the `self` transformed by the given isometry.
-    pub fn transform_by(&self, transform: &Isometry<SimdReal>) -> Self {
+    pub fn transform_by(&self, transform: &Isometry<T>) -> Self {
         let ls_center = self.center();
         let center = transform * ls_center;
         let ws_half_extents = transform.absolute_transform_vector(&self.half_extents());
@@ -165,7 +165,7 @@ impl<T: AD> SimdAabb<T> {
 
     /// Returns a scaled version of this Aabb.
     #[inline]
-    pub fn scaled(self, scale: &Vector<SimdReal>) -> Self {
+    pub fn scaled(self, scale: &Vector<T>) -> Self {
         let a = self.mins.coords.component_mul(&scale);
         let b = self.maxs.coords.component_mul(&scale);
         Self {
@@ -175,18 +175,18 @@ impl<T: AD> SimdAabb<T> {
     }
 
     /// Enlarges this bounding volume by the given margin.
-    pub fn loosen(&mut self, margin: SimdReal) {
+    pub fn loosen(&mut self, margin: T) {
         self.mins -= Vector::repeat(margin);
         self.maxs += Vector::repeat(margin);
     }
 
     /// Dilate all the Aabbs represented by `self`` by their extents multiplied
     /// by the given scale `factor`.
-    pub fn dilate_by_factor(&mut self, factor: SimdReal) {
+    pub fn dilate_by_factor(&mut self, factor: T) {
         // If some of the Aabbs on this SimdAabb are invalid,
         // don't, dilate them.
         let is_valid = self.mins.x.simd_le(self.maxs.x);
-        let factor = factor.select(is_valid, SimdReal::zero());
+        let factor = factor.select(is_valid, T::zero());
 
         // NOTE: we multiply each by factor instead of doing
         // (maxs - mins) * factor. That's to avoid overflows (and
@@ -198,19 +198,19 @@ impl<T: AD> SimdAabb<T> {
     }
 
     /// Replace the `i-th` Aabb of this SIMD AAAB by the given value.
-    pub fn replace(&mut self, i: usize, aabb: Aabb) {
+    pub fn replace(&mut self, i: usize, aabb: Aabb<T>) {
         self.mins.replace(i, aabb.mins);
         self.maxs.replace(i, aabb.maxs);
     }
 
     /// Casts a ray on all the Aabbs represented by `self`.
-    pub fn cast_local_ray(&self, ray: &SimdRay, max_toi: SimdReal) -> (SimdBool, SimdReal) {
-        let zero = SimdReal::zero();
-        let one = SimdReal::one();
-        let infinity = SimdReal::splat(Real::MAX);
+    pub fn cast_local_ray(&self, ray: &SimdRay, max_toi: T) -> (SimdBool, T) {
+        let zero = T::zero();
+        let one = T::one();
+        let infinity = T::constant(f64::MAX);
 
-        let mut hit = SimdBool::splat(true);
-        let mut tmin = SimdReal::zero();
+        let mut hit = true;
+        let mut tmin = T::zero();
         let mut tmax = max_toi;
 
         // TODO: could this be optimized more considering we really just need a boolean answer?
@@ -241,7 +241,7 @@ impl<T: AD> SimdAabb<T> {
     }
 
     /// Computes the distances between a point and all the Aabbs represented by `self`.
-    pub fn distance_to_local_point(&self, point: &Point<SimdReal>) -> SimdReal {
+    pub fn distance_to_local_point(&self, point: &Point<T>) -> T {
         let mins_point = self.mins - point;
         let point_maxs = point - self.maxs;
         let shift = mins_point.sup(&point_maxs).sup(&na::zero());
@@ -249,7 +249,7 @@ impl<T: AD> SimdAabb<T> {
     }
 
     /// Computes the distances between the origin and all the Aabbs represented by `self`.
-    pub fn distance_to_origin(&self) -> SimdReal {
+    pub fn distance_to_origin(&self) -> T {
         self.mins
             .coords
             .sup(&-self.maxs.coords)
@@ -258,7 +258,7 @@ impl<T: AD> SimdAabb<T> {
     }
 
     /// Check which Aabb represented by `self` contains the given `point`.
-    pub fn contains_local_point(&self, point: &Point<SimdReal>) -> SimdBool {
+    pub fn contains_local_point(&self, point: &Point<T>) -> bool {
         #[cfg(feature = "dim2")]
         return self.mins.x.simd_le(point.x)
             & self.mins.y.simd_le(point.y)
@@ -287,7 +287,7 @@ impl<T: AD> SimdAabb<T> {
     /// Lanewise check which Aabb represented by `self` contains the given set of `other` aabbs.
     /// The check is performed lane-wise.
     #[cfg(feature = "dim3")]
-    pub fn contains(&self, other: &SimdAabb<T>) -> SimdBool {
+    pub fn contains(&self, other: &SimdAabb<T>) -> bool {
         self.mins.x.simd_le(other.mins.x)
             & self.mins.y.simd_le(other.mins.y)
             & self.mins.z.simd_le(other.mins.z)
@@ -299,7 +299,7 @@ impl<T: AD> SimdAabb<T> {
     /// Lanewise check which Aabb represented by `self` intersects the given set of `other` aabbs.
     /// The check is performed lane-wise.
     #[cfg(feature = "dim2")]
-    pub fn intersects(&self, other: &SimdAabb<T>) -> SimdBool {
+    pub fn intersects(&self, other: &SimdAabb<T>) -> bool {
         self.mins.x.simd_le(other.maxs.x)
             & other.mins.x.simd_le(self.maxs.x)
             & self.mins.y.simd_le(other.maxs.y)
@@ -309,7 +309,7 @@ impl<T: AD> SimdAabb<T> {
     /// Check which Aabb represented by `self` contains the given set of `other` aabbs.
     /// The check is performed lane-wise.
     #[cfg(feature = "dim3")]
-    pub fn intersects(&self, other: &SimdAabb<T>) -> SimdBool {
+    pub fn intersects(&self, other: &SimdAabb<T>) -> bool {
         self.mins.x.simd_le(other.maxs.x)
             & other.mins.x.simd_le(self.maxs.x)
             & self.mins.y.simd_le(other.maxs.y)
@@ -334,7 +334,7 @@ impl<T: AD> SimdAabb<T> {
     }
 
     /// Merge all the Aabb represented by `self` into a single one.
-    pub fn to_merged_aabb(&self) -> Aabb {
+    pub fn to_merged_aabb(&self) -> Aabb<T> {
         Aabb::new(
             self.mins.coords.map(|e| e.simd_horizontal_min()).into(),
             self.maxs.coords.map(|e| e.simd_horizontal_max()).into(),
@@ -342,13 +342,13 @@ impl<T: AD> SimdAabb<T> {
     }
 
     /// Extracts the Aabb stored in the given SIMD lane of the SIMD Aabb:
-    pub fn extract(&self, lane: usize) -> Aabb {
+    pub fn extract(&self, lane: usize) -> Aabb<T> {
         Aabb::new(self.mins.extract(lane), self.maxs.extract(lane))
     }
 }
 
-impl<T: AD> From<[Aabb; SIMD_WIDTH]> for SimdAabb<T> {
-    fn from(aabbs: [Aabb; SIMD_WIDTH]) -> Self {
+impl<T: AD> From<[Aabb<T>; SIMD_WIDTH]> for SimdAabb<T> {
+    fn from(aabbs: [Aabb<T>; SIMD_WIDTH]) -> Self {
         let mins = array![|ii| aabbs[ii].mins; SIMD_WIDTH];
         let maxs = array![|ii| aabbs[ii].maxs; SIMD_WIDTH];
 

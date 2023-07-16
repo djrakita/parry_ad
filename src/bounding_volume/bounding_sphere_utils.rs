@@ -1,15 +1,16 @@
-use crate::math::{Point, Real};
+use crate::math::{Point};
 use crate::utils;
 use na::{self, ComplexField};
+use ad_trait::AD;
 
 /// Computes the bounding sphere of a set of point, given its center.
 // FIXME: return a bounding sphere?
 #[inline]
-pub fn point_cloud_bounding_sphere_with_center(
-    pts: &[Point<Real>],
-    center: Point<Real>,
-) -> (Point<Real>, Real) {
-    let mut sqradius = 0.0;
+pub fn point_cloud_bounding_sphere_with_center<T: AD>(
+    pts: &[Point<T>],
+    center: Point<T>,
+) -> (Point<T>, T) {
+    let mut sqradius = T::zero();
 
     for pt in pts.iter() {
         let distance_squared = na::distance_squared(pt, &center);
@@ -25,6 +26,6 @@ pub fn point_cloud_bounding_sphere_with_center(
 /// Computes a bounding sphere of the specified set of point.
 // FIXME: return a bounding sphere?
 #[inline]
-pub fn point_cloud_bounding_sphere(pts: &[Point<Real>]) -> (Point<Real>, Real) {
+pub fn point_cloud_bounding_sphere<T: AD>(pts: &[Point<T>]) -> (Point<T>, T) {
     point_cloud_bounding_sphere_with_center(pts, utils::center(pts))
 }

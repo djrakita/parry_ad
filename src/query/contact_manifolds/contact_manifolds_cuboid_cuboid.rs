@@ -1,16 +1,17 @@
 #[cfg(feature = "dim2")]
 use crate::math::Vector;
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::{sat, ContactManifold};
 use crate::shape::{Cuboid, PolygonalFeature, Shape};
+use ad_trait::AD;
 
 /// Computes the contact manifold between two cuboids represented as `Shape` trait-objects.
-pub fn contact_manifold_cuboid_cuboid_shapes<ManifoldData, ContactData: Default + Copy>(
-    pos12: &Isometry<Real>,
-    g1: &dyn Shape,
-    g2: &dyn Shape,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+pub fn contact_manifold_cuboid_cuboid_shapes<ManifoldData, ContactData: Default + Copy, T: AD>(
+    pos12: &Isometry<T>,
+    g1: &dyn Shape<T>,
+    g2: &dyn Shape<T>,
+    prediction: T,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
 ) {
     if let (Some(cuboid1), Some(cuboid2)) = (g1.as_cuboid(), g2.as_cuboid()) {
         contact_manifold_cuboid_cuboid(pos12, cuboid1, cuboid2, prediction, manifold);
@@ -18,12 +19,12 @@ pub fn contact_manifold_cuboid_cuboid_shapes<ManifoldData, ContactData: Default 
 }
 
 /// Computes the contact manifold between two cuboids.
-pub fn contact_manifold_cuboid_cuboid<'a, ManifoldData, ContactData: Default + Copy>(
-    pos12: &Isometry<Real>,
-    cuboid1: &'a Cuboid,
-    cuboid2: &'a Cuboid,
-    prediction: Real,
-    manifold: &mut ContactManifold<ManifoldData, ContactData>,
+pub fn contact_manifold_cuboid_cuboid<'a, ManifoldData, ContactData: Default + Copy, T: AD>(
+    pos12: &Isometry<T>,
+    cuboid1: &'a Cuboid<T>,
+    cuboid2: &'a Cuboid<T>,
+    prediction: T,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
 ) {
     if manifold.try_update_contacts(&pos12) {
         return;

@@ -1,13 +1,14 @@
 use na::{self, ComplexField};
 
-use crate::math::{Point, Real};
+use crate::math::{Point};
 use crate::query::{Ray, RayCast, RayIntersection};
 use crate::shape::{Ball, FeatureId};
 use num::Zero;
+use ad_trait::AD;
 
-impl RayCast for Ball {
+impl<T: AD> RayCast<T> for Ball<T> {
     #[inline]
-    fn cast_local_ray(&self, ray: &Ray, max_toi: Real, solid: bool) -> Option<Real> {
+    fn cast_local_ray(&self, ray: &Ray<T>, max_toi: T, solid: bool) -> Option<T> {
         ray_toi_with_ball(&Point::origin(), self.radius, ray, solid)
             .1
             .filter(|toi| *toi <= max_toi)
@@ -16,10 +17,10 @@ impl RayCast for Ball {
     #[inline]
     fn cast_local_ray_and_get_normal(
         &self,
-        ray: &Ray,
-        max_toi: Real,
+        ray: &Ray<T>,
+        max_toi: T,
         solid: bool,
-    ) -> Option<RayIntersection> {
+    ) -> Option<RayIntersection<T>> {
         ray_toi_and_normal_with_ball(&Point::origin(), self.radius, ray, solid)
             .1
             .filter(|int| int.toi <= max_toi)
@@ -30,12 +31,12 @@ impl RayCast for Ball {
 ///
 /// The first result element is `true` if the ray started inside of the ball.
 #[inline]
-pub fn ray_toi_with_ball(
-    center: &Point<Real>,
-    radius: Real,
-    ray: &Ray,
+pub fn ray_toi_with_ball<T: AD>(
+    center: &Point<T>,
+    radius: T,
+    ray: &Ray<T>,
     solid: bool,
-) -> (bool, Option<Real>) {
+) -> (bool, Option<T>) {
     let dcenter = ray.origin - *center;
 
     let a = ray.dir.norm_squared();
@@ -44,28 +45,28 @@ pub fn ray_toi_with_ball(
 
     // Special case for when the dir is zero.
     if a.is_zero() {
-        if c > 0.0 {
+        if c > T::zero() {
             return (false, None);
         } else {
-            return (true, Some(0.0));
+            return (true, Some(T::zero()));
         }
     }
 
-    if c > 0.0 && b > 0.0 {
+    if c > T::zero() && b > T::zero() {
         (false, None)
     } else {
         let delta = b * b - a * c;
 
-        if delta < 0.0 {
+        if delta < T::zero() {
             // no solution
             (false, None)
         } else {
             let t = (-b - ComplexField::sqrt(delta)) / a;
 
-            if t <= 0.0 {
+            if t <= T::zero() {
                 // origin inside of the ball
                 if solid {
-                    (true, Some(0.0))
+                    (true, Some(T::zero()))
                 } else {
                     (true, Some((-b + delta.sqrt()) / a))
                 }
@@ -78,12 +79,12 @@ pub fn ray_toi_with_ball(
 
 /// Computes the time of impact and contact normal of a ray on a ball.
 #[inline]
-pub fn ray_toi_and_normal_with_ball(
-    center: &Point<Real>,
-    radius: Real,
-    ray: &Ray,
+pub fn ray_toi_and_normal_with_ball<T: AD>(
+    center: &Point<T>,
+    radius: T,
+    ray: &Ray<T>,
     solid: bool,
-) -> (bool, Option<RayIntersection>) {
+) -> (bool, Option<RayIntersection<T>>) {
     let (inside, inter) = ray_toi_with_ball(&center, radius, ray, solid);
 
     (

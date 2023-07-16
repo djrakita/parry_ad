@@ -1,3 +1,4 @@
+/*
 #![allow(dead_code)]
 
 use crate::geometry::proximity_detector::PrimitiveProximityDetectionContext;
@@ -55,3 +56,4 @@ fn detect_proximity<'a>(
         }
     }
 }
+*/

@@ -237,7 +237,7 @@ impl<LeafData> QbvhProxy<LeafData> {
 #[repr(C)] // Needed for Cuda.
 #[derive(Debug)]
 pub struct GenericQbvh<LeafData, T: AD, Storage: QbvhStorage<LeafData, T>> {
-    pub(super) root_aabb: Aabb,
+    pub(super) root_aabb: Aabb<T>,
     pub(super) nodes: Storage::Nodes,
     pub(super) dirty_nodes: Storage::ArrayU32,
     pub(super) free_list: Storage::ArrayU32,
@@ -388,7 +388,7 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     /// Computes a scaled version of this Qbvh.
     ///
     /// This will apply the scale to each Aabb on this BVH.
-    pub fn scaled(mut self, scale: &Vector<Real>) -> Self {
+    pub fn scaled(mut self, scale: &Vector<T>) -> Self {
         self.root_aabb = self.root_aabb.scaled(scale);
         for node in &mut self.nodes {
             node.simd_aabb = node.simd_aabb.scaled(&Vector::splat(*scale));

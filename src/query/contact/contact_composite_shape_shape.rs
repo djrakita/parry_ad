@@ -1,6 +1,6 @@
 use ad_trait::AD;
 use crate::bounding_volume::BoundingVolume;
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::visitors::BoundingVolumeIntersectionsVisitor;
 use crate::query::{Contact, QueryDispatcher};
 use crate::shape::{Shape, SimdCompositeShape};
@@ -11,16 +11,16 @@ pub fn contact_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(
     dispatcher: &D,
     pos12: &Isometry<T>,
     g1: &G1,
-    g2: &dyn Shape,
+    g2: &dyn Shape<T>,
     prediction: T,
-) -> Option<Contact>
+) -> Option<Contact<T>>
 where
     D: QueryDispatcher,
     G1: SimdCompositeShape<T>,
 {
     // Find new collisions
     let ls_aabb2 = g2.compute_aabb(pos12).loosened(prediction);
-    let mut res = None::<Contact>;
+    let mut res = None::<Contact<T>>;
 
     let mut leaf_callback = |i: &_| {
         g1.map_part_at(*i, &mut |part_pos1, part1| {
@@ -49,11 +49,11 @@ where
 /// Best contact between a shape and a composite (`Mesh`, `Compound`) shape.
 pub fn contact_shape_composite_shape<D: ?Sized, G2: ?Sized, T: AD>(
     dispatcher: &D,
-    pos12: &Isometry<Real>,
-    g1: &dyn Shape,
+    pos12: &Isometry<T>,
+    g1: &dyn Shape<T>,
     g2: &G2,
-    prediction: Real,
-) -> Option<Contact>
+    prediction: T,
+) -> Option<Contact<T>>
 where
     D: QueryDispatcher,
     G2: SimdCompositeShape<T>,

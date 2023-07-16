@@ -1,5 +1,5 @@
 use crate::bounding_volume::BoundingVolume;
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::contact_manifolds::contact_manifolds_workspace::{
     TypedWorkspaceData, WorkspaceData,
 };
@@ -59,11 +59,11 @@ fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
 /// Computes the contact manifolds between a composite shape and an abstract shape.
 pub fn contact_manifolds_composite_shape_shape<ManifoldData, ContactData, T: AD>(
     dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
-    pos12: &Isometry<Real>,
+    pos12: &Isometry<T>,
     composite1: &dyn SimdCompositeShape<T>,
-    shape2: &dyn Shape,
-    prediction: Real,
-    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
+    shape2: &dyn Shape<T>,
+    prediction: T,
+    manifolds: &mut Vec<ContactManifold<T, ManifoldData, ContactData>>,
     workspace: &mut Option<ContactManifoldsWorkspace>,
     flipped: bool,
 ) where

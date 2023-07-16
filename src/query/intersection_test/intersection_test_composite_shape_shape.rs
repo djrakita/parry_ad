@@ -16,7 +16,7 @@ pub fn intersection_test_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(
     dispatcher: &D,
     pos12: &Isometry<T>,
     g1: &G1,
-    g2: &dyn Shape,
+    g2: &dyn Shape<T>,
 ) -> bool
 where
     D: QueryDispatcher,
@@ -32,7 +32,7 @@ where
 pub fn intersection_test_shape_composite_shape<D: ?Sized, G2: ?Sized, T: AD>(
     dispatcher: &D,
     pos12: &Isometry<T>,
-    g1: &dyn Shape,
+    g1: &dyn Shape<T>,
     g2: &G2,
 ) -> bool
 where
@@ -49,7 +49,7 @@ pub struct IntersectionCompositeShapeShapeVisitor<'a, D: ?Sized, G1: ?Sized + 'a
     dispatcher: &'a D,
     pos12: &'a Isometry<T>,
     g1: &'a G1,
-    g2: &'a dyn Shape,
+    g2: &'a dyn Shape<T>,
 
     found_intersection: bool,
 }
@@ -64,7 +64,7 @@ where
         dispatcher: &'a D,
         pos12: &'a Isometry<T>,
         g1: &'a G1,
-        g2: &'a dyn Shape,
+        g2: &'a dyn Shape<T>,
     ) -> IntersectionCompositeShapeShapeVisitor<'a, D, G1, T> {
         let ls_aabb2 = g2.compute_aabb(&pos12);
 
@@ -128,7 +128,7 @@ pub struct IntersectionCompositeShapeShapeBestFirstVisitor<'a, D: ?Sized, G1: ?S
     dispatcher: &'a D,
     pos12: &'a Isometry<T>,
     g1: &'a G1,
-    g2: &'a dyn Shape,
+    g2: &'a dyn Shape<T>,
 }
 
 impl<'a, D: ?Sized, G1: ?Sized, T: AD> IntersectionCompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
@@ -141,7 +141,7 @@ where
         dispatcher: &'a D,
         pos12: &'a Isometry<T>,
         g1: &'a G1,
-        g2: &'a dyn Shape,
+        g2: &'a dyn Shape<T>,
     ) -> IntersectionCompositeShapeShapeBestFirstVisitor<'a, D, G1, T> {
         let ls_aabb2 = g2.compute_aabb(&pos12);
 
@@ -156,7 +156,7 @@ where
     }
 }
 
-impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>>
+impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>, T>
     for IntersectionCompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
 where
     D: QueryDispatcher,
@@ -169,7 +169,7 @@ where
         best: T,
         bv: &SimdAabb<T>,
         data: Option<[Option<&G1::PartId>; SIMD_WIDTH]>,
-    ) -> SimdBestFirstVisitStatus<Self::Result> {
+    ) -> SimdBestFirstVisitStatus<Self::Result, T> {
         // Compute the minkowski sum of the two Aabbs.
         let msum = SimdAabb {
             mins: bv.mins + self.msum_shift + (-self.msum_margin),

@@ -1,4 +1,4 @@
-use crate::math::{Isometry, Real, Vector};
+use crate::math::{Isometry, Vector};
 use crate::query::epa::EPA;
 use crate::query::gjk::{self, CSOPoint, GJKResult, VoronoiSimplex};
 use crate::query::Contact;
@@ -7,15 +7,15 @@ use crate::shape::SupportMap;
 use na::Unit;
 
 /// Contact between support-mapped shapes (`Cuboid`, `ConvexHull`, etc.)
-pub fn contact_support_map_support_map<G1: ?Sized, G2: ?Sized>(
-    pos12: &Isometry<Real>,
+pub fn contact_support_map_support_map<T: AD, G1: ?Sized, G2: ?Sized>(
+    pos12: &Isometry<T>,
     g1: &G1,
     g2: &G2,
-    prediction: Real,
-) -> Option<Contact>
+    prediction: T,
+) -> Option<Contact<T>>
 where
-    G1: SupportMap,
-    G2: SupportMap,
+    G1: SupportMap<T>,
+    G2: SupportMap<T>,
 {
     let simplex = &mut VoronoiSimplex::new();
     match contact_support_map_support_map_with_params(pos12, g1, g2, prediction, simplex, None) {
@@ -37,17 +37,17 @@ where
 /// The vector-typed result is the vector that should be passed as `init` for
 /// subsequent executions of the algorithm. It is also the contact
 /// normal (that points toward the outside of the first solid).
-pub fn contact_support_map_support_map_with_params<G1: ?Sized, G2: ?Sized>(
-    pos12: &Isometry<Real>,
+pub fn contact_support_map_support_map_with_params<T: AD, G1: ?Sized, G2: ?Sized>(
+    pos12: &Isometry<T>,
     g1: &G1,
     g2: &G2,
-    prediction: Real,
+    prediction: T,
     simplex: &mut VoronoiSimplex,
-    init_dir: Option<Unit<Vector<Real>>>,
+    init_dir: Option<Unit<Vector<T>>>,
 ) -> GJKResult
 where
-    G1: SupportMap,
-    G2: SupportMap,
+    G1: SupportMap<T>,
+    G2: SupportMap<T>,
 {
     let dir = if let Some(init_dir) = init_dir {
         init_dir

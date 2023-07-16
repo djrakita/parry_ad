@@ -1,11 +1,12 @@
-use crate::math::{Point, Real, Vector};
+use crate::math::{Point, Vector};
 use crate::query::{PointProjection, PointQuery};
 use crate::shape::{Cone, FeatureId, Segment};
 use na;
+use ad_trait::AD;
 
-impl PointQuery for Cone {
+impl<T: AD> PointQuery for Cone<T> {
     #[inline]
-    fn project_local_point(&self, pt: &Point<Real>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection {
         // Project on the basis.
         let mut dir_from_basis_center = pt.coords.xz();
         let planar_dist_from_basis_center = dir_from_basis_center.normalize_mut();
@@ -27,12 +28,12 @@ impl PointQuery for Cone {
 
         // Project on the conic side.
         // TODO: we could solve this in 2D using the plane passing through the cone axis and the conic_side_segment to save some computation.
-        let apex_point = Point::new(0.0, self.half_height, 0.0);
+        let apex_point = Point::new(T::zero(), self.half_height, T::zero());
         let conic_side_segment = Segment::new(apex_point, projection_on_basis_circle);
         let conic_side_segment_dir = conic_side_segment.scaled_direction();
         let mut proj = conic_side_segment.project_local_point(pt, true);
 
-        let apex_to_basis_center = Vector::new(0.0, -2.0 * self.half_height, 0.0);
+        let apex_to_basis_center = Vector::new(T::zero(), -2.0 * self.half_height, T::zero());
 
         // Now determine if the point is inside of the cone.
         if pt.y >= -self.half_height
@@ -40,7 +41,7 @@ impl PointQuery for Cone {
             && conic_side_segment_dir
                 .cross(&(pt - apex_point))
                 .dot(&conic_side_segment_dir.cross(&apex_to_basis_center))
-                >= 0.0
+                >= T::zero()
         {
             if solid {
                 PointProjection::new(true, *pt)
@@ -64,7 +65,7 @@ impl PointQuery for Cone {
     #[inline]
     fn project_local_point_and_get_feature(
         &self,
-        pt: &Point<Real>,
+        pt: &Point<T>,
     ) -> (PointProjection, FeatureId) {
         // TODO: get the actual feature.
         (self.project_local_point(pt, false), FeatureId::Unknown)

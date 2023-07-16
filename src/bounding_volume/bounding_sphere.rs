@@ -1,9 +1,10 @@
 //! Bounding sphere.
 
 use crate::bounding_volume::BoundingVolume;
-use crate::math::{Isometry, Point, Real};
+use crate::math::{Isometry, Point};
 use na;
 use num::Zero;
+use ad_trait::AD;
 
 /// A Bounding Sphere.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -16,44 +17,44 @@ use num::Zero;
 )]
 #[derive(Debug, PartialEq, Copy, Clone)]
 #[repr(C)]
-pub struct BoundingSphere {
-    pub center: Point<Real>,
-    pub radius: Real,
+pub struct BoundingSphere<T: AD> {
+    pub center: Point<T>,
+    pub radius: T,
 }
 
-impl BoundingSphere {
+impl<T: AD> BoundingSphere<T> {
     /// Creates a new bounding sphere.
-    pub fn new(center: Point<Real>, radius: Real) -> BoundingSphere {
+    pub fn new(center: Point<T>, radius: T) -> BoundingSphere<T> {
         BoundingSphere { center, radius }
     }
 
     /// The bounding sphere center.
     #[inline]
-    pub fn center(&self) -> &Point<Real> {
+    pub fn center(&self) -> &Point<T> {
         &self.center
     }
 
     /// The bounding sphere radius.
     #[inline]
-    pub fn radius(&self) -> Real {
+    pub fn radius(&self) -> T {
         self.radius
     }
 
     /// Transforms this bounding sphere by `m`.
     #[inline]
-    pub fn transform_by(&self, m: &Isometry<Real>) -> BoundingSphere {
+    pub fn transform_by(&self, m: &Isometry<T>) -> BoundingSphere<T> {
         BoundingSphere::new(m * self.center, self.radius)
     }
 }
 
-impl BoundingVolume for BoundingSphere {
+impl<T: AD> BoundingVolume for BoundingSphere<T> {
     #[inline]
-    fn center(&self) -> Point<Real> {
+    fn center(&self) -> Point<T> {
         *self.center()
     }
 
     #[inline]
-    fn intersects(&self, other: &BoundingSphere) -> bool {
+    fn intersects(&self, other: &BoundingSphere<T>) -> bool {
         // FIXME: refactor that with the code from narrow_phase::ball_ball::collide(...) ?
         let delta_pos = other.center - self.center;
         let distance_squared = delta_pos.norm_squared();
@@ -63,7 +64,7 @@ impl BoundingVolume for BoundingSphere {
     }
 
     #[inline]
-    fn contains(&self, other: &BoundingSphere) -> bool {
+    fn contains(&self, other: &BoundingSphere<T>) -> bool {
         let delta_pos = other.center - self.center;
         let distance = delta_pos.norm();
 
@@ -71,7 +72,7 @@ impl BoundingVolume for BoundingSphere {
     }
 
     #[inline]
-    fn merge(&mut self, other: &BoundingSphere) {
+    fn merge(&mut self, other: &BoundingSphere<T>) {
         let mut dir = *other.center() - *self.center();
         let norm = dir.normalize_mut();
 
@@ -104,7 +105,7 @@ impl BoundingVolume for BoundingSphere {
     }
 
     #[inline]
-    fn merged(&self, other: &BoundingSphere) -> BoundingSphere {
+    fn merged(&self, other: &BoundingSphere<T>) -> BoundingSphere<T> {
         let mut res = self.clone();
 
         res.merge(other);
@@ -113,27 +114,27 @@ impl BoundingVolume for BoundingSphere {
     }
 
     #[inline]
-    fn loosen(&mut self, amount: Real) {
-        assert!(amount >= 0.0, "The loosening margin must be positive.");
+    fn loosen(&mut self, amount: T) {
+        assert!(amount >= T::zero(), "The loosening margin must be positive.");
         self.radius = self.radius + amount
     }
 
     #[inline]
-    fn loosened(&self, amount: Real) -> BoundingSphere {
-        assert!(amount >= 0.0, "The loosening margin must be positive.");
+    fn loosened(&self, amount: T) -> BoundingSphere<T> {
+        assert!(amount >= T::zero(), "The loosening margin must be positive.");
         BoundingSphere::new(self.center, self.radius + amount)
     }
 
     #[inline]
-    fn tighten(&mut self, amount: Real) {
-        assert!(amount >= 0.0, "The tightening margin must be positive.");
+    fn tighten(&mut self, amount: T) {
+        assert!(amount >= T::zero(), "The tightening margin must be positive.");
         assert!(amount <= self.radius, "The tightening margin is to large.");
         self.radius = self.radius - amount
     }
 
     #[inline]
-    fn tightened(&self, amount: Real) -> BoundingSphere {
-        assert!(amount >= 0.0, "The tightening margin must be positive.");
+    fn tightened(&self, amount: T) -> BoundingSphere<T> {
+        assert!(amount >= T::zero(), "The tightening margin must be positive.");
         assert!(amount <= self.radius, "The tightening margin is to large.");
         BoundingSphere::new(self.center, self.radius - amount)
     }

@@ -1,22 +1,22 @@
-use crate::math::Real;
 use crate::shape::{Capsule, Cylinder};
 use crate::transformation::utils;
 use na::{self, Point3};
+use ad_trait::AD;
 
-impl Capsule {
+impl<T: AD> Capsule<T> {
     /// Outlines this capsule’s shape using polylines.
-    pub fn to_outline(&self, nsubdiv: u32) -> (Vec<Point3<Real>>, Vec<[u32; 2]>) {
+    pub fn to_outline(&self, nsubdiv: u32) -> (Vec<Point3<T>>, Vec<[u32; 2]>) {
         let (vtx, idx) = canonical_capsule_outline(self.radius, self.half_height(), nsubdiv);
         (utils::transformed(vtx, self.canonical_transform()), idx)
     }
 }
 
 /// Generates a capsule.
-pub(crate) fn canonical_capsule_outline(
-    caps_radius: Real,
-    cylinder_half_height: Real,
+pub(crate) fn canonical_capsule_outline<T: AD>(
+    caps_radius: T,
+    cylinder_half_height: T,
     nsubdiv: u32,
-) -> (Vec<Point3<Real>>, Vec<[u32; 2]>) {
+) -> (Vec<Point3<T>>, Vec<[u32; 2]>) {
     let (mut vtx, mut idx) = Cylinder::new(cylinder_half_height, caps_radius).to_outline(nsubdiv);
     let shift = vtx.len() as u32;
 
@@ -28,14 +28,14 @@ pub(crate) fn canonical_capsule_outline(
     vtx[shift as usize..(shift + ncap_pts) as usize]
         .iter_mut()
         .for_each(|pt| {
-            *pt *= caps_radius * 2.0;
+            *pt *= caps_radius * T::constant(2.0);
             pt.y += cylinder_half_height
         });
 
     vtx[(shift + ncap_pts) as usize..]
         .iter_mut()
         .for_each(|pt| {
-            *pt *= caps_radius * 2.0;
+            *pt *= caps_radius * T::constant(2.0);
             pt.y = -pt.y - cylinder_half_height
         });
 

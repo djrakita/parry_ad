@@ -3,16 +3,16 @@ use crate::math::{Isometry};
 use crate::shape::{GenericHeightField, HeightFieldStorage};
 use ad_trait::AD;
 
-impl<Storage: HeightFieldStorage, T: AD> GenericHeightField<Storage, T> {
+impl<Storage: HeightFieldStorage<T>, T: AD> GenericHeightField<Storage, T> {
     /// Computes the world-space Aabb of this heightfield, transformed by `pos`.
     #[inline]
-    pub fn aabb(&self, pos: &Isometry<T>) -> Aabb {
+    pub fn aabb(&self, pos: &Isometry<T>) -> Aabb<T> {
         self.root_aabb().transform_by(pos)
     }
 
     /// Computes the local-space Aabb of this heightfield.
     #[inline]
-    pub fn local_aabb(&self) -> Aabb {
+    pub fn local_aabb(&self) -> Aabb<T> {
         self.root_aabb().clone()
     }
 }

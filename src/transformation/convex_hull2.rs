@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 use ad_trait::AD;
 
-use crate::math::Real;
 use crate::transformation::convex_hull_utils::{indexed_support_point_id, support_point_id};
 use na::{self, Point2, Vector2};
 use num_traits::Zero;
@@ -227,7 +226,6 @@ impl<T: AD> SegmentFacet<T> {
 
         let _eps = crate::math::DEFAULT_EPSILON;
 
-        // (*pt - *p0).dot(&self.normal) > _eps * na::convert::<f64, Real>(100.0f64)
         (*pt - *p0).dot(&self.normal) > T::constant(_eps * 100.0)
     }
 }

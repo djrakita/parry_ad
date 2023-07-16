@@ -16,33 +16,34 @@
 // >
 // > THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::math::{Point, Real, Vector, DIM};
+use crate::math::{Point, Vector, DIM};
 use crate::transformation::vhacd::VHACDParameters;
 use crate::transformation::voxelization::{VoxelSet, VoxelizedVolume};
 use std::sync::Arc;
+use ad_trait;
 
 #[cfg(feature = "dim2")]
-type ConvexHull = Vec<Point<Real>>;
+type ConvexHull<T: AD> = Vec<Point<T>>;
 #[cfg(feature = "dim3")]
-type ConvexHull = (Vec<Point<Real>>, Vec<[u32; 3]>);
+type ConvexHull<T: AD> = (Vec<Point<T>>, Vec<[u32; 3]>);
 
 #[derive(Copy, Clone, Debug)]
-pub(crate) struct CutPlane {
-    pub abc: Vector<Real>,
-    pub d: Real,
+pub(crate) struct CutPlane<T: AD> {
+    pub abc: Vector<T>,
+    pub d: T,
     pub axis: u8,
     pub index: u32,
 }
 
 /// Approximate convex decomposition using the VHACD algorithm.
-pub struct VHACD {
+pub struct VHACD<T: AD> {
     // raycast_mesh: Option<RaycastMesh>,
     voxel_parts: Vec<VoxelSet>,
-    volume_ch0: Real,
-    max_concavity: Real,
+    volume_ch0: T,
+    max_concavity: T,
 }
 
-impl VHACD {
+impl<T: AD> VHACD<T> {
     /// Decompose the given polyline (in 2D) or triangle mesh (in 3D).
     ///
     /// # Parameters
@@ -55,8 +56,8 @@ impl VHACD {
     ///   using the original polyline/trimesh primitives afterwards (otherwise the convex
     ///   hulls resulting from the convex decomposition will use the voxels vertices).
     pub fn decompose(
-        params: &VHACDParameters,
-        points: &[Point<Real>],
+        params: &VHACDParameters<T>,
+        points: &[Point<T>],
         indices: &[[u32; DIM]],
         keep_voxel_to_primitives_map: bool,
     ) -> Self {
@@ -85,12 +86,12 @@ impl VHACD {
     }
 
     /// Perform an approximate convex decomposition of a set of voxels.
-    pub fn from_voxels(params: &VHACDParameters, voxels: VoxelSet) -> Self {
+    pub fn from_voxels(params: &VHACDParameters<T>, voxels: VoxelSet) -> Self {
         let mut result = Self {
             // raycast_mesh: None,
             voxel_parts: Vec::new(),
-            volume_ch0: 0.0,
-            max_concavity: -Real::MAX,
+            volume_ch0: T::zero(),
+            max_concavity: T::constant(-f64::MAX),
         };
 
         result.do_compute_acd(params, voxels);
@@ -103,7 +104,7 @@ impl VHACD {
     }
 
     #[cfg(feature = "dim2")]
-    fn compute_preferred_cutting_direction(eigenvalues: &Vector<Real>) -> (Vector<Real>, Real) {
+    fn compute_preferred_cutting_direction(eigenvalues: &Vector<T>) -> (Vector<T>, T) {
         let vx = eigenvalues.y * eigenvalues.y;
         let vy = eigenvalues.x * eigenvalues.x;
 
@@ -111,25 +112,25 @@ impl VHACD {
             let e = eigenvalues.y * eigenvalues.y;
             let dir = Vector::x();
 
-            if e == 0.0 {
-                (dir, 0.0)
+            if e == T::zero() {
+                (dir, T::zero())
             } else {
-                (dir, 1.0 - vx / e)
+                (dir, T::one() - vx / e)
             }
         } else {
             let e = eigenvalues.x * eigenvalues.x;
             let dir = Vector::y();
 
-            if e == 0.0 {
-                (dir, 0.0)
+            if e == T::zero() {
+                (dir, T::zero())
             } else {
-                (dir, 1.0 - vy / e)
+                (dir, T::one() - vy / e)
             }
         }
     }
 
     #[cfg(feature = "dim3")]
-    fn compute_preferred_cutting_direction(eigenvalues: &Vector<Real>) -> (Vector<Real>, Real) {
+    fn compute_preferred_cutting_direction(eigenvalues: &Vector<T>) -> (Vector<T>, T) {
         let vx = (eigenvalues.y - eigenvalues.z) * (eigenvalues.y - eigenvalues.z);
         let vy = (eigenvalues.x - eigenvalues.z) * (eigenvalues.x - eigenvalues.z);
         let vz = (eigenvalues.x - eigenvalues.y) * (eigenvalues.x - eigenvalues.y);
@@ -138,28 +139,28 @@ impl VHACD {
             let e = eigenvalues.y * eigenvalues.y + eigenvalues.z * eigenvalues.z;
             let dir = Vector::x();
 
-            if e == 0.0 {
-                (dir, 0.0)
+            if e == T::zero() {
+                (dir, T::zero())
             } else {
-                (dir, 1.0 - vx / e)
+                (dir, T::one() - vx / e)
             }
         } else if vy < vx && vy < vz {
             let e = eigenvalues.x * eigenvalues.x + eigenvalues.z * eigenvalues.z;
             let dir = Vector::y();
 
-            if e == 0.0 {
-                (dir, 0.0)
+            if e == T::zero() {
+                (dir, T::zero())
             } else {
-                (dir, 1.0 - vy / e)
+                (dir, T::one() - vy / e)
             }
         } else {
             let e = eigenvalues.x * eigenvalues.x + eigenvalues.y * eigenvalues.y;
             let dir = Vector::z();
 
-            if e == 0.0 {
-                (dir, 0.0)
+            if e == T::zero() {
+                (dir, T::zero())
             } else {
-                (dir, 1.0 - vz / e)
+                (dir, T::one(1.0) - vz / e)
             }
         }
     }
@@ -168,7 +169,7 @@ impl VHACD {
     fn compute_axes_aligned_clipping_planes(
         vset: &VoxelSet,
         downsampling: u32,
-        planes: &mut Vec<CutPlane>,
+        planes: &mut Vec<CutPlane<T>>,
     ) {
         let min_v = vset.min_bb_voxels();
         let max_v = vset.max_bb_voxels();
@@ -181,7 +182,7 @@ impl VHACD {
                 let plane = CutPlane {
                     abc: Vector::ith(dim, 1.0),
                     axis: dim as u8,
-                    d: -(vset.origin[dim] + (i as Real + 0.5) * vset.scale),
+                    d: -(vset.origin[dim] + (T::constant(i as f64 + 0.5)) * vset.scale),
                     index: i,
                 };
 
@@ -192,9 +193,9 @@ impl VHACD {
 
     fn refine_axes_aligned_clipping_planes(
         vset: &VoxelSet,
-        best_plane: &CutPlane,
+        best_plane: &CutPlane<T>,
         downsampling: u32,
-        planes: &mut Vec<CutPlane>,
+        planes: &mut Vec<CutPlane<T>>,
     ) {
         let min_v = vset.min_bb_voxels();
         let max_v = vset.max_bb_voxels();
@@ -205,9 +206,9 @@ impl VHACD {
 
         for i in i0..=i1 {
             let plane = CutPlane {
-                abc: Vector::ith(best_id, 1.0),
+                abc: Vector::ith(best_id, T::one()),
                 axis: best_plane.axis,
-                d: -(vset.origin[best_id] + (i as Real + 0.5) * vset.scale),
+                d: -(vset.origin[best_id] + (T::constant(i as f64 + 0.5)) * vset.scale),
                 index: i,
             };
             planes.push(plane);
@@ -218,19 +219,19 @@ impl VHACD {
     fn compute_best_clipping_plane(
         &self,
         input_voxels: &VoxelSet,
-        input_voxels_ch: &ConvexHull,
-        planes: &[CutPlane],
-        preferred_cutting_direction: &Vector<Real>,
-        w: Real,
-        alpha: Real,
-        beta: Real,
+        input_voxels_ch: &ConvexHull<T>,
+        planes: &[CutPlane<T>],
+        preferred_cutting_direction: &Vector<T>,
+        w: T,
+        alpha: T,
+        beta: T,
         convex_hull_downsampling: u32,
-        params: &VHACDParameters,
-    ) -> (CutPlane, Real) {
+        params: &VHACDParameters<T>,
+    ) -> (CutPlane<T>, T) {
         let mut best_plane = planes[0];
-        let mut min_concavity = Real::MAX;
+        let mut min_concavity = T::constant(f64::MAX);
         let mut i_best = -1;
-        let mut min_total = Real::MAX;
+        let mut min_total = T::constant(f64::MAX);
 
         let mut left_ch;
         let mut right_ch;
@@ -300,7 +301,7 @@ impl VHACD {
 
     fn process_primitive_set(
         &mut self,
-        params: &VHACDParameters,
+        params: &VHACDParameters<T>,
         first_iteration: bool,
         parts: &mut Vec<VoxelSet>,
         temp: &mut Vec<VoxelSet>,
@@ -388,7 +389,7 @@ impl VHACD {
         }
     }
 
-    fn do_compute_acd(&mut self, params: &VHACDParameters, mut voxels: VoxelSet) {
+    fn do_compute_acd(&mut self, params: &VHACDParameters<T>, mut voxels: VoxelSet) {
         let intersections = voxels.intersections.clone();
         let mut input_parts = Vec::new();
         let mut parts = Vec::new();
@@ -396,7 +397,7 @@ impl VHACD {
         input_parts.push(std::mem::replace(&mut voxels, VoxelSet::new()));
 
         let mut first_iteration = true;
-        self.volume_ch0 = 1.0;
+        self.volume_ch0 = T::one();
 
         // Compute the decomposition depth based on the number of convex hulls being requested.
         let mut hull_count = 2;
@@ -493,9 +494,9 @@ impl VHACD {
     /// `self`.
     pub fn compute_primitive_intersections(
         &self,
-        points: &[Point<Real>],
+        points: &[Point<T>],
         indices: &[[u32; DIM]],
-    ) -> Vec<Vec<Point<Real>>> {
+    ) -> Vec<Vec<Point<T>>> {
         self.voxel_parts
             .iter()
             .map(|part| part.compute_primitive_intersections(points, indices))
@@ -510,9 +511,9 @@ impl VHACD {
     #[cfg(feature = "dim2")]
     pub fn compute_exact_convex_hulls(
         &self,
-        points: &[Point<Real>],
+        points: &[Point<T>],
         indices: &[[u32; DIM]],
-    ) -> Vec<Vec<Point<Real>>> {
+    ) -> Vec<Vec<Point<T>>> {
         self.voxel_parts
             .iter()
             .map(|part| part.compute_exact_convex_hull(points, indices))
@@ -527,9 +528,9 @@ impl VHACD {
     #[cfg(feature = "dim3")]
     pub fn compute_exact_convex_hulls(
         &self,
-        points: &[Point<Real>],
+        points: &[Point<T>],
         indices: &[[u32; DIM]],
-    ) -> Vec<(Vec<Point<Real>>, Vec<[u32; DIM]>)> {
+    ) -> Vec<(Vec<Point<T>>, Vec<[u32; DIM]>)> {
         self.voxel_parts
             .iter()
             .map(|part| part.compute_exact_convex_hull(points, indices))
@@ -542,7 +543,7 @@ impl VHACD {
     /// Use `compute_exact_convex_hulls` instead if the original polyline/trimesh geometry
     /// needs to be taken into account.
     #[cfg(feature = "dim2")]
-    pub fn compute_convex_hulls(&self, downsampling: u32) -> Vec<Vec<Point<Real>>> {
+    pub fn compute_convex_hulls(&self, downsampling: u32) -> Vec<Vec<Point<T>>> {
         let downsampling = downsampling.max(1);
         self.voxel_parts
             .iter()
@@ -559,7 +560,7 @@ impl VHACD {
     pub fn compute_convex_hulls(
         &self,
         downsampling: u32,
-    ) -> Vec<(Vec<Point<Real>>, Vec<[u32; DIM]>)> {
+    ) -> Vec<(Vec<Point<T>>, Vec<[u32; DIM]>)> {
         let downsampling = downsampling.max(1);
         self.voxel_parts
             .iter()
@@ -568,22 +569,22 @@ impl VHACD {
     }
 }
 
-fn compute_concavity(volume: Real, volume_ch: Real, volume0: Real) -> Real {
+fn compute_concavity<T: AD>(volume: T, volume_ch: T, volume0: T) -> T {
     (volume_ch - volume).abs() / volume0
 }
 
-fn clip_mesh(
-    points: &[Point<Real>],
-    plane: &CutPlane,
-    positive_part: &mut Vec<Point<Real>>,
-    negative_part: &mut Vec<Point<Real>>,
+fn clip_mesh<T: AD>(
+    points: &[Point<T>],
+    plane: &CutPlane<T>,
+    positive_part: &mut Vec<Point<T>>,
+    negative_part: &mut Vec<Point<T>>,
 ) {
     for pt in points {
         let d = plane.abc.dot(&pt.coords) + plane.d;
 
-        if d > 0.0 {
+        if d > T::zero() {
             positive_part.push(*pt);
-        } else if d < 0.0 {
+        } else if d < T::zero() {
             negative_part.push(*pt);
         } else {
             positive_part.push(*pt);
@@ -593,7 +594,7 @@ fn clip_mesh(
 }
 
 #[cfg(feature = "dim2")]
-fn convex_hull(vertices: &[Point<Real>]) -> Vec<Point<Real>> {
+fn convex_hull<T: AD>(vertices: &[Point<T>]) -> Vec<Point<T>> {
     if vertices.len() > 1 {
         crate::transformation::convex_hull(vertices)
     } else {
@@ -602,7 +603,7 @@ fn convex_hull(vertices: &[Point<Real>]) -> Vec<Point<Real>> {
 }
 
 #[cfg(feature = "dim3")]
-fn convex_hull(vertices: &[Point<Real>]) -> (Vec<Point<Real>>, Vec<[u32; DIM]>) {
+fn convex_hull<T: AD>(vertices: &[Point<T>]) -> (Vec<Point<T>>, Vec<[u32; DIM]>) {
     if vertices.len() > 2 {
         crate::transformation::convex_hull(vertices)
     } else {
@@ -611,20 +612,20 @@ fn convex_hull(vertices: &[Point<Real>]) -> (Vec<Point<Real>>, Vec<[u32; DIM]>) 
 }
 
 #[cfg(feature = "dim2")]
-fn compute_volume(polygon: &[Point<Real>]) -> Real {
+fn compute_volume<T: AD>(polygon: &[Point<T>]) -> T {
     if !polygon.is_empty() {
         crate::mass_properties::details::convex_polygon_area_and_center_of_mass(&polygon).0
     } else {
-        0.0
+        T::zero()
     }
 }
 
 #[cfg(feature = "dim3")]
-fn compute_volume(mesh: &(Vec<Point<Real>>, Vec<[u32; DIM]>)) -> Real {
+fn compute_volume<T: AD>(mesh: &(Vec<Point<T>>, Vec<[u32; DIM]>)) -> T {
     if !mesh.0.is_empty() {
         crate::mass_properties::details::trimesh_signed_volume_and_center_of_mass(&mesh.0, &mesh.1)
             .0
     } else {
-        0.0
+        T::zero()
     }
 }

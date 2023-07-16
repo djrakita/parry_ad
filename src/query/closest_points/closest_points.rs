@@ -1,6 +1,7 @@
-use crate::math::{Isometry, Point, Real};
+use crate::math::{Isometry, Point};
 
 use std::mem;
+use ad_trait::AD;
 
 /// Closest points information.
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -10,16 +11,16 @@ use std::mem;
     derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
     archive(check_bytes)
 )]
-pub enum ClosestPoints {
+pub enum ClosestPoints<T: AD> {
     /// The two objects are intersecting.
     Intersecting,
     /// The two objects are non-intersecting but closer than a given user-defined distance.
-    WithinMargin(Point<Real>, Point<Real>),
+    WithinMargin(Point<T>, Point<T>),
     /// The two objects are non-intersecting and further than a given user-defined distance.
     Disjoint,
 }
 
-impl ClosestPoints {
+impl<T: AD> ClosestPoints<T> {
     /// Swaps the two points.
     pub fn flip(&mut self) {
         if let ClosestPoints::WithinMargin(ref mut p1, ref mut p2) = *self {
@@ -39,7 +40,7 @@ impl ClosestPoints {
 
     /// Transform the points in `self` by `pos1` and `pos2`.
     #[must_use]
-    pub fn transform_by(self, pos1: &Isometry<Real>, pos2: &Isometry<Real>) -> Self {
+    pub fn transform_by(self, pos1: &Isometry<T>, pos2: &Isometry<T>) -> Self {
         if let ClosestPoints::WithinMargin(p1, p2) = self {
             ClosestPoints::WithinMargin(pos1 * p1, pos2 * p2)
         } else {

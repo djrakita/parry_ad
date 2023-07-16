@@ -1,12 +1,13 @@
-use crate::math::{Isometry, Real, Vector};
+use crate::math::{Isometry, Vector};
 #[cfg(feature = "std")]
 use crate::query::{contact_manifolds::ContactManifoldsWorkspace, ContactManifold};
 use crate::query::{ClosestPoints, Contact, NonlinearRigidMotion, Unsupported, TOI};
 use crate::shape::Shape;
+use ad_trait::AD;
 
 #[cfg(feature = "std")]
 /// A query dispatcher for queries relying on spatial coherence, including contact-manifold computation.
-pub trait PersistentQueryDispatcher<ManifoldData = (), ContactData = ()>: QueryDispatcher {
+pub trait PersistentQueryDispatcher<T: AD, ManifoldData = (), ContactData = ()>: QueryDispatcher {
     /// Compute all the contacts between two shapes.
     ///
     /// The output is written into `manifolds` and `context`. Both can persist
@@ -16,22 +17,22 @@ pub trait PersistentQueryDispatcher<ManifoldData = (), ContactData = ()>: QueryD
     /// spatial and temporal coherence.
     fn contact_manifolds(
         &self,
-        pos12: &Isometry<Real>,
-        g1: &dyn Shape,
-        g2: &dyn Shape,
-        prediction: Real,
-        manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
-        workspace: &mut Option<ContactManifoldsWorkspace>,
+        pos12: &Isometry<T>,
+        g1: &dyn Shape<T>,
+        g2: &dyn Shape<T>,
+        prediction: T,
+        manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
+        workspace: &mut Option<ContactManifoldsWorkspace<T>>,
     ) -> Result<(), Unsupported>;
 
     /// Computes the contact-manifold between two convex shapes.
     fn contact_manifold_convex_convex(
         &self,
-        pos12: &Isometry<Real>,
-        g1: &dyn Shape,
-        g2: &dyn Shape,
-        prediction: Real,
-        manifold: &mut ContactManifold<ManifoldData, ContactData>,
+        pos12: &Isometry<T>,
+        g1: &dyn Shape<T>,
+        g2: &dyn Shape<T>,
+        prediction: T,
+        manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
     ) -> Result<(), Unsupported>;
 }
 
@@ -42,13 +43,13 @@ pub trait PersistentQueryDispatcher<ManifoldData = (), ContactData = ()>: QueryD
 ///
 /// The `pos12` argument to most queries is the transform from the local space of `g2` to that of
 /// `g1`.
-pub trait QueryDispatcher: Send + Sync {
+pub trait QueryDispatcher<T: AD>: Send + Sync {
     /// Tests whether two shapes are intersecting.
     fn intersection_test(
         &self,
-        pos12: &Isometry<Real>,
-        g1: &dyn Shape,
-        g2: &dyn Shape,
+        pos12: &Isometry<T>,
+        g1: &dyn Shape<T>,
+        g2: &dyn Shape<T>,
     ) -> Result<bool, Unsupported>;
 
     /// Computes the minimum distance separating two shapes.
@@ -56,32 +57,32 @@ pub trait QueryDispatcher: Send + Sync {
     /// Returns `0.0` if the objects are touching or penetrating.
     fn distance(
         &self,
-        pos12: &Isometry<Real>,
-        g1: &dyn Shape,
-        g2: &dyn Shape,
-    ) -> Result<Real, Unsupported>;
+        pos12: &Isometry<T>,
+        g1: &dyn Shape<T>,
+        g2: &dyn Shape<T>,
+    ) -> Result<T, Unsupported>;
 
     /// Computes one pair of contact points point between two shapes.
     ///
     /// Returns `None` if the objects are separated by a distance greater than `prediction`.
     fn contact(
         &self,
-        pos12: &Isometry<Real>,
-        g1: &dyn Shape,
-        g2: &dyn Shape,
-        prediction: Real,
-    ) -> Result<Option<Contact>, Unsupported>;
+        pos12: &Isometry<T>,
+        g1: &dyn Shape<T>,
+        g2: &dyn Shape<T>,
+        prediction: T,
+    ) -> Result<Option<Contact<T>>, Unsupported>;
 
     /// Computes the pair of closest points between two shapes.
     ///
     /// Returns `ClosestPoints::Disjoint` if the objects are separated by a distance greater than `max_dist`.
     fn closest_points(
         &self,
-        pos12: &Isometry<Real>,
-        g1: &dyn Shape,
-        g2: &dyn Shape,
-        max_dist: Real,
-    ) -> Result<ClosestPoints, Unsupported>;
+        pos12: &Isometry<T>,
+        g1: &dyn Shape<T>,
+        g2: &dyn Shape<T>,
+        max_dist: T,
+    ) -> Result<ClosestPoints<T>, Unsupported>;
 
     /// Computes the smallest time when two shapes under translational movement are separated by a
     /// distance smaller or equal to `distance`.
@@ -98,16 +99,16 @@ pub trait QueryDispatcher: Send + Sync {
     ///              detected is theater than this value.
     fn time_of_impact(
         &self,
-        pos12: &Isometry<Real>,
-        local_vel12: &Vector<Real>,
-        g1: &dyn Shape,
-        g2: &dyn Shape,
-        max_toi: Real,
+        pos12: &Isometry<T>,
+        local_vel12: &Vector<T>,
+        g1: &dyn Shape<T>,
+        g2: &dyn Shape<T>,
+        max_toi: T,
         stop_at_penetration: bool,
-    ) -> Result<Option<TOI>, Unsupported>;
+    ) -> Result<Option<TOI<T>>, Unsupported>;
 
     /// Construct a `QueryDispatcher` that falls back on `other` for cases not handled by `self`
-    fn chain<U: QueryDispatcher>(self, other: U) -> QueryDispatcherChain<Self, U>
+    fn chain<U: QueryDispatcher<T>>(self, other: U) -> QueryDispatcherChain<Self, U>
     where
         Self: Sized,
     {
@@ -132,14 +133,14 @@ pub trait QueryDispatcher: Send + Sync {
     ///    at a time `> start_time` that could result in tunnelling.
     fn nonlinear_time_of_impact(
         &self,
-        motion1: &NonlinearRigidMotion,
-        g1: &dyn Shape,
-        motion2: &NonlinearRigidMotion,
-        g2: &dyn Shape,
-        start_time: Real,
-        end_time: Real,
+        motion1: &NonlinearRigidMotion<T>,
+        g1: &dyn Shape<T>,
+        motion2: &NonlinearRigidMotion<T>,
+        g2: &dyn Shape<T>,
+        start_time: T,
+        end_time: T,
         stop_at_penetration: bool,
-    ) -> Result<Option<TOI>, Unsupported>;
+    ) -> Result<Option<TOI<T>>, Unsupported>;
 }
 
 /// The composition of two dispatchers
@@ -155,74 +156,74 @@ macro_rules! chain_method {
     }
 }
 
-impl<T, U> QueryDispatcher for QueryDispatcherChain<T, U>
+impl<T, U, A: AD> QueryDispatcher<A> for QueryDispatcherChain<T, U>
 where
-    T: QueryDispatcher,
-    U: QueryDispatcher,
+    T: QueryDispatcher<A>,
+    U: QueryDispatcher<A>,
 {
     chain_method!(intersection_test(
-        pos12: &Isometry<Real>,
-        g1: &dyn Shape,
-        g2: &dyn Shape,
+        pos12: &Isometry<A>,
+        g1: &dyn Shape<A>,
+        g2: &dyn Shape<A>,
     ) -> bool);
 
-    chain_method!(distance(pos12: &Isometry<Real>, g1: &dyn Shape, g2: &dyn Shape,) -> Real);
+    chain_method!(distance(pos12: &Isometry<A>, g1: &dyn Shape<A>, g2: &dyn Shape<A>,) -> A);
 
     chain_method!(contact(
-        pos12: &Isometry<Real>,
-        g1: &dyn Shape,
-        g2: &dyn Shape,
-        prediction: Real,
+        pos12: &Isometry<A>,
+        g1: &dyn Shape<A>,
+        g2: &dyn Shape<A>,
+        prediction: A,
     ) -> Option<Contact>);
 
     chain_method!(closest_points(
-        pos12: &Isometry<Real>,
-        g1: &dyn Shape,
-        g2: &dyn Shape,
-        max_dist: Real,
+        pos12: &Isometry<A>,
+        g1: &dyn Shape<A>,
+        g2: &dyn Shape<A>,
+        max_dist: A,
     ) -> ClosestPoints);
 
     chain_method!(time_of_impact(
-        pos12: &Isometry<Real>,
-        vel12: &Vector<Real>,
-        g1: &dyn Shape,
-        g2: &dyn Shape,
-        max_toi: Real,
+        pos12: &Isometry<A>,
+        vel12: &Vector<A>,
+        g1: &dyn Shape<A>,
+        g2: &dyn Shape<A>,
+        max_toi: A,
         stop_at_penetration: bool,
-    ) -> Option<TOI>);
+    ) -> Option<TOI<A>>);
 
     chain_method!(nonlinear_time_of_impact(
-        motion1: &NonlinearRigidMotion,
-        g1: &dyn Shape,
-        motion2: &NonlinearRigidMotion,
-        g2: &dyn Shape,
-        start_time: Real,
-        end_time: Real,
+        motion1: &NonlinearRigidMotion<A>,
+        g1: &dyn Shape<A>,
+        motion2: &NonlinearRigidMotion<A>,
+        g2: &dyn Shape<A>,
+        start_time: A,
+        end_time: A,
         stop_at_penetration: bool,
-    ) -> Option<TOI>);
+    ) -> Option<TOI<A>>);
 }
 
 #[cfg(feature = "std")]
-impl<ManifoldData, ContactData, T, U> PersistentQueryDispatcher<ManifoldData, ContactData>
+impl<ManifoldData, ContactData, T, U, A: AD> PersistentQueryDispatcher<ManifoldData, ContactData, A>
     for QueryDispatcherChain<T, U>
 where
-    T: PersistentQueryDispatcher<ManifoldData, ContactData>,
-    U: PersistentQueryDispatcher<ManifoldData, ContactData>,
+    T: PersistentQueryDispatcher<A, ManifoldData, ContactData>,
+    U: PersistentQueryDispatcher<A, ManifoldData, ContactData>,
 {
     chain_method!(contact_manifolds(
-        pos12: &Isometry<Real>,
-        g1: &dyn Shape,
-        g2: &dyn Shape,
-        prediction: Real,
-        manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
-        workspace: &mut Option<ContactManifoldsWorkspace>,
+        pos12: &Isometry<A>,
+        g1: &dyn Shape<A>,
+        g2: &dyn Shape<A>,
+        prediction: A,
+        manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, A>>,
+        workspace: &mut Option<ContactManifoldsWorkspace<A>>,
     ) -> ());
 
     chain_method!(contact_manifold_convex_convex(
-        pos12: &Isometry<Real>,
-        g1: &dyn Shape,
-        g2: &dyn Shape,
-        prediction: Real,
-        manifold: &mut ContactManifold<ManifoldData, ContactData>,
+        pos12: &Isometry<A>,
+        g1: &dyn Shape<A>,
+        g2: &dyn Shape<A>,
+        prediction: A,
+        manifold: &mut ContactManifold<ManifoldData, ContactData, A>,
     ) -> ());
 }

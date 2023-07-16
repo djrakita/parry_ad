@@ -5,7 +5,7 @@ use crate::shape::{Cuboid, Triangle};
 use ad_trait::AD;
 
 /// Tests if a triangle intersects an Aabb.
-pub fn intersection_test_aabb_triangle<T: AD>(aabb1: &Aabb, triangle2: &Triangle<T>) -> bool {
+pub fn intersection_test_aabb_triangle<T: AD>(aabb1: &Aabb<T>, triangle2: &Triangle<T>) -> bool {
     let cuboid1 = Cuboid::new(aabb1.half_extents());
     let pos12 = Isometry::from_parts((-aabb1.center().coords).into(), na::one());
     intersection_test_cuboid_triangle(&pos12, &cuboid1, triangle2)
@@ -16,7 +16,7 @@ pub fn intersection_test_aabb_triangle<T: AD>(aabb1: &Aabb, triangle2: &Triangle
 pub fn intersection_test_triangle_cuboid<T: AD>(
     pos12: &Isometry<T>,
     triangle1: &Triangle<T>,
-    cuboid2: &Cuboid,
+    cuboid2: &Cuboid<T>,
 ) -> bool {
     intersection_test_cuboid_triangle(&pos12.inverse(), cuboid2, triangle1)
 }
@@ -25,7 +25,7 @@ pub fn intersection_test_triangle_cuboid<T: AD>(
 #[inline]
 pub fn intersection_test_cuboid_triangle<T: AD>(
     pos12: &Isometry<T>,
-    cube1: &Cuboid,
+    cube1: &Cuboid<T>,
     triangle2: &Triangle<T>,
 ) -> bool {
     let sep1 =

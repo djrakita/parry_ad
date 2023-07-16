@@ -3,15 +3,16 @@ use std::mem;
 use na;
 
 use crate::bounding_volume::Aabb;
-use crate::math::{Real, Vector, DIM};
+use crate::math::{Vector, DIM};
 use crate::query::{Ray, RayCast, RayIntersection};
 use crate::shape::FeatureId;
 use num::Zero;
+use ad_trait::AD;
 
-impl RayCast for Aabb {
-    fn cast_local_ray(&self, ray: &Ray, max_toi: Real, solid: bool) -> Option<Real> {
-        let mut tmin: Real = 0.0;
-        let mut tmax: Real = max_toi;
+impl<T: AD> RayCast<T> for Aabb<T> {
+    fn cast_local_ray(&self, ray: &Ray<T>, max_toi: T, solid: bool) -> Option<T> {
+        let mut tmin: T = T::zero();
+        let mut tmax: T = max_toi;
 
         for i in 0usize..DIM {
             if ray.dir[i].is_zero() {
@@ -51,10 +52,10 @@ impl RayCast for Aabb {
     #[inline]
     fn cast_local_ray_and_get_normal(
         &self,
-        ray: &Ray,
-        max_toi: Real,
+        ray: &Ray<T>,
+        max_toi: T,
         solid: bool,
-    ) -> Option<RayIntersection> {
+    ) -> Option<RayIntersection<T>> {
         ray_aabb(self, &ray, max_toi, solid).map(|(t, n, i)| {
             let feature = if i < 0 {
                 FeatureId::Face((-i) as u32 - 1 + 3)
@@ -67,17 +68,17 @@ impl RayCast for Aabb {
     }
 }
 
-fn ray_aabb(
-    aabb: &Aabb,
-    ray: &Ray,
-    max_toi: Real,
+fn ray_aabb<T: AD>(
+    aabb: &Aabb<T>,
+    ray: &Ray<T>,
+    max_toi: T,
     solid: bool,
-) -> Option<(Real, Vector<Real>, isize)> {
+) -> Option<(T, Vector<T>, isize)> {
     use crate::query::clip;
     clip::clip_aabb_line(aabb, &ray.origin, &ray.dir).and_then(|(near, far)| {
-        if near.0 < 0.0 {
+        if near.0 < T::zero() {
             if solid {
-                Some((0.0, na::zero(), far.2))
+                Some((T::zero(), na::zero(), far.2))
             } else if far.0 <= max_toi {
                 Some(far)
             } else {

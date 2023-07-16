@@ -1,13 +1,13 @@
-use crate::math::Real;
 use na::Point2;
 use num::Zero;
+use ad_trait::AD;
 
 /// Tests if the given point is inside of a polygon with arbitrary orientation.
-pub fn point_in_poly2d(pt: &Point2<Real>, poly: &[Point2<Real>]) -> bool {
+pub fn point_in_poly2d<T: AD>(pt: &Point2<T>, poly: &[Point2<T>]) -> bool {
     if poly.len() == 0 {
         false
     } else {
-        let mut sign = 0.0;
+        let mut sign = T::zero();
 
         for i1 in 0..poly.len() {
             let i2 = (i1 + 1) % poly.len();
@@ -17,7 +17,7 @@ pub fn point_in_poly2d(pt: &Point2<Real>, poly: &[Point2<Real>]) -> bool {
 
             if sign.is_zero() {
                 sign = perp;
-            } else if sign * perp < 0.0 {
+            } else if sign * perp < T::zero() {
                 return false;
             }
         }

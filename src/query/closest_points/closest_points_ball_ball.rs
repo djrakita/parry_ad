@@ -1,19 +1,20 @@
-use crate::math::{Isometry, Point, Real};
+use crate::math::{Isometry, Point};
 use crate::query::ClosestPoints;
 use crate::shape::Ball;
+use ad_trait::AD;
 
 /// Closest points between balls.
 ///
 /// Each returned point is expressed on the local-space of the corresponding shape.
 #[inline]
-pub fn closest_points_ball_ball(
-    pos12: &Isometry<Real>,
-    b1: &Ball,
-    b2: &Ball,
-    margin: Real,
-) -> ClosestPoints {
+pub fn closest_points_ball_ball<T: AD>(
+    pos12: &Isometry<T>,
+    b1: &Ball<T>,
+    b2: &Ball<T>,
+    margin: T,
+) -> ClosestPoints<T> {
     assert!(
-        margin >= 0.0,
+        margin >= T::zero(),
         "The proximity margin must be positive or null."
     );
 

@@ -1,6 +1,6 @@
 use ad_trait::AD;
 use crate::bounding_volume::SimdAabb;
-use crate::math::{Isometry, Point, Real, SimdBool, SimdReal, Vector, SIMD_WIDTH};
+use crate::math::{Isometry, Point, Vector, SIMD_WIDTH};
 use crate::partitioning::{SimdBestFirstVisitStatus, SimdBestFirstVisitor};
 use crate::query::{QueryDispatcher, Ray, SimdRay, TOI};
 use crate::shape::{Shape, TypedSimdCompositeShape};
@@ -13,10 +13,10 @@ pub fn time_of_impact_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(
     pos12: &Isometry<T>,
     vel12: &Vector<T>,
     g1: &G1,
-    g2: &dyn Shape,
+    g2: &dyn Shape<T>,
     max_toi: T,
     stop_at_penetration: bool,
-) -> Option<TOI>
+) -> Option<TOI<T>>
 where
     D: QueryDispatcher,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
@@ -36,15 +36,15 @@ where
 }
 
 /// Time Of Impact of any shape with a composite shape, under translational movement.
-pub fn time_of_impact_shape_composite_shape<T, D: ?Sized, G2: ?Sized>(
+pub fn time_of_impact_shape_composite_shape<D: ?Sized, G2: ?Sized, T: AD>(
     dispatcher: &D,
     pos12: &Isometry<T>,
     vel12: &Vector<T>,
-    g1: &dyn Shape,
+    g1: &dyn Shape<T>,
     g2: &G2,
     max_toi: T,
     stop_at_penetration: bool,
-) -> Option<TOI>
+) -> Option<TOI<T>>
 where
     D: QueryDispatcher,
     G2: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
@@ -65,13 +65,13 @@ where
 pub struct TOICompositeShapeShapeBestFirstVisitor<'a, D: ?Sized, G1: ?Sized + 'a, T: AD> {
     msum_shift: Vector<T>,
     msum_margin: Vector<T>,
-    ray: SimdRay,
+    ray: SimdRay<T>,
 
     dispatcher: &'a D,
     pos12: &'a Isometry<T>,
     vel12: &'a Vector<T>,
     g1: &'a G1,
-    g2: &'a dyn Shape,
+    g2: &'a dyn Shape<T>,
     max_toi: T,
     stop_at_penetration: bool,
 }
@@ -87,7 +87,7 @@ where
         pos12: &'a Isometry<T>,
         vel12: &'a Vector<T>,
         g1: &'a G1,
-        g2: &'a dyn Shape,
+        g2: &'a dyn Shape<T>,
         max_toi: T,
         stop_at_penetration: bool,
     ) -> TOICompositeShapeShapeBestFirstVisitor<'a, D, G1, T> {
@@ -109,13 +109,13 @@ where
     }
 }
 
-impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>>
+impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>, T>
     for TOICompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
 where
     D: QueryDispatcher,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
-    type Result = (G1::PartId, TOI);
+    type Result = (G1::PartId, TOI<T>);
 
     #[inline]
     fn visit(
@@ -123,7 +123,7 @@ where
         best: T,
         bv: &SimdAabb<T>,
         data: Option<[Option<&G1::PartId>; SIMD_WIDTH]>,
-    ) -> SimdBestFirstVisitStatus<Self::Result> {
+    ) -> SimdBestFirstVisitStatus<Self::Result, T> {
         // Compute the minkowski sum of the two Aabbs.
         let msum = SimdAabb {
             mins: bv.mins + self.msum_shift + (-self.msum_margin),
@@ -131,12 +131,12 @@ where
         };
 
         // Compute the TOI.
-        let (mask, toi) = msum.cast_local_ray(&self.ray, SimdReal::splat(self.max_toi));
+        let (mask, toi) = msum.cast_local_ray(&self.ray, self.max_toi);
 
         if let Some(data) = data {
-            let better_toi = toi.simd_lt(SimdReal::splat(best));
+            let better_toi = toi.simd_lt(best);
             let bitmask = (mask & better_toi).bitmask();
-            let mut weights = [0.0; SIMD_WIDTH];
+            let mut weights = [T::zero(); SIMD_WIDTH];
             let mut mask = [false; SIMD_WIDTH];
             let mut results = [None; SIMD_WIDTH];
 
@@ -182,8 +182,8 @@ where
             }
 
             SimdBestFirstVisitStatus::MaybeContinue {
-                weights: SimdReal::from(weights),
-                mask: SimdBool::from(mask),
+                weights: weights[0],
+                mask: mask[0],
                 results,
             }
         } else {

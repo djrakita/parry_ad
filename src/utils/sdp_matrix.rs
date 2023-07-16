@@ -1,6 +1,6 @@
-use crate::math::Real;
-use na::{Matrix2, Matrix3, Matrix3x2, SimdRealField, Vector2, Vector3};
+use na::{Matrix2, Matrix3, Matrix3x2, Vector2, Vector3};
 use std::ops::{Add, Mul};
+use ad_trait::AD;
 
 /// A 2x2 symmetric-definite-positive matrix.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -20,7 +20,7 @@ pub struct SdpMatrix2<N> {
     pub m22: N,
 }
 
-impl<N: SimdRealField + Copy> SdpMatrix2<N> {
+impl<N: AD + Copy> SdpMatrix2<N> {
     /// A new SDP 2x2 matrix with the given components.
     ///
     /// Because the matrix is symmetric, only the lower off-diagonal component is required.
@@ -82,7 +82,7 @@ impl<N: SimdRealField + Copy> SdpMatrix2<N> {
     }
 }
 
-impl<N: SimdRealField + Copy> Add<SdpMatrix2<N>> for SdpMatrix2<N> {
+impl<N: AD + Copy> Add<SdpMatrix2<N>> for SdpMatrix2<N> {
     type Output = Self;
 
     fn add(self, rhs: SdpMatrix2<N>) -> Self {
@@ -90,7 +90,7 @@ impl<N: SimdRealField + Copy> Add<SdpMatrix2<N>> for SdpMatrix2<N> {
     }
 }
 
-impl<N: SimdRealField + Copy> Mul<Vector2<N>> for SdpMatrix2<N> {
+impl<N: AD + Copy> Mul<Vector2<N>> for SdpMatrix2<N> {
     type Output = Vector2<N>;
 
     fn mul(self, rhs: Vector2<N>) -> Self::Output {
@@ -101,10 +101,10 @@ impl<N: SimdRealField + Copy> Mul<Vector2<N>> for SdpMatrix2<N> {
     }
 }
 
-impl Mul<Real> for SdpMatrix2<Real> {
-    type Output = SdpMatrix2<Real>;
+impl<T: AD> Mul<T> for SdpMatrix2<T> {
+    type Output = SdpMatrix2<T>;
 
-    fn mul(self, rhs: Real) -> Self::Output {
+    fn mul(self, rhs: T) -> Self::Output {
         SdpMatrix2::new(self.m11 * rhs, self.m12 * rhs, self.m22 * rhs)
     }
 }
@@ -133,7 +133,7 @@ pub struct SdpMatrix3<N> {
     pub m33: N,
 }
 
-impl<N: SimdRealField + Copy> SdpMatrix3<N> {
+impl<N: AD + Copy> SdpMatrix3<N> {
     /// A new SDP 3x3 matrix with the given components.
     ///
     /// Because the matrix is symmetric, only the lower off-diagonal components is required.
@@ -293,10 +293,10 @@ impl<N: Add<N>> Add<SdpMatrix3<N>> for SdpMatrix3<N> {
     }
 }
 
-impl Mul<Real> for SdpMatrix3<Real> {
-    type Output = SdpMatrix3<Real>;
+impl Mul<T: AD> for SdpMatrix3<T> {
+    type Output = SdpMatrix3<T>;
 
-    fn mul(self, rhs: Real) -> Self::Output {
+    fn mul(self, rhs: T) -> Self::Output {
         SdpMatrix3 {
             m11: self.m11 * rhs,
             m12: self.m12 * rhs,
@@ -308,7 +308,7 @@ impl Mul<Real> for SdpMatrix3<Real> {
     }
 }
 
-impl<N: SimdRealField + Copy> Mul<Vector3<N>> for SdpMatrix3<N> {
+impl<N: AD + Copy> Mul<Vector3<N>> for SdpMatrix3<N> {
     type Output = Vector3<N>;
 
     fn mul(self, rhs: Vector3<N>) -> Self::Output {
@@ -319,7 +319,7 @@ impl<N: SimdRealField + Copy> Mul<Vector3<N>> for SdpMatrix3<N> {
     }
 }
 
-impl<N: SimdRealField + Copy> Mul<Matrix3<N>> for SdpMatrix3<N> {
+impl<N: AD + Copy> Mul<Matrix3<N>> for SdpMatrix3<N> {
     type Output = Matrix3<N>;
 
     fn mul(self, rhs: Matrix3<N>) -> Self::Output {
@@ -339,7 +339,7 @@ impl<N: SimdRealField + Copy> Mul<Matrix3<N>> for SdpMatrix3<N> {
     }
 }
 
-impl<N: SimdRealField + Copy> Mul<Matrix3x2<N>> for SdpMatrix3<N> {
+impl<N: AD + Copy> Mul<Matrix3x2<N>> for SdpMatrix3<N> {
     type Output = Matrix3x2<N>;
 
     fn mul(self, rhs: Matrix3x2<N>) -> Self::Output {
@@ -355,11 +355,11 @@ impl<N: SimdRealField + Copy> Mul<Matrix3x2<N>> for SdpMatrix3<N> {
     }
 }
 
-impl<T> From<[SdpMatrix3<Real>; 4]> for SdpMatrix3<T>
+impl<T> From<[SdpMatrix3<T>; 4]> for SdpMatrix3<T>
 where
-    T: From<[Real; 4]>,
+    T: From<[T; 4]>,
 {
-    fn from(data: [SdpMatrix3<Real>; 4]) -> Self {
+    fn from(data: [SdpMatrix3<T>; 4]) -> Self {
         SdpMatrix3 {
             m11: T::from([data[0].m11, data[1].m11, data[2].m11, data[3].m11]),
             m12: T::from([data[0].m12, data[1].m12, data[2].m12, data[3].m12]),
@@ -372,8 +372,8 @@ where
 }
 
 #[cfg(feature = "simd-nightly")]
-impl From<[SdpMatrix3<Real>; 8]> for SdpMatrix3<simba::simd::f32x8> {
-    fn from(data: [SdpMatrix3<Real>; 8]) -> Self {
+impl<T: AD> From<[SdpMatrix3<T>; 8]> for SdpMatrix3<simba::simd::f32x8> {
+    fn from(data: [SdpMatrix3<T>; 8]) -> Self {
         SdpMatrix3 {
             m11: simba::simd::f32x8::from([
                 data[0].m11,
@@ -440,8 +440,8 @@ impl From<[SdpMatrix3<Real>; 8]> for SdpMatrix3<simba::simd::f32x8> {
 }
 
 #[cfg(feature = "simd-nightly")]
-impl From<[SdpMatrix3<Real>; 16]> for SdpMatrix3<simba::simd::f32x16> {
-    fn from(data: [SdpMatrix3<Real>; 16]) -> Self {
+impl<T: AD> From<[SdpMatrix3<T>; 16]> for SdpMatrix3<simba::simd::f32x16> {
+    fn from(data: [SdpMatrix3<T>; 16]) -> Self {
         SdpMatrix3 {
             m11: simba::simd::f32x16::from([
                 data[0].m11,

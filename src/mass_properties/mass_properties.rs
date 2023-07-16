@@ -1,4 +1,4 @@
-use crate::math::{AngVector, AngularInertia, Isometry, Point, Real, Rotation, Vector};
+use crate::math::{AngVector, AngularInertia, Isometry, Point, Rotation, Vector};
 use crate::utils;
 use na::ComplexField;
 use num::Zero;

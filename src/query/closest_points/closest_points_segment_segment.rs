@@ -1,17 +1,18 @@
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::ClosestPoints;
 use crate::shape::{Segment, SegmentPointLocation};
+use ad_trait::AD;
 
 use na::{self, Point};
 
 /// Closest points between segments.
 #[inline]
-pub fn closest_points_segment_segment(
-    pos12: &Isometry<Real>,
-    seg1: &Segment,
-    seg2: &Segment,
-    margin: Real,
-) -> ClosestPoints {
+pub fn closest_points_segment_segment<T: AD>(
+    pos12: &Isometry<T>,
+    seg1: &Segment<T>,
+    seg2: &Segment<T>,
+    margin: T,
+) -> ClosestPoints<T> {
     let (loc1, loc2) = closest_points_segment_segment_with_locations(pos12, seg1, seg2);
     let p1 = seg1.point_at(&loc1);
     let p2 = seg2.point_at(&loc2);
@@ -26,11 +27,11 @@ pub fn closest_points_segment_segment(
 // FIXME: use this specialized procedure for distance/interference/contact determination as well.
 /// Closest points between two segments.
 #[inline]
-pub fn closest_points_segment_segment_with_locations(
-    pos12: &Isometry<Real>,
-    seg1: &Segment,
-    seg2: &Segment,
-) -> (SegmentPointLocation, SegmentPointLocation) {
+pub fn closest_points_segment_segment_with_locations<T: AD>(
+    pos12: &Isometry<T>,
+    seg1: &Segment<T>,
+    seg2: &Segment<T>,
+) -> (SegmentPointLocation<T>, SegmentPointLocation<T>) {
     let seg2_1 = seg2.transformed(pos12);
     closest_points_segment_segment_with_locations_nD((&seg1.a, &seg1.b), (&seg2_1.a, &seg2_1.b))
 }
@@ -38,10 +39,10 @@ pub fn closest_points_segment_segment_with_locations(
 /// Segment-segment closest points computation in an arbitrary dimension.
 #[allow(non_snake_case)]
 #[inline]
-pub fn closest_points_segment_segment_with_locations_nD<const D: usize>(
-    seg1: (&Point<Real, D>, &Point<Real, D>),
-    seg2: (&Point<Real, D>, &Point<Real, D>),
-) -> (SegmentPointLocation, SegmentPointLocation) {
+pub fn closest_points_segment_segment_with_locations_nD<T: AD, const D: usize>(
+    seg1: (&Point<T, D>, &Point<T, D>),
+    seg2: (&Point<T, D>, &Point<T, D>),
+) -> (SegmentPointLocation<T>, SegmentPointLocation<T>) {
     // Inspired by RealField-time collision detection by Christer Ericson.
     let d1 = seg1.1 - seg1.0;
     let d2 = seg2.1 - seg2.0;
@@ -51,8 +52,8 @@ pub fn closest_points_segment_segment_with_locations_nD<const D: usize>(
     let e = d2.norm_squared();
     let f = d2.dot(&r);
 
-    let _0: Real = 0.0;
-    let _1: Real = 1.0;
+    let _0 = T::zero();
+    let _1 = T::zero();
 
     let mut s;
     let mut t;

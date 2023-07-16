@@ -1,29 +1,30 @@
-use crate::math::{Point, Real};
+use crate::math::{Point};
 use crate::query::gjk::{self, CSOPoint};
 use crate::query::{PointQuery, PointQueryWithLocation};
 use crate::shape::{Segment, SegmentPointLocation, Triangle, TrianglePointLocation};
+use ad_trait::AD;
 
 /// A simplex of dimension up to 2 using Voronoï regions for computing point projections.
 #[derive(Clone, Debug)]
-pub struct VoronoiSimplex {
+pub struct VoronoiSimplex<T: AD> {
     prev_vertices: [usize; 3],
     prev_dim: usize,
-    prev_proj: [Real; 2],
+    prev_proj: [T; 2],
 
-    vertices: [CSOPoint; 3],
-    proj: [Real; 2],
+    vertices: [CSOPoint<T>; 3],
+    proj: [T; 2],
     dim: usize,
 }
 
-impl VoronoiSimplex {
+impl<T: AD> VoronoiSimplex<T> {
     /// Crates a new empty simplex.
-    pub fn new() -> VoronoiSimplex {
+    pub fn new() -> VoronoiSimplex<T> {
         VoronoiSimplex {
             prev_vertices: [0, 1, 2],
-            prev_proj: [0.0; 2],
+            prev_proj: [T::zero(); 2],
             prev_dim: 0,
             vertices: [CSOPoint::origin(); 3],
-            proj: [0.0; 2],
+            proj: [T::zero(); 2],
             dim: 0,
         }
     }
@@ -35,14 +36,14 @@ impl VoronoiSimplex {
     }
 
     /// Resets this simplex to a single point.
-    pub fn reset(&mut self, pt: CSOPoint) {
+    pub fn reset(&mut self, pt: CSOPoint<T>) {
         self.prev_dim = 0;
         self.dim = 0;
         self.vertices[0] = pt;
     }
 
     /// Add a point to this simplex.
-    pub fn add_point(&mut self, pt: CSOPoint) -> bool {
+    pub fn add_point(&mut self, pt: CSOPoint<T>) -> bool {
         self.prev_dim = self.dim;
         self.prev_proj = self.proj;
         self.prev_vertices = [0, 1, 2];
@@ -59,25 +60,25 @@ impl VoronoiSimplex {
     }
 
     /// Retrieves the barycentric coordinate associated to the `i`-th by the last call to `project_origin_and_reduce`.
-    pub fn proj_coord(&self, i: usize) -> Real {
+    pub fn proj_coord(&self, i: usize) -> T {
         assert!(i <= self.dim, "Index out of bounds.");
         self.proj[i]
     }
 
     /// The i-th point of this simplex.
-    pub fn point(&self, i: usize) -> &CSOPoint {
+    pub fn point(&self, i: usize) -> &CSOPoint<T> {
         assert!(i <= self.dim, "Index out of bounds.");
         &self.vertices[i]
     }
 
     /// Retrieves the barycentric coordinate associated to the `i`-th before the last call to `project_origin_and_reduce`.
-    pub fn prev_proj_coord(&self, i: usize) -> Real {
+    pub fn prev_proj_coord(&self, i: usize) -> T {
         assert!(i <= self.prev_dim, "Index out of bounds.");
         self.prev_proj[i]
     }
 
     /// The i-th point of the simplex before the last call to `projet_origin_and_reduce`.
-    pub fn prev_point(&self, i: usize) -> &CSOPoint {
+    pub fn prev_point(&self, i: usize) -> &CSOPoint<T> {
         assert!(i <= self.prev_dim, "Index out of bounds.");
         &self.vertices[self.prev_vertices[i]]
     }
@@ -87,24 +88,24 @@ impl VoronoiSimplex {
     /// Retruns the result of the projection or Point::origin() if the origin lies inside of the simplex.
     /// The state of the samplex before projection is saved, and can be retrieved using the methods prefixed
     /// by `prev_`.
-    pub fn project_origin_and_reduce(&mut self) -> Point<Real> {
+    pub fn project_origin_and_reduce(&mut self) -> Point<T> {
         if self.dim == 0 {
-            self.proj[0] = 1.0;
+            self.proj[0] = T::one();
             self.vertices[0].point
         } else if self.dim == 1 {
             // FIXME: NLL
             let (proj, location) = {
                 let seg = Segment::new(self.vertices[0].point, self.vertices[1].point);
-                seg.project_local_point_and_get_location(&Point::<Real>::origin(), true)
+                seg.project_local_point_and_get_location(&Point::<T>::origin(), true)
             };
 
             match location {
                 SegmentPointLocation::OnVertex(0) => {
-                    self.proj[0] = 1.0;
+                    self.proj[0] = T::one();
                     self.dim = 0;
                 }
                 SegmentPointLocation::OnVertex(1) => {
-                    self.proj[0] = 1.0;
+                    self.proj[0] = T::one();
                     self.swap(0, 1);
                     self.dim = 0;
                 }
@@ -124,13 +125,13 @@ impl VoronoiSimplex {
                     self.vertices[1].point,
                     self.vertices[2].point,
                 );
-                tri.project_local_point_and_get_location(&Point::<Real>::origin(), true)
+                tri.project_local_point_and_get_location(&Point::<T>::origin(), true)
             };
 
             match location {
                 TrianglePointLocation::OnVertex(i) => {
                     self.swap(0, i as usize);
-                    self.proj[0] = 1.0;
+                    self.proj[0] = T::one();
                     self.dim = 0;
                 }
                 TrianglePointLocation::OnEdge(0, coords) => {
@@ -156,12 +157,12 @@ impl VoronoiSimplex {
     }
 
     /// Compute the projection of the origin on the boundary of this simplex.
-    pub fn project_origin(&mut self) -> Point<Real> {
+    pub fn project_origin(&mut self) -> Point<T> {
         if self.dim == 0 {
             self.vertices[0].point
         } else if self.dim == 1 {
             let seg = Segment::new(self.vertices[0].point, self.vertices[1].point);
-            seg.project_local_point(&Point::<Real>::origin(), true)
+            seg.project_local_point(&Point::<T>::origin(), true)
                 .point
         } else {
             assert!(self.dim == 2);
@@ -170,13 +171,13 @@ impl VoronoiSimplex {
                 self.vertices[1].point,
                 self.vertices[2].point,
             );
-            tri.project_local_point(&Point::<Real>::origin(), true)
+            tri.project_local_point(&Point::<T>::origin(), true)
                 .point
         }
     }
 
     /// Tests if the given point is already a vertex of this simplex.
-    pub fn contains_point(&self, pt: &Point<Real>) -> bool {
+    pub fn contains_point(&self, pt: &Point<T>) -> bool {
         for i in 0..self.dim + 1 {
             if self.vertices[i].point == *pt {
                 return true;
@@ -197,8 +198,8 @@ impl VoronoiSimplex {
     }
 
     /// The maximum squared length of the vertices of this simplex.
-    pub fn max_sq_len(&self) -> Real {
-        let mut max_sq_len = 0.0;
+    pub fn max_sq_len(&self) -> T {
+        let mut max_sq_len = T::zero();
 
         for i in 0..self.dim + 1 {
             let norm = self.vertices[i].point.coords.norm_squared();
@@ -212,7 +213,7 @@ impl VoronoiSimplex {
     }
 
     /// Apply a function to all the vertices of this simplex.
-    pub fn modify_pnts(&mut self, f: &dyn Fn(&mut CSOPoint)) {
+    pub fn modify_pnts(&mut self, f: &dyn Fn(&mut CSOPoint<T>)) {
         for i in 0..self.dim + 1 {
             f(&mut self.vertices[i])
         }
