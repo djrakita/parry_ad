@@ -1,14 +1,12 @@
 //! Definition of the triangle shape.
 
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::shape::{FeatureId, SupportMap};
 use crate::shape::{PolygonalFeature, Segment};
 use crate::utils;
 
 use na::{self, ComplexField, Unit};
-use num::Zero;
-#[cfg(feature = "dim3")]
-use std::f64;
+
 use std::mem;
 use ad_trait::AD;
 

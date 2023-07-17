@@ -1,11 +1,11 @@
-use na::{ArrayStorage, Const, OPoint};
+use na::{ArrayStorage, Const};
 #[cfg(feature = "dim2")]
 use crate::math::Vector;
 use crate::math::{Isometry};
 use crate::query::{sat, ContactManifold};
 use crate::shape::PolygonalFeature;
 use crate::shape::{Cuboid, Shape, Triangle};
-use ad_trait::{AD, NalgebraMatMulNoRefAD, NalgebraPointMulNoRefAD};
+use ad_trait::{NalgebraMatMulNoRefAD, NalgebraPointMulNoRefAD};
 
 /// Computes the contact manifold between a cuboid and a triangle represented as `Shape` trait-objects.
 pub fn contact_manifold_cuboid_triangle_shapes<ManifoldData, ContactData, T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>>(

@@ -16,8 +16,6 @@ use crate::shape::{Cone, Cylinder};
 
 use ad_trait::AD;
 
-use num::Zero;
-
 /// Cast a ray on a shape using the GJK algorithm.
 pub fn local_ray_intersection_with_support_map_with_params<G: ?Sized, T: AD>(
     shape: &G,

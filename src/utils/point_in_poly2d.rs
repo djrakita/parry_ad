@@ -1,5 +1,4 @@
 use na::Point2;
-use num::Zero;
 use ad_trait::AD;
 
 /// Tests if the given point is inside of a polygon with arbitrary orientation.

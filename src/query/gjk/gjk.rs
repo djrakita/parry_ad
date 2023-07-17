@@ -9,7 +9,7 @@ use crate::math::{Isometry, Point, Vector, DIM};
 use crate::query::{self, Ray};
 use ad_trait::AD;
 
-use num::{Bounded, Zero};
+use num::{Bounded};
 
 /// Results of the GJK algorithm.
 #[derive(Clone, Debug, PartialEq)]

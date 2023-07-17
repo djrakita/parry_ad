@@ -121,7 +121,7 @@ where
 
 /// A 3D heightfield.
 #[cfg(feature = "std")]
-pub type HeightField<T: AD> = GenericHeightField<DefaultStorage, T>;
+pub type HeightField<T> = GenericHeightField<DefaultStorage, T>;
 
 /// A 3D heightfield stored in the CUDA memory, initializable from the host.
 #[cfg(all(feature = "std", feature = "cuda"))]

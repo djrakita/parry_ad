@@ -4,7 +4,6 @@ use ad_trait::AD;
 use crate::math::{Point, Vector};
 use crate::shape::SupportMap;
 use na;
-use num::Zero;
 
 #[cfg(feature = "std")]
 use either::Either;

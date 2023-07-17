@@ -362,7 +362,7 @@ pub struct GenericTriMesh<Storage: TriMeshStorage<T>, T: AD> {
 }
 
 /// A triangle-mesh.
-pub type TriMesh<T: AD> = GenericTriMesh<DefaultStorage, T>;
+pub type TriMesh<T> = GenericTriMesh<DefaultStorage, T>;
 #[cfg(feature = "cuda")]
 /// A triangle-mesh stored on CUDA memory.
 pub type CudaTriMesh<T: AD> = GenericTriMesh<CudaStorage, T>;

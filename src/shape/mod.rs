@@ -51,18 +51,18 @@ pub use self::trimesh_storage::TriMeshStorage;
 
 /// A cylinder dilated by a sphere (so it has round corners).
 #[cfg(feature = "dim3")]
-pub type RoundCylinder<T: AD> = RoundShape<Cylinder<T>, T>;
+pub type RoundCylinder<T> = RoundShape<Cylinder<T>, T>;
 /// A cone dilated by a sphere (so it has round corners).
 #[cfg(feature = "dim3")]
-pub type RoundCone<T: AD> = RoundShape<Cone<T>, T>;
+pub type RoundCone<T> = RoundShape<Cone<T>, T>;
 /// A cuboid dilated by a sphere (so it has round corners).
-pub type RoundCuboid<T: AD> = RoundShape<Cuboid<T>, T>;
+pub type RoundCuboid<T> = RoundShape<Cuboid<T>, T>;
 /// A triangle dilated by a sphere (so it has round corners).
-pub type RoundTriangle<T: AD> = RoundShape<Triangle<T>, T>;
+pub type RoundTriangle<T> = RoundShape<Triangle<T>, T>;
 /// A convex polyhedron dilated by a sphere (so it has round corners).
 #[cfg(feature = "dim3")]
 #[cfg(feature = "std")]
-pub type RoundConvexPolyhedron<T: AD> = RoundShape<ConvexPolyhedron<T>, T>;
+pub type RoundConvexPolyhedron<T> = RoundShape<ConvexPolyhedron<T>, T>;
 /// A convex polygon dilated by a sphere (so it has round corners).
 #[cfg(feature = "dim2")]
 #[cfg(feature = "std")]

@@ -3,7 +3,6 @@
 use crate::bounding_volume::BoundingVolume;
 use crate::math::{Isometry, Point};
 use na;
-use num::Zero;
 use ad_trait::AD;
 
 /// A Bounding Sphere.

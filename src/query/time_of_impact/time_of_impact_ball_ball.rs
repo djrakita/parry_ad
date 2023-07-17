@@ -3,7 +3,6 @@ use na::Unit;
 use crate::math::{Isometry, Point, Vector};
 use crate::query::{self, Ray, TOIStatus, TOI};
 use crate::shape::Ball;
-use num::Zero;
 use ad_trait::AD;
 
 /// Time Of Impact of two balls under translational movement.

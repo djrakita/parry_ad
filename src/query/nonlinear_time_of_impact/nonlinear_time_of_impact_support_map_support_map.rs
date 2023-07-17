@@ -8,7 +8,7 @@ use crate::shape::{Shape, SupportMap};
 use crate::utils::WCross;
 
 use crate::query::gjk::ConstantPoint;
-use num::Bounded;
+
 
 use ad_trait::AD;
 

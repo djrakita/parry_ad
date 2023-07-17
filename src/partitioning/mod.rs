@@ -13,11 +13,11 @@ pub use self::visitor::{
     SimdBestFirstVisitStatus, SimdBestFirstVisitor, SimdSimultaneousVisitStatus,
     SimdSimultaneousVisitor, SimdVisitStatus, SimdVisitor,
 };
-use ad_trait::AD;
+
 
 /// A quaternary bounding-volume-hierarchy.
 #[deprecated(note = "Renamed to Qbvh")]
-pub type SimdQbvh<T, A: AD> = Qbvh<T, A>;
+pub type SimdQbvh<T, A> = Qbvh<T, A>;
 
 mod qbvh;
 mod visitor;

@@ -4,7 +4,7 @@ use crate::partitioning::{SimdBestFirstVisitStatus, SimdBestFirstVisitor};
 use crate::query::{PointProjection, PointQuery};
 use crate::shape::SimdCompositeShape;
 use na;
-use simba::simd::{SimdBool as _, SimdPartialOrd, SimdValue};
+use simba::simd::{SimdBool as _, SimdValue};
 use ad_trait::AD;
 
 /// Best-first traversal visitor for computing the point closest to a composite shape.

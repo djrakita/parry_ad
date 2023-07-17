@@ -31,7 +31,7 @@ pub(crate) use self::sort::sort2;
 pub(crate) use self::sort::sort3;
 pub use self::sorted_pair::SortedPair;
 pub(crate) use self::weighted_value::WeightedValue;
-pub(crate) use self::wops::{simd_swap, WBasis, WCross, WSign};
+pub(crate) use self::wops::{simd_swap, WBasis, WCross};
 
 #[cfg(all(feature = "cuda", feature = "std"))]
 pub use self::cuda_array::{CudaArray1, CudaArray2};

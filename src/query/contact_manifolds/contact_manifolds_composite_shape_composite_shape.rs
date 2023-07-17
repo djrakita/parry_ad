@@ -7,7 +7,7 @@ use crate::query::contact_manifolds::ContactManifoldsWorkspace;
 use crate::query::query_dispatcher::PersistentQueryDispatcher;
 use crate::query::visitors::BoundingVolumeIntersectionsVisitor;
 use crate::query::ContactManifold;
-use crate::shape::{Shape, SimdCompositeShape};
+use crate::shape::{SimdCompositeShape};
 use crate::utils::hashmap::{Entry, HashMap};
 use crate::utils::IsometryOpt;
 use ad_trait::AD;

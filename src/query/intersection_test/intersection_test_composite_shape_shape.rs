@@ -8,7 +8,7 @@ use crate::partitioning::{
 use crate::query::QueryDispatcher;
 use crate::shape::{Shape, TypedSimdCompositeShape};
 use crate::utils::{DefaultStorage, IsometryOpt};
-use simba::simd::{SimdBool as _, SimdPartialOrd, SimdValue};
+use simba::simd::{SimdBool as _, SimdValue};
 use ad_trait::AD;
 
 /// Intersection test between a composite shape (`Mesh`, `Compound`) and any other shape.

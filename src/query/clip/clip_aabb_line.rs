@@ -2,7 +2,7 @@ use crate::bounding_volume::Aabb;
 use crate::math::{Point, Vector, DIM};
 use crate::query::Ray;
 use crate::shape::Segment;
-use num::{Bounded, Zero};
+use num::{Bounded};
 use ad_trait::AD;
 
 impl<T: AD> Aabb<T> {

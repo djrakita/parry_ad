@@ -26,7 +26,7 @@ use ad_trait::AD;
 #[cfg(feature = "dim2")]
 type ConvexHull<T: AD> = Vec<Point<T>>;
 #[cfg(feature = "dim3")]
-type ConvexHull<T: AD> = (Vec<Point<T>>, Vec<[u32; DIM]>);
+type ConvexHull<T> = (Vec<Point<T>>, Vec<[u32; DIM]>);
 
 /// A voxel.
 #[derive(Copy, Clone, Debug)]

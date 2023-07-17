@@ -3,8 +3,8 @@ use crate::math::Vector;
 use crate::math::{Isometry};
 use crate::query::{sat, ContactManifold};
 use crate::shape::{Cuboid, PolygonalFeature, Shape};
-use ad_trait::{AD, NalgebraMatMulAD, NalgebraMatMulNoRefAD, NalgebraPointMulAD, NalgebraPointMulNoRefAD};
-use nalgebra::{OPoint, Const, ArrayStorage};
+use ad_trait::{NalgebraMatMulNoRefAD, NalgebraPointMulNoRefAD};
+use nalgebra::{Const, ArrayStorage};
 
 /// Computes the contact manifold between two cuboids represented as `Shape` trait-objects.
 pub fn contact_manifold_cuboid_cuboid_shapes<ManifoldData, ContactData: Default + Copy, T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>>(

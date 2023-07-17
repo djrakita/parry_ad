@@ -2,7 +2,7 @@ use crate::bounding_volume::SimdAabb;
 use crate::math::{SIMD_WIDTH};
 use crate::partitioning::{SimdVisitStatus, SimdVisitor};
 use crate::query::{Ray, SimdRay};
-use simba::simd::{SimdBool as _, SimdValue};
+use simba::simd::{SimdBool as _};
 use std::marker::PhantomData;
 use ad_trait::AD;
 

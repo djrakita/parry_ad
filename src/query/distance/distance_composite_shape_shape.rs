@@ -4,7 +4,7 @@ use crate::partitioning::{SimdBestFirstVisitStatus, SimdBestFirstVisitor};
 use crate::query::QueryDispatcher;
 use crate::shape::{Shape, TypedSimdCompositeShape};
 use crate::utils::{DefaultStorage, IsometryOpt};
-use simba::simd::{SimdBool as _, SimdPartialOrd, SimdValue};
+use simba::simd::{SimdBool as _, SimdValue};
 use ad_trait::AD;
 
 /// Smallest distance between a composite shape and any other shape.

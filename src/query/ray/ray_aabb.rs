@@ -6,7 +6,6 @@ use crate::bounding_volume::Aabb;
 use crate::math::{Vector, DIM};
 use crate::query::{Ray, RayCast, RayIntersection};
 use crate::shape::FeatureId;
-use num::Zero;
 use ad_trait::AD;
 
 impl<T: AD> RayCast<T> for Aabb<T> {

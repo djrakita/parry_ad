@@ -11,7 +11,7 @@ use crate::shape::{
     TypedSimdCompositeShape,
 };
 use na;
-use simba::simd::{SimdBool as _, SimdPartialOrd};
+use simba::simd::{SimdBool as _};
 
 #[cfg(feature = "dim3")]
 use crate::utils::Array1;

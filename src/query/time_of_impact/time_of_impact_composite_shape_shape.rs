@@ -5,7 +5,7 @@ use crate::partitioning::{SimdBestFirstVisitStatus, SimdBestFirstVisitor};
 use crate::query::{QueryDispatcher, Ray, SimdRay, TOI};
 use crate::shape::{Shape, TypedSimdCompositeShape};
 use crate::utils::DefaultStorage;
-use simba::simd::{SimdBool as _, SimdPartialOrd, SimdValue};
+use simba::simd::{SimdBool as _, SimdValue};
 
 /// Time Of Impact of a composite shape with any other shape, under translational movement.
 pub fn time_of_impact_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(

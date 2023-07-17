@@ -1,12 +1,12 @@
-use ad_trait::{AD, NalgebraMatMulAD, NalgebraMatMulNoRefAD, NalgebraPointMulAD, NalgebraPointMulNoRefAD};
+use ad_trait::{AD, NalgebraMatMulNoRefAD, NalgebraPointMulNoRefAD};
 use crate::approx::AbsDiffEq;
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 #[cfg(feature = "std")]
 use crate::query::{ContactManifold, TrackedContact};
 use crate::shape::{PackedFeatureId, Segment, Triangle};
 use crate::utils::WBasis;
 use na::Point2;
-use nalgebra::{OPoint, Const, ArrayStorage};
+use nalgebra::{Const, ArrayStorage};
 
 /// A polygonal feature representing the local polygonal approximation of
 /// a vertex, face, or edge of a convex shape.

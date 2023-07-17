@@ -4,7 +4,7 @@ use crate::math::{Point, Vector};
 #[cfg(feature = "dim3")]
 use crate::shape::Segment;
 use crate::shape::{FeatureId, PackedFeatureId, PolygonalFeature, SupportMap};
-use crate::utils::WSign;
+
 use na::Unit;
 
 use ad_trait::AD;

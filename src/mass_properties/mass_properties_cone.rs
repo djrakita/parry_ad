@@ -1,7 +1,6 @@
 use ad_trait::AD;
 use crate::mass_properties::MassProperties;
 use crate::math::{Point, PrincipalAngularInertia, Rotation, Vector};
-use na::RealField;
 
 impl<T: AD> MassProperties<T> {
     pub(crate) fn cone_y_volume_unit_inertia(

@@ -5,7 +5,7 @@ use crate::partitioning::{SimdBestFirstVisitStatus, SimdBestFirstVisitor};
 use crate::query::{Ray, RayCast, RayIntersection, SimdRay};
 use crate::shape::{Compound, FeatureId, Polyline, TriMesh, TypedSimdCompositeShape};
 use crate::utils::DefaultStorage;
-use simba::simd::{SimdBool as _, SimdPartialOrd, SimdValue};
+use simba::simd::{SimdBool as _};
 
 impl<T: AD> RayCast<T> for TriMesh<T> {
     #[inline]

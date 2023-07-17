@@ -9,8 +9,8 @@ use crate::query::{
     ContactManifold,
 };
 use crate::shape::{HalfSpace, Segment, Shape, ShapeType};
-use ad_trait::{AD, NalgebraMatMulAD, NalgebraMatMulNoRefAD, NalgebraPointMulAD, NalgebraPointMulNoRefAD};
-use na::{ArrayStorage, Const, OPoint};
+use ad_trait::{AD, NalgebraMatMulNoRefAD, NalgebraPointMulNoRefAD};
+use na::{ArrayStorage, Const};
 
 /// A dispatcher that exposes built-in queries
 #[derive(Debug, Clone)]

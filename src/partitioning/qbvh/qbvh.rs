@@ -247,7 +247,7 @@ pub struct GenericQbvh<LeafData, T: AD, Storage: QbvhStorage<LeafData, T>> {
 /// A quaternary bounding-volume-hierarchy.
 ///
 /// This is a bounding-volume-hierarchy where each node has either four children or none.
-pub type Qbvh<LeafData, T: AD> = GenericQbvh<LeafData, T, DefaultStorage>;
+pub type Qbvh<LeafData, T> = GenericQbvh<LeafData, T, DefaultStorage>;
 #[cfg(feature = "cuda")]
 /// A Qbvh stored in CUDA memory.
 pub type CudaQbvh<LeafData, T: AD> = GenericQbvh<LeafData, T, CudaStorage>;

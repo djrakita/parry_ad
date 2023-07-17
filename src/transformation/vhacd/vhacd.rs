@@ -25,7 +25,7 @@ use ad_trait::AD;
 #[cfg(feature = "dim2")]
 type ConvexHull<T: AD> = Vec<Point<T>>;
 #[cfg(feature = "dim3")]
-type ConvexHull<T: AD> = (Vec<Point<T>>, Vec<[u32; 3]>);
+type ConvexHull<T> = (Vec<Point<T>>, Vec<[u32; 3]>);
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct CutPlane<T: AD> {

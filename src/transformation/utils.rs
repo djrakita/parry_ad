@@ -3,7 +3,7 @@
 use crate::math::{Isometry, Point, Vector};
 use crate::na::ComplexField;
 #[cfg(feature = "dim3")]
-use {crate::math::DIM, num::Zero};
+use {crate::math::DIM};
 use ad_trait::AD;
 
 /// Applies in-place a transformation to an array of points.

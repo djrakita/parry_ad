@@ -3,7 +3,6 @@ use ad_trait::AD;
 
 use crate::transformation::convex_hull_utils::{indexed_support_point_id, support_point_id};
 use na::{self, Point2, Vector2};
-use num_traits::Zero;
 
 /// Computes the convex hull of a set of 2d points.
 ///

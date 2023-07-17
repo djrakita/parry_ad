@@ -5,8 +5,8 @@ use crate::query::{
     ContactManifold, TrackedContact,
 };
 use crate::shape::{PackedFeatureId, PolygonalFeature, PolygonalFeatureMap, Shape};
-use na::{ArrayStorage, Const, OPoint, Unit};
-use ad_trait::{AD, NalgebraMatMulAD, NalgebraMatMulNoRefAD, NalgebraPointMulNoRefAD};
+use na::{ArrayStorage, Const, Unit};
+use ad_trait::{NalgebraMatMulNoRefAD, NalgebraPointMulNoRefAD};
 
 /// Computes the contact manifold between two convex shapes implementing the `PolygonalSupportMap`
 /// trait, both represented as `Shape` trait-objects.

@@ -5,7 +5,6 @@ use crate::query::details;
 use crate::query::gjk::{self, VoronoiSimplex};
 use crate::query::{TOIStatus, TOI};
 use crate::shape::SupportMap;
-use num::Zero;
 use ad_trait::AD;
 
 /// Time of impacts between two support-mapped shapes under translational movement.

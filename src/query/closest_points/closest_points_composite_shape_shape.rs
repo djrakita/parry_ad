@@ -6,7 +6,7 @@ use crate::query::{ClosestPoints, QueryDispatcher};
 use crate::shape::{Shape, TypedSimdCompositeShape};
 use crate::utils::{DefaultStorage, IsometryOpt};
 use na;
-use simba::simd::{SimdBool as _, SimdPartialOrd, SimdValue};
+use simba::simd::{SimdBool as _, SimdValue};
 
 /// Closest points between a composite shape and any other shape.
 pub fn closest_points_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(

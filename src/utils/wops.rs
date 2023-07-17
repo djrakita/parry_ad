@@ -1,7 +1,6 @@
 //! Miscellaneous utilities.
 
-use na::{Matrix3, Point2, Point3, Scalar, SimdRealField, Vector2, Vector3};
-use simba::simd::SimdValue;
+use na::{Matrix3, Point2, Point3, Scalar, Vector2, Vector3};
 
 use ad_trait::AD;
 

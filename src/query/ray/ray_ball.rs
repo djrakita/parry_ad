@@ -3,7 +3,6 @@ use na::{self, ComplexField};
 use crate::math::{Point};
 use crate::query::{Ray, RayCast, RayIntersection};
 use crate::shape::{Ball, FeatureId};
-use num::Zero;
 use ad_trait::AD;
 
 impl<T: AD> RayCast<T> for Ball<T> {

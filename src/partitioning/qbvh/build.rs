@@ -3,8 +3,8 @@ use crate::bounding_volume::{Aabb, SimdAabb};
 use crate::math::Vector;
 use crate::math::{Point};
 use crate::query::SplitResult;
-use crate::simd::SimdReal;
-use simba::simd::SimdValue;
+
+
 
 use super::utils::split_indices_wrt_dim;
 use super::{IndexedData, NodeIndex, Qbvh, QbvhNode, QbvhNodeFlags, QbvhProxy};

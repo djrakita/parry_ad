@@ -7,7 +7,7 @@ use ad_trait::AD;
 // 0 = First vertex.
 // 1 = On the face.
 // 2 = Second vertex.
-pub type ClippingPoints<T: AD> = (Point<T>, Point<T>, usize, usize);
+pub type ClippingPoints<T> = (Point<T>, Point<T>, usize, usize);
 
 /// Projects two segments on one another towards the direction `normal`,
 /// and compute their intersection.

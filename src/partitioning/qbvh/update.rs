@@ -3,8 +3,8 @@ use crate::bounding_volume::{Aabb, BoundingVolume, SimdAabb};
 use crate::math::Vector;
 use crate::math::{Point};
 use crate::partitioning::{CenterDataSplitter, QbvhProxy};
-use crate::simd::{SimdReal, SIMD_WIDTH};
-use simba::simd::{SimdBool, SimdValue};
+use crate::simd::{SIMD_WIDTH};
+use simba::simd::{SimdBool};
 use ad_trait::AD;
 
 use super::{IndexedData, NodeIndex, Qbvh, QbvhNode, QbvhNodeFlags};
