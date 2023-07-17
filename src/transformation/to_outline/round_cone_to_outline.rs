@@ -20,7 +20,7 @@ impl<T: AD> RoundCone<T> {
         // Compute the profile.
         let center_ab = Point3::new(-r, -he, T::zero());
         let center_cd = Point3::new(T::zero(), he, T::zero());
-        let side_dir = Vector3::new(-2.0 * he, r, T::zero()).normalize();
+        let side_dir = Vector3::new(T::constant(-2.0) * he, r, T::zero()).normalize();
 
         let a = Point3::new(-r, -he - br, T::zero());
         let b = Point3::new(-r, -he, T::zero()) + side_dir * br;

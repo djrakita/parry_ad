@@ -8,7 +8,7 @@ impl<T: AD> Cone<T> {
     /// Computes the world-space bounding sphere of this cone, transformed by `pos`.
     #[inline]
     pub fn bounding_sphere(&self, pos: &Isometry<T>) -> BoundingSphere<T> {
-        let bv: BoundingSphere = self.local_bounding_sphere();
+        let bv: BoundingSphere<T> = self.local_bounding_sphere();
         bv.transform_by(pos)
     }
 

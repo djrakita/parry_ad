@@ -4,9 +4,9 @@ use crate::query::{PointProjection, PointQuery};
 use crate::shape::{Cuboid, FeatureId};
 use ad_trait::AD;
 
-impl<T: AD> PointQuery for Cuboid<T> {
+impl<T: AD> PointQuery<T> for Cuboid<T> {
     #[inline]
-    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection<T> {
         let dl = Point::from(-self.half_extents);
         let ur = Point::from(self.half_extents);
         Aabb::new(dl, ur).project_local_point(pt, solid)
@@ -16,7 +16,7 @@ impl<T: AD> PointQuery for Cuboid<T> {
     fn project_local_point_and_get_feature(
         &self,
         pt: &Point<T>,
-    ) -> (PointProjection, FeatureId) {
+    ) -> (PointProjection<T>, FeatureId) {
         let dl = Point::from(-self.half_extents);
         let ur = Point::from(self.half_extents);
         Aabb::new(dl, ur).project_local_point_and_get_feature(pt)

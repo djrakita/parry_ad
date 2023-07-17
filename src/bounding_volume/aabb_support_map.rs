@@ -7,7 +7,7 @@ use crate::shape::Segment;
 use crate::shape::{Cone, Cylinder};
 
 #[cfg(feature = "dim3")]
-impl<T: AD> Cone {
+impl<T: AD> Cone<T> {
     /// Computes the world-space Aabb of this cone, transformed by `pos`.
     #[inline]
     pub fn aabb(&self, pos: &Isometry<T>) -> Aabb<T> {

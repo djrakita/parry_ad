@@ -76,4 +76,4 @@ mod segments_intersection;
 mod sort;
 mod sorted_pair;
 mod weighted_value;
-mod wops;
+pub mod wops;

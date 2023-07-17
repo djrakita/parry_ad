@@ -40,7 +40,7 @@ impl CompositeShapeShapeContactManifoldsWorkspace {
     }
 }
 
-fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
+fn ensure_workspace_exists<T: AD>(workspace: &mut Option<ContactManifoldsWorkspace<T>>) {
     if workspace
         .as_ref()
         .and_then(|w| {
@@ -58,13 +58,13 @@ fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
 
 /// Computes the contact manifolds between a composite shape and an abstract shape.
 pub fn contact_manifolds_composite_shape_shape<ManifoldData, ContactData, T: AD>(
-    dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
+    dispatcher: &dyn PersistentQueryDispatcher<T, ManifoldData, ContactData>,
     pos12: &Isometry<T>,
     composite1: &dyn SimdCompositeShape<T>,
     shape2: &dyn Shape<T>,
     prediction: T,
-    manifolds: &mut Vec<ContactManifold<T, ManifoldData, ContactData>>,
-    workspace: &mut Option<ContactManifoldsWorkspace>,
+    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
+    workspace: &mut Option<ContactManifoldsWorkspace<T>>,
     flipped: bool,
 ) where
     ManifoldData: Default + Clone,
@@ -153,12 +153,12 @@ pub fn contact_manifolds_composite_shape_shape<ManifoldData, ContactData, T: AD>
         .retain(|_, detector| detector.timestamp == new_timestamp)
 }
 
-impl WorkspaceData for CompositeShapeShapeContactManifoldsWorkspace {
-    fn as_typed_workspace_data(&self) -> TypedWorkspaceData {
+impl<T: AD> WorkspaceData<T> for CompositeShapeShapeContactManifoldsWorkspace {
+    fn as_typed_workspace_data(&self) -> TypedWorkspaceData<T> {
         TypedWorkspaceData::CompositeShapeShapeContactManifoldsWorkspace(self)
     }
 
-    fn clone_dyn(&self) -> Box<dyn WorkspaceData> {
+    fn clone_dyn(&self) -> Box<dyn WorkspaceData<T>> {
         Box::new(self.clone())
     }
 }

@@ -21,7 +21,7 @@ use {
 use super::{IndexedData, NodeIndex, Qbvh};
 use ad_trait::AD;
 
-impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbvh<LeafData, Storage, T> {
+impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbvh<LeafData, T, Storage> {
     /// Performs a depth-first traversal on the BVH.
     ///
     /// # Return
@@ -115,7 +115,7 @@ impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbv
     /// user-defined type.
     pub fn traverse_best_first<BFS>(&self, visitor: &mut BFS) -> Option<(NodeIndex, BFS::Result)>
     where
-        BFS: SimdBestFirstVisitor<LeafData, SimdAabb<T>>,
+        BFS: SimdBestFirstVisitor<LeafData, SimdAabb<T>, T>,
         BFS::Result: Clone, // Because we cannot move out of an array…
     {
         self.traverse_best_first_node(visitor, 0, T::constant(f64::max_value()))
@@ -132,7 +132,7 @@ impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbv
         init_cost: T,
     ) -> Option<(NodeIndex, BFS::Result)>
     where
-        BFS: SimdBestFirstVisitor<LeafData, SimdAabb<T>>,
+        BFS: SimdBestFirstVisitor<LeafData, SimdAabb<T>, T>,
         BFS::Result: Clone, // Because we cannot move out of an array…
     {
         if self.nodes.is_empty() {
@@ -143,7 +143,7 @@ impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbv
 
         let mut best_cost = init_cost;
         let mut best_result = None;
-        queue.push(WeightedValue::new(start_node, -best_cost / 2.0));
+        queue.push(WeightedValue::new(start_node, -best_cost / T::constant(2.0)));
 
         while let Some(entry) = queue.pop() {
             if -entry.cost >= best_cost {
@@ -170,7 +170,8 @@ impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbv
                     results,
                 } => {
                     let bitmask = mask.bitmask();
-                    let weights: [T; SIMD_WIDTH] = weights.into();
+                    // let weights: [T; SIMD_WIDTH] = weights.into();
+                    let weights: [T; SIMD_WIDTH] = [weights];
 
                     for ii in 0..SIMD_WIDTH {
                         if (bitmask & (1 << ii)) != 0 {

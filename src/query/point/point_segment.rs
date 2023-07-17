@@ -56,7 +56,7 @@ impl<T: AD> PointQueryWithLocation<T> for Segment<T> {
         let ap = pt - self.a;
         let ab_ap = ab.dot(&ap);
         let sqnab = ab.norm_squared();
-        let _1 = 1.0;
+        let _1 = T::one();
 
         let proj;
         let location;

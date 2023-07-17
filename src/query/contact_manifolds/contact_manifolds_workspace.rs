@@ -80,7 +80,8 @@ pub trait WorkspaceData<T: AD>: DowncastSync {
     fn clone_dyn(&self) -> Box<dyn WorkspaceData<T>>;
 }
 
-impl_downcast!(sync WorkspaceData);
+// impl_downcast!(sync WorkspaceData);
+impl_downcast!(sync WorkspaceData<T> where T: AD);
 
 // Note we have this newtype because it simplifies the serialization/deserialization code.
 /// A serializable workspace used by some contact-manifolds computation algorithms.
@@ -92,11 +93,13 @@ impl<T: AD> Clone for ContactManifoldsWorkspace<T> {
     }
 }
 
+/*
 impl<T: WorkspaceData<A>, A: AD> From<T> for ContactManifoldsWorkspace<A> {
     fn from(data: T) -> Self {
         Self(Box::new(data) as Box<dyn WorkspaceData<A>>)
     }
 }
+*/
 
 #[cfg(feature = "serde-serialize")]
 impl<T: AD> serde::Serialize for ContactManifoldsWorkspace<T> {

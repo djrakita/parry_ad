@@ -197,7 +197,7 @@ impl<Storage: HeightFieldStorage<T>, T: AD> RayCast<T> for GenericHeightField<St
                 let x = self.x_at(cell.1 + 0);
                 ((x - ray.origin.x) / ray.dir.x, false)
             } else {
-                (Real::max_value(), false)
+                (T::constant(f64::max_value()), false)
             };
 
             let (toi_z, down) = if ray.dir.z > T::zero() {

@@ -16,7 +16,7 @@ the rust programming language.
 #![allow(missing_copy_implementations)]
 #![doc(html_root_url = "http://docs.rs/parry/0.1.1")]
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(not(feature = "rkyv"), deny(unused_qualifications))] // TODO: deny that everytime
+// #![cfg_attr(not(feature = "rkyv"), deny(unused_qualifications))] // TODO: deny that everytime
 
 #[cfg(all(
     feature = "simd-is-enabled",
@@ -35,7 +35,8 @@ macro_rules! array(
             #[inline(always)]
             #[allow(dead_code)]
             fn create_arr<T>(mut callback: impl FnMut(usize) -> T) -> [T; SIMD_WIDTH] {
-                [callback(0usize), callback(1usize), callback(2usize), callback(3usize)]
+               // [callback(0usize), callback(1usize), callback(2usize), callback(3usize)]
+                [callback(0usize)]
             }
 
             create_arr($callback)

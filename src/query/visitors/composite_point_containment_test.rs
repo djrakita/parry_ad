@@ -4,7 +4,7 @@ use crate::partitioning::{SimdVisitStatus, SimdVisitor};
 use crate::query::point::point_query::PointQuery;
 use crate::shape::TypedSimdCompositeShape;
 use crate::utils::IsometryOpt;
-use simba::simd::{SimdBool as _, SimdValue};
+// use simba::simd::{SimdBool as _, SimdValue};
 use ad_trait::AD;
 
 /// Visitor for checking if a composite shape contains a specific point.
@@ -42,7 +42,8 @@ impl<'a, S: TypedSimdCompositeShape<T>, T: AD> SimdVisitor<S::PartId, SimdAabb<T
         let mask = bv.contains_local_point(&simd_point);
 
         if let Some(data) = b {
-            let bitmask = mask.bitmask();
+            // let bitmask = mask.bitmask();
+            let bitmask = if mask { 1 } else { 0 };
 
             for ii in 0..SIMD_WIDTH {
                 if (bitmask & (1 << ii)) != 0 && data[ii].is_some() {

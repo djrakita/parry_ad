@@ -3,7 +3,7 @@
 //!
 
 use crate::bounding_volume::{Aabb, BoundingSphere, BoundingVolume};
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::partitioning::Qbvh;
 #[cfg(feature = "dim2")]
 use crate::shape::{ConvexPolygon, TriMesh, Triangle};
@@ -23,8 +23,8 @@ use ad_trait::AD;
 pub struct Compound<T: AD> {
     shapes: Vec<(Isometry<T>, SharedShape<T>)>,
     qbvh: Qbvh<u32, T>,
-    aabbs: Vec<Aabb>,
-    aabb: Aabb,
+    aabbs: Vec<Aabb<T>>,
+    aabb: Aabb<T>,
 }
 
 impl<T: AD> Compound<T> {
@@ -32,7 +32,7 @@ impl<T: AD> Compound<T> {
     ///
     /// Panics if the input vector is empty, of if some of the provided shapes
     /// are also composite shapes (nested composite shapes are not allowed).
-    pub fn new(shapes: Vec<(Isometry<Real>, SharedShape<T>)>) -> Compound<T> {
+    pub fn new(shapes: Vec<(Isometry<T>, SharedShape<T>)>) -> Compound<T> {
         assert!(
             !shapes.is_empty(),
             "A compound shape must contain at least one shape."
@@ -99,45 +99,45 @@ impl<T: AD> Compound<T> {
 
     /// The Aabb of this compound in its local-space.
     #[inline]
-    pub fn local_aabb(&self) -> &Aabb {
+    pub fn local_aabb(&self) -> &Aabb<T> {
         &self.aabb
     }
 
     /// The bounding-sphere of this compound in its local-space.
     #[inline]
-    pub fn local_bounding_sphere(&self) -> BoundingSphere {
+    pub fn local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.aabb.bounding_sphere()
     }
 
     /// The shapes Aabbs.
     #[inline]
-    pub fn aabbs(&self) -> &[Aabb] {
+    pub fn aabbs(&self) -> &[Aabb<T>] {
         &self.aabbs[..]
     }
 
     /// The acceleration structure used by this compound shape.
     #[inline]
-    pub fn qbvh(&self) -> &Qbvh<T, u32> {
+    pub fn qbvh(&self) -> &Qbvh<u32, T> {
         &self.qbvh
     }
 }
 
 impl<T: AD> SimdCompositeShape<T> for Compound<T> {
     #[inline]
-    fn map_part_at(&self, shape_id: u32, f: &mut dyn FnMut(Option<&Isometry<T>>, &dyn Shape)) {
+    fn map_part_at(&self, shape_id: u32, f: &mut dyn FnMut(Option<&Isometry<T>>, &dyn Shape<T>)) {
         if let Some(shape) = self.shapes.get(shape_id as usize) {
             f(Some(&shape.0), &*shape.1)
         }
     }
 
     #[inline]
-    fn qbvh(&self) -> &Qbvh<T, u32> {
+    fn qbvh(&self) -> &Qbvh<u32, T> {
         &self.qbvh
     }
 }
 
 impl<T: AD> TypedSimdCompositeShape<T> for Compound<T> {
-    type PartShape = dyn Shape;
+    type PartShape = dyn Shape<T>;
     type PartId = u32;
     type QbvhStorage = DefaultStorage;
 
@@ -164,7 +164,7 @@ impl<T: AD> TypedSimdCompositeShape<T> for Compound<T> {
     }
 
     #[inline]
-    fn typed_qbvh(&self) -> &Qbvh<T, u32> {
+    fn typed_qbvh(&self) -> &Qbvh<u32, T> {
         &self.qbvh
     }
 }

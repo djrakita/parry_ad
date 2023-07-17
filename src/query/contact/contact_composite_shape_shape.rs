@@ -15,7 +15,7 @@ pub fn contact_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(
     prediction: T,
 ) -> Option<Contact<T>>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: SimdCompositeShape<T>,
 {
     // Find new collisions
@@ -55,7 +55,7 @@ pub fn contact_shape_composite_shape<D: ?Sized, G2: ?Sized, T: AD>(
     prediction: T,
 ) -> Option<Contact<T>>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G2: SimdCompositeShape<T>,
 {
     contact_composite_shape_shape(dispatcher, &pos12.inverse(), g2, g1, prediction)

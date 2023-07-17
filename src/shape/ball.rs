@@ -2,7 +2,7 @@
 use either::Either;
 use na::Unit;
 
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::shape::SupportMap;
 
 use ad_trait::AD;
@@ -69,7 +69,7 @@ impl<T: AD> Ball<T> {
         self,
         scale: &Vector<T>,
         nsubdivs: u32,
-    ) -> Option<Either<Self, super::ConvexPolyhedron>> {
+    ) -> Option<Either<Self, super::ConvexPolyhedron<T>>> {
         if scale.x != scale.y || scale.x != scale.z || scale.y != scale.z {
             // The scaled shape isn’t a ball.
             let (mut vtx, idx) = self.to_trimesh(nsubdivs, nsubdivs);
@@ -85,7 +85,7 @@ impl<T: AD> Ball<T> {
     }
 }
 
-impl<T: AD> SupportMap for Ball<T> {
+impl<T: AD> SupportMap<T> for Ball<T> {
     #[inline]
     fn support_point(&self, m: &Isometry<T>, dir: &Vector<T>) -> Point<T> {
         self.support_point_toward(m, &Unit::new_normalize(*dir))

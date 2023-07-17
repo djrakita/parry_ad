@@ -1,6 +1,6 @@
 //! Definition of the segment shape.
 
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::shape::{FeatureId, SupportMap};
 
 use na::{self, Unit};
@@ -42,7 +42,7 @@ impl<T: AD> SegmentPointLocation<T> {
         let mut bcoords = [T::zero(); 2];
 
         match self {
-            SegmentPointLocation::OnVertex(i) => bcoords[*i as usize] = T::constant(T::constant(1.0)),
+            SegmentPointLocation::OnVertex(i) => bcoords[*i as usize] = T::constant(1.0),
             SegmentPointLocation::OnEdge(uv) => {
                 bcoords[0] = uv[0];
                 bcoords[1] = uv[1];
@@ -95,7 +95,7 @@ impl<T: AD> Segment<T> {
     /// Points from `self.a()` toward `self.b()`.
     /// Returns `None` is both points are equal.
     pub fn direction(&self) -> Option<Unit<Vector<T>>> {
-        Unit::try_new(self.scaled_direction(), crate::math::DEFAULT_EPSILON)
+        Unit::try_new(self.scaled_direction(), T::constant(crate::math::DEFAULT_EPSILON))
     }
 
     /// In 2D, the not-normalized counterclockwise normal of this segment.
@@ -136,7 +136,7 @@ impl<T: AD> Segment<T> {
     pub fn planar_normal(&self, plane_axis: u8) -> Option<Unit<Vector<T>>> {
         Unit::try_new(
             self.scaled_planar_normal(plane_axis),
-            crate::math::DEFAULT_EPSILON,
+            T::constant(crate::math::DEFAULT_EPSILON),
         )
     }
 
@@ -195,7 +195,7 @@ impl<T: AD> Segment<T> {
     }
 }
 
-impl<T: AD> SupportMap for Segment<T> {
+impl<T: AD> SupportMap<T> for Segment<T> {
     #[inline]
     fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         if self.a.coords.dot(dir) > self.b.coords.dot(dir) {

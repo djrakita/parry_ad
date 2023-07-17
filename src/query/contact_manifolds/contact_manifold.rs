@@ -108,7 +108,7 @@ pub struct ContactManifold<ManifoldData, ContactData, T: AD> {
     pub data: ManifoldData,
 }
 
-impl<T: AD, ManifoldData, ContactData: Default + Copy> ContactManifold<T, ManifoldData, ContactData> {
+impl<T: AD, ManifoldData, ContactData: Default + Copy> ContactManifold<ManifoldData, ContactData, T> {
     /// Create a new empty contact-manifold.
     pub fn new() -> Self
     where
@@ -182,9 +182,9 @@ impl<T: AD, ManifoldData, ContactData: Default + Copy> ContactManifold<T, Manifo
     pub fn try_update_contacts(&mut self, pos12: &Isometry<T>) -> bool {
         // const DOT_THRESHOLD: T = 0.crate::COS_10_DEGREES;
         // const DOT_THRESHOLD: T = crate::utils::COS_5_DEGREES;
-        const DOT_THRESHOLD: T = crate::utils::COS_1_DEGREES;
-        const DIST_SQ_THRESHOLD: T = T::constant(1.0e-6); // FIXME: this should not be hard-coded.
-        self.try_update_contacts_eps(pos12, DOT_THRESHOLD, DIST_SQ_THRESHOLD)
+        let dot_threshold = T::constant(crate::utils::COS_1_DEGREES);
+        let dist_sq_threshold = T::constant(1.0e-6); // FIXME: this should not be hard-coded.
+        self.try_update_contacts_eps(pos12, dot_threshold, dist_sq_threshold)
     }
 
     /// Attempts to use spatial coherence to update contacts points, using user-defined tolerances.
@@ -230,7 +230,7 @@ impl<T: AD, ManifoldData, ContactData: Default + Copy> ContactManifold<T, Manifo
 
     /// Copy data associated to contacts from `old_contacts` to the new contacts in `self`
     /// based on matching their feature-ids.
-    pub fn match_contacts(&mut self, old_contacts: &[TrackedContact<ContactData>]) {
+    pub fn match_contacts(&mut self, old_contacts: &[TrackedContact<T, ContactData>]) {
         for contact in &mut self.points {
             for old_contact in old_contacts {
                 if contact.fid1 == old_contact.fid1 && contact.fid2 == old_contact.fid2 {
@@ -245,7 +245,7 @@ impl<T: AD, ManifoldData, ContactData: Default + Copy> ContactManifold<T, Manifo
     /// based on matching the contact positions.
     pub fn match_contacts_using_positions(
         &mut self,
-        old_contacts: &[TrackedContact<ContactData>],
+        old_contacts: &[TrackedContact<T, ContactData>],
         dist_threshold: T,
     ) {
         let sq_threshold = dist_threshold * dist_threshold;
@@ -267,7 +267,7 @@ impl<T: AD, ManifoldData, ContactData: Default + Copy> ContactManifold<T, Manifo
     }
 
     /// Returns the contact with the smallest distance (i.e. the largest penetration depth).
-    pub fn find_deepest_contact(&self) -> Option<&TrackedContact<ContactData>> {
+    pub fn find_deepest_contact(&self) -> Option<&TrackedContact<T, ContactData>> {
         let mut deepest = self.points.get(0)?;
 
         for pt in &self.points {

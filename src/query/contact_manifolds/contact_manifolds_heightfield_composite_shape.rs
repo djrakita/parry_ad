@@ -49,7 +49,7 @@ impl HeightFieldCompositeShapeContactManifoldsWorkspace {
     }
 }
 
-fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
+fn ensure_workspace_exists<T: AD>(workspace: &mut Option<ContactManifoldsWorkspace<T>>) {
     if workspace
         .as_ref()
         .and_then(|w| {
@@ -67,14 +67,14 @@ fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
 
 /// Computes the contact manifold between an heightfield and a composite shape.
 pub fn contact_manifolds_heightfield_composite_shape<ManifoldData, ContactData, T: AD>(
-    dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
+    dispatcher: &dyn PersistentQueryDispatcher<T, ManifoldData, ContactData>,
     pos12: &Isometry<T>,
     pos21: &Isometry<T>,
     heightfield1: &HeightField<T>,
     composite2: &dyn SimdCompositeShape<T>,
     prediction: T,
     manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
-    workspace: &mut Option<ContactManifoldsWorkspace>,
+    workspace: &mut Option<ContactManifoldsWorkspace<T>>,
     flipped: bool,
 ) where
     ManifoldData: Default + Clone,
@@ -178,12 +178,12 @@ pub fn contact_manifolds_heightfield_composite_shape<ManifoldData, ContactData, 
     }
 }
 
-impl WorkspaceData for HeightFieldCompositeShapeContactManifoldsWorkspace {
-    fn as_typed_workspace_data(&self) -> TypedWorkspaceData {
+impl<T: AD> WorkspaceData<T> for HeightFieldCompositeShapeContactManifoldsWorkspace {
+    fn as_typed_workspace_data(&self) -> TypedWorkspaceData<T> {
         TypedWorkspaceData::HeightfieldCompositeShapeContactManifoldsWorkspace(self)
     }
 
-    fn clone_dyn(&self) -> Box<dyn WorkspaceData> {
+    fn clone_dyn(&self) -> Box<dyn WorkspaceData<T>> {
         Box::new(self.clone())
     }
 }

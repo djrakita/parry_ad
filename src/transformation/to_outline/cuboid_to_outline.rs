@@ -29,7 +29,7 @@ impl<T: AD> Cuboid<T> {
  * The cuboid is centered at the origin, and has its half extents set to 0.5.
  */
 fn unit_cuboid_outline<T: AD>() -> (Vec<Point<T>>, Vec<[u32; 2]>) {
-    let aabb = Aabb::from_half_extents(Point::origin(), Vector::repeat(0.5));
+    let aabb = Aabb::from_half_extents(Point::origin(), Vector::repeat(T::constant(0.5)));
     (
         aabb.vertices().to_vec(),
         vec![

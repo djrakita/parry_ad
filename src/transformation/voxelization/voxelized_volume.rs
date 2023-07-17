@@ -171,18 +171,18 @@ impl<T: AD> VoxelizedVolume<T> {
         if d[0] > d[1] && d[0] > d[2] {
             r = d[0];
             result.resolution[0] = resolution;
-            result.resolution[1] = 2 + (T::constant(resolution as f64) * d[1] / d[0]) as u32;
-            result.resolution[2] = 2 + (T::constant(resolution as f64) * d[2] / d[0]) as u32;
+            result.resolution[1] = 2 + (T::constant(resolution as f64) * d[1] / d[0]).to_constant() as u32;
+            result.resolution[2] = 2 + (T::constant(resolution as f64) * d[2] / d[0]).to_constant() as u32;
         } else if d[1] > d[0] && d[1] > d[2] {
             r = d[1];
             result.resolution[1] = resolution;
-            result.resolution[0] = 2 + (T::constant(resolution as f64) * d[0] / d[1]) as u32;
-            result.resolution[2] = 2 + (T::constant(resolution as f64) * d[2] / d[1]) as u32;
+            result.resolution[0] = 2 + (T::constant(resolution as f64) * d[0] / d[1]).to_constant() as u32;
+            result.resolution[2] = 2 + (T::constant(resolution as f64) * d[2] / d[1]).to_constant() as u32;
         } else {
             r = d[2];
             result.resolution[2] = resolution;
-            result.resolution[0] = 2 + (T::constant(resolution as f64) * d[0] / d[2]) as u32;
-            result.resolution[1] = 2 + (T::constant(resolution as f64) * d[1] / d[2]) as u32;
+            result.resolution[0] = 2 + (T::constant(resolution as f64) * d[0] / d[2]).to_constant() as u32;
+            result.resolution[1] = 2 + (T::constant(resolution as f64) * d[1] / d[2]).to_constant() as u32;
         }
 
         result.scale = r / (T::constant(resolution as f64 - 1.0));
@@ -205,10 +205,10 @@ impl<T: AD> VoxelizedVolume<T> {
                 let pt = points[tri[c] as usize];
                 tri_pts[c] = (pt - result.origin.coords) * inv_scale;
 
-                let i = (tri_pts[c].x + T::constant(0.5)) as u32;
-                let j = (tri_pts[c].y + T::constant(0.5)) as u32;
+                let i = (tri_pts[c].x + T::constant(0.5)).to_constant() as u32;
+                let j = (tri_pts[c].y + T::constant(0.5)).to_constant() as u32;
                 #[cfg(feature = "dim3")]
-                let k = (tri_pts[c].z + T::constant(0.5)) as u32;
+                let k = (tri_pts[c].z + T::constant(0.5)).to_constant() as u32;
 
                 assert!(i < result.resolution[0] && j < result.resolution[1]);
                 #[cfg(feature = "dim3")]
@@ -799,8 +799,8 @@ impl<T: AD> VoxelizedVolume<T> {
     }
 }
 
-impl Into<VoxelSet> for VoxelizedVolume {
-    fn into(mut self) -> VoxelSet {
+impl<T: AD> Into<VoxelSet<T>> for VoxelizedVolume<T> {
+    fn into(mut self) -> VoxelSet<T> {
         let mut curr_intersection_index = 0;
         let mut vset = VoxelSet::new();
         let mut vset_intersections = Vec::new();

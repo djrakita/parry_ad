@@ -98,23 +98,23 @@ impl<T: AD> PointQueryWithLocation<T> for Tetrahedron<T> {
          * Voronoï regions of edges.
          */
         #[inline(always)]
-        fn check_edge(
+        fn check_edge<A: AD>(
             i: usize,
-            a: &Point<T>,
-            _: &Point<T>,
-            nabc: &Vector<T>,
-            nabd: &Vector<T>,
-            ap: &Vector<T>,
-            ab: &Vector<T>,
-            ap_ab: T, /*ap_ac: T, ap_ad: T,*/
-            bp_ab: T, /*bp_ac: T, bp_ad: T*/
+            a: &Point<A>,
+            _: &Point<A>,
+            nabc: &Vector<A>,
+            nabd: &Vector<A>,
+            ap: &Vector<A>,
+            ab: &Vector<A>,
+            ap_ab: A, /*ap_ac: A, ap_ad: A,*/
+            bp_ab: A, /*bp_ac: A, bp_ad: A*/
         ) -> (
-            T,
-            T,
-            Option<(PointProjection<T>, TetrahedronPointLocation<T>)>,
+            A,
+            A,
+            Option<(PointProjection<A>, TetrahedronPointLocation<A>)>,
         ) {
-            let _0: T = T::zero();
-            let _1: T = T::one();
+            let _0: A = A::zero();
+            let _1: A = A::one();
 
             let ab_ab = ap_ab - bp_ab;
 
@@ -242,25 +242,25 @@ impl<T: AD> PointQueryWithLocation<T> for Tetrahedron<T> {
          * Voronoï regions of faces.
          */
         #[inline(always)]
-        fn check_face(
+        fn check_face<A: AD>(
             i: usize,
-            a: &Point<T>,
-            b: &Point<T>,
-            c: &Point<T>,
-            ap: &Vector<T>,
-            bp: &Vector<T>,
-            cp: &Vector<T>,
-            ab: &Vector<T>,
-            ac: &Vector<T>,
-            ad: &Vector<T>,
-            dabc: T,
-            dbca: T,
-            dacb: T,
-            /* ap_ab: T, bp_ab: T, cp_ab: T,
-            ap_ac: T, bp_ac: T, cp_ac: T, */
-        ) -> Option<(PointProjection<T>, TetrahedronPointLocation<T>)> {
-            let _0: T = T::zero();
-            let _1: T = T::one();
+            a: &Point<A>,
+            b: &Point<A>,
+            c: &Point<A>,
+            ap: &Vector<A>,
+            bp: &Vector<A>,
+            cp: &Vector<A>,
+            ab: &Vector<A>,
+            ac: &Vector<A>,
+            ad: &Vector<A>,
+            dabc: A,
+            dbca: A,
+            dacb: A,
+            /* ap_ab: A, bp_ab: A, cp_ab: A,
+            ap_ac: A, bp_ac: A, cp_ac: A, */
+        ) -> Option<(PointProjection<A>, TetrahedronPointLocation<A>)> {
+            let _0: A = A::zero();
+            let _1: A = A::one();
 
             if dabc < _0 && dbca < _0 && dacb < _0 {
                 let n = ab.cross(ac); // TODO: is is possible to avoid this cross product?
@@ -279,7 +279,7 @@ impl<T: AD> PointQueryWithLocation<T> for Tetrahedron<T> {
                     // above were < 0. This happens, e.g., when we use fixed-point
                     // numbers and there are not enough decimal bits to perform
                     // the normalization.
-                    let normal = n.try_normalize(crate::math::DEFAULT_EPSILON)?;
+                    let normal = n.try_normalize(A::constant(crate::math::DEFAULT_EPSILON))?;
                     let vc = normal.dot(&ap.cross(bp));
                     let va = normal.dot(&bp.cross(cp));
                     let vb = normal.dot(&cp.cross(ap));

@@ -4,9 +4,9 @@ use crate::shape::{Cylinder, FeatureId};
 use na;
 use ad_trait::AD;
 
-impl<T: AD> PointQuery for Cylinder<T> {
+impl<T: AD> PointQuery<T> for Cylinder<T> {
     #[inline]
-    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection<T> {
         // Project on the basis.
         let mut dir_from_basis_center = pt.coords.xz();
         let planar_dist_from_basis_center = dir_from_basis_center.normalize_mut();
@@ -75,7 +75,7 @@ impl<T: AD> PointQuery for Cylinder<T> {
     fn project_local_point_and_get_feature(
         &self,
         pt: &Point<T>,
-    ) -> (PointProjection, FeatureId) {
+    ) -> (PointProjection<T>, FeatureId) {
         // TODO: get the actual feature.
         (self.project_local_point(pt, false), FeatureId::Unknown)
     }

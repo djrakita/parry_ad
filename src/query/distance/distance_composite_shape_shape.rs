@@ -15,7 +15,7 @@ pub fn distance_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(
     g2: &dyn Shape<T>,
 ) -> T
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     let mut visitor = CompositeShapeAgainstAnyDistanceVisitor::new(dispatcher, pos12, g1, g2);
@@ -34,7 +34,7 @@ pub fn distance_shape_composite_shape<D: ?Sized, G2: ?Sized, T: AD>(
     g2: &G2,
 ) -> T
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G2: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     distance_composite_shape_shape(dispatcher, &pos12.inverse(), g2, g1)
@@ -75,7 +75,7 @@ impl<'a, D: ?Sized, G1: ?Sized + 'a, T: AD> CompositeShapeAgainstAnyDistanceVisi
 impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>, T>
     for CompositeShapeAgainstAnyDistanceVisitor<'a, D, G1, T>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     type Result = (G1::PartId, T);

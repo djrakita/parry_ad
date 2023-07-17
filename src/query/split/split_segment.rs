@@ -1,6 +1,7 @@
 use crate::math::{Point, UnitVector, Vector};
 use crate::query::SplitResult;
 use crate::shape::Segment;
+use ad_trait::AD;
 
 impl<T: AD> Segment<T> {
     /// Splits this segment along the given canonical axis.

@@ -155,8 +155,8 @@ pub fn try_get_initial_mesh<T: AD>(
             let p2 = support_point_id(&-eigpairs[0].0, normalized_points)
                 .ok_or(ConvexHullError::MissingSupportPoint)?;
 
-            let mut max_area = 0.0;
-            let mut p3 = usize::max_value();
+            let mut max_area = T::zero();
+            let mut p3 = usize::MAX;
 
             for (i, point) in normalized_points.iter().enumerate() {
                 let area =
@@ -192,8 +192,8 @@ pub fn try_get_initial_mesh<T: AD>(
                         continue;
                     }
 
-                    let mut furthest = usize::max_value();
-                    let mut furthest_dist = 0.0;
+                    let mut furthest = usize::MAX;
+                    let mut furthest_dist = T::zero();
 
                     for (i, curr_facet) in facets.iter().enumerate() {
                         if curr_facet.can_see_point(point, normalized_points) {

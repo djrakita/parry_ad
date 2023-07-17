@@ -604,7 +604,7 @@ impl<T: AD> TriMesh<T> {
         &self,
         position: &Isometry<T>,
         flip_mesh: bool,
-        aabb: &Aabb,
+        aabb: &Aabb<T>,
         flip_cuboid: bool,
         epsilon: T,
     ) -> Option<Self> {
@@ -625,7 +625,7 @@ impl<T: AD> TriMesh<T> {
         &self,
         position: &Isometry<T>,
         flip_mesh: bool,
-        cuboid: &Cuboid,
+        cuboid: &Cuboid<T>,
         cuboid_position: &Isometry<T>,
         flip_cuboid: bool,
         epsilon: T,
@@ -643,7 +643,7 @@ impl<T: AD> TriMesh<T> {
     pub fn intersection_with_local_cuboid(
         &self,
         flip_mesh: bool,
-        cuboid: &Cuboid,
+        cuboid: &Cuboid<T>,
         cuboid_position: &Isometry<T>,
         flip_cuboid: bool,
         _epsilon: T,

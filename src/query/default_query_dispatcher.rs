@@ -9,7 +9,8 @@ use crate::query::{
     ContactManifold,
 };
 use crate::shape::{HalfSpace, Segment, Shape, ShapeType};
-use ad_trait::AD;
+use ad_trait::{AD, NalgebraMatMulAD, NalgebraMatMulNoRefAD, NalgebraPointMulAD, NalgebraPointMulNoRefAD};
+use na::{ArrayStorage, Const, OPoint};
 
 /// A dispatcher that exposes built-in queries
 #[derive(Debug, Clone)]
@@ -46,13 +47,13 @@ impl<T: AD> QueryDispatcher<T> for DefaultQueryDispatcher {
                 &pos12, shape1, b2,
             ))
         } else if let (Some(p1), Some(s2)) =
-            (shape1.as_shape::<HalfSpace>(), shape2.as_support_map())
+            (shape1.as_shape::<HalfSpace<T>>(), shape2.as_support_map())
         {
             Ok(query::details::intersection_test_halfspace_support_map(
                 pos12, p1, s2,
             ))
         } else if let (Some(s1), Some(p2)) =
-            (shape1.as_support_map(), shape2.as_shape::<HalfSpace>())
+            (shape1.as_support_map(), shape2.as_shape::<HalfSpace<T>>())
         {
             Ok(query::details::intersection_test_support_map_halfspace(
                 pos12, s1, p2,
@@ -105,13 +106,13 @@ impl<T: AD> QueryDispatcher<T> for DefaultQueryDispatcher {
         } else if let (Some(s1), Some(s2)) = (shape1.as_segment(), shape2.as_segment()) {
             Ok(query::details::distance_segment_segment(pos12, s1, s2))
         } else if let (Some(p1), Some(s2)) =
-            (shape1.as_shape::<HalfSpace>(), shape2.as_support_map())
+            (shape1.as_shape::<HalfSpace<T>>(), shape2.as_support_map())
         {
             Ok(query::details::distance_halfspace_support_map(
                 pos12, p1, s2,
             ))
         } else if let (Some(s1), Some(p2)) =
-            (shape1.as_support_map(), shape2.as_shape::<HalfSpace>())
+            (shape1.as_support_map(), shape2.as_shape::<HalfSpace<T>>())
         {
             Ok(query::details::distance_support_map_halfspace(
                 pos12, s1, p2,
@@ -429,11 +430,11 @@ impl<T: AD> QueryDispatcher<T> for DefaultQueryDispatcher {
 }
 
 #[cfg(feature = "std")]
-impl<T: AD, ManifoldData, ContactData> PersistentQueryDispatcher<T, ManifoldData, ContactData>
+impl<T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>, ManifoldData, ContactData> PersistentQueryDispatcher<T, ManifoldData, ContactData>
     for DefaultQueryDispatcher
 where
     ManifoldData: Default + Clone,
-    ContactData: Default + Copy,
+    ContactData: Default + Copy
 {
     fn contact_manifolds(
         &self,
@@ -441,7 +442,7 @@ where
         shape1: &dyn Shape<T>,
         shape2: &dyn Shape<T>,
         prediction: T,
-        manifolds: &mut Vec<ContactManifold<T, ManifoldData, ContactData>>,
+        manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
         workspace: &mut Option<ContactManifoldsWorkspace<T>>,
     ) -> Result<(), Unsupported> {
         use crate::query::contact_manifolds::*;
@@ -542,7 +543,7 @@ where
         shape1: &dyn Shape<T>,
         shape2: &dyn Shape<T>,
         prediction: T,
-        manifold: &mut ContactManifold<T, ManifoldData, ContactData>,
+        manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
     ) -> Result<(), Unsupported> {
         use crate::query::contact_manifolds::*;
 

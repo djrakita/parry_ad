@@ -18,7 +18,7 @@ pub fn time_of_impact_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(
     stop_at_penetration: bool,
 ) -> Option<TOI<T>>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     let mut visitor = TOICompositeShapeShapeBestFirstVisitor::new(
@@ -46,7 +46,7 @@ pub fn time_of_impact_shape_composite_shape<D: ?Sized, G2: ?Sized, T: AD>(
     stop_at_penetration: bool,
 ) -> Option<TOI<T>>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G2: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     time_of_impact_composite_shape_shape(
@@ -78,7 +78,7 @@ pub struct TOICompositeShapeShapeBestFirstVisitor<'a, D: ?Sized, G1: ?Sized + 'a
 
 impl<'a, D: ?Sized, G1: ?Sized, T: AD> TOICompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     /// Creates a new visitor used to find the time-of-impact between a composite shape and a shape.
@@ -112,7 +112,7 @@ where
 impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>, T>
     for TOICompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     type Result = (G1::PartId, TOI<T>);

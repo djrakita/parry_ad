@@ -1,4 +1,4 @@
-use crate::math::{Point, Real, Vector};
+use crate::math::{Point, Vector};
 use crate::shape::SupportMap;
 use na::Unit;
 
@@ -21,7 +21,7 @@ pub struct RoundShape<S, T: AD> {
     pub border_radius: T,
 }
 
-impl<S: SupportMap, T: AD> SupportMap for RoundShape<S, T> {
+impl<S: SupportMap<T>, T: AD> SupportMap<T> for RoundShape<S, T> {
     fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         self.local_support_point_toward(&Unit::new_normalize(*dir))
     }

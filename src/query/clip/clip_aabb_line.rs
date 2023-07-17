@@ -43,7 +43,7 @@ impl<T: AD> Aabb<T> {
     /// The parameters are such that the point are given by `ray.orig + ray.dir * parameter`.
     /// Returns `None` if there is no intersection.
     #[inline]
-    pub fn clip_ray_parameters(&self, ray: &Ray) -> Option<(T, T)> {
+    pub fn clip_ray_parameters(&self, ray: &Ray<T>) -> Option<(T, T)> {
         self.clip_line_parameters(&ray.origin, &ray.dir)
             .and_then(|clip| {
                 let t0 = clip.0;
@@ -61,7 +61,7 @@ impl<T: AD> Aabb<T> {
     ///
     /// Returns `None` if there is no intersection.
     #[inline]
-    pub fn clip_ray(&self, ray: &Ray) -> Option<Segment<T>> {
+    pub fn clip_ray(&self, ray: &Ray<T>) -> Option<Segment<T>> {
         self.clip_ray_parameters(ray)
             .map(|clip| Segment::new(ray.point_at(clip.0), ray.point_at(clip.1)))
     }
@@ -73,7 +73,7 @@ pub fn clip_aabb_line<T: AD>(
     origin: &Point<T>,
     dir: &Vector<T>,
 ) -> Option<((T, Vector<T>, isize), (T, Vector<T>, isize))> {
-    let mut tmax: T = Bounded::max_value();
+    let mut tmax: T = T::constant(f64::max_value());
     let mut tmin: T = -tmax;
     let mut near_side = 0;
     let mut far_side = 0;

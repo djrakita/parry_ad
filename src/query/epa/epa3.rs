@@ -60,7 +60,7 @@ struct Face<T: AD> {
 
 impl<T: AD> Face<T> {
     pub fn new_with_proj(
-        vertices: &[CSOPoint],
+        vertices: &[CSOPoint<T>],
         bcoords: [T; 3],
         pts: [usize; 3],
         adj: [usize; 3],
@@ -90,7 +90,7 @@ impl<T: AD> Face<T> {
         }
     }
 
-    pub fn new(vertices: &[CSOPoint], pts: [usize; 3], adj: [usize; 3]) -> (Self, bool) {
+    pub fn new(vertices: &[CSOPoint<T>], pts: [usize; 3], adj: [usize; 3]) -> (Self, bool) {
         let tri = Triangle::new(
             vertices[pts[0]].point,
             vertices[pts[1]].point,
@@ -106,7 +106,7 @@ impl<T: AD> Face<T> {
         }
     }
 
-    pub fn closest_points(&self, vertices: &[CSOPoint]) -> (Point<T>, Point<T>) {
+    pub fn closest_points(&self, vertices: &[CSOPoint<T>]) -> (Point<T>, Point<T>) {
         (
             vertices[self.pts[0]].orig1 * self.bcoords[0]
                 + vertices[self.pts[1]].orig1.coords * self.bcoords[1]
@@ -132,7 +132,7 @@ impl<T: AD> Face<T> {
         }
     }
 
-    pub fn can_be_seen_by(&self, vertices: &[CSOPoint], point: usize, opp_pt_id: usize) -> bool {
+    pub fn can_be_seen_by(&self, vertices: &[CSOPoint<T>], point: usize, opp_pt_id: usize) -> bool {
         let p0 = &vertices[self.pts[opp_pt_id]].point;
         let p1 = &vertices[self.pts[(opp_pt_id + 1) % 3]].point;
         let p2 = &vertices[self.pts[(opp_pt_id + 2) % 3]].point;
@@ -143,7 +143,7 @@ impl<T: AD> Face<T> {
         // have a zero normal, causing the dot product to be zero.
         // So return true for these case will let us skip the triangle
         // during silhouette computation.
-        (*pt - *p0).dot(&self.normal) >= -gjk::eps_tol()
+        (*pt - *p0).dot(&self.normal) >= -gjk::eps_tol::<T>()
             || Triangle::new(*p1, *p2, *pt).is_affinely_dependent()
     }
 }
@@ -161,7 +161,7 @@ impl SilhouetteEdge {
 
 /// The Expanding Polytope Algorithm in 3D.
 pub struct EPA<T: AD> {
-    vertices: Vec<CSOPoint>,
+    vertices: Vec<CSOPoint<T>>,
     faces: Vec<Face<T>>,
     silhouette: Vec<SilhouetteEdge>,
     heap: BinaryHeap<FaceId<T>>,
@@ -197,7 +197,7 @@ impl<T: AD> EPA<T> {
         &mut self,
         m: &Isometry<T>,
         g: &G,
-        simplex: &VoronoiSimplex,
+        simplex: &VoronoiSimplex<T>,
     ) -> Option<Point<T>>
     where
         G: SupportMap<T>,
@@ -215,7 +215,7 @@ impl<T: AD> EPA<T> {
         pos12: &Isometry<T>,
         g1: &G1,
         g2: &G2,
-        simplex: &VoronoiSimplex,
+        simplex: &VoronoiSimplex<T>,
     ) -> Option<(Point<T>, Point<T>, Unit<Vector<T>>)>
     where
         G1: SupportMap<T>,

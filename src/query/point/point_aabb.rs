@@ -58,9 +58,9 @@ impl<T: AD> Aabb<T> {
     }
 }
 
-impl<T: AD> PointQuery for Aabb<T> {
+impl<T: AD> PointQuery<T> for Aabb<T> {
     #[inline]
-    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection<T> {
         let (inside, ls_pt, _) = self.do_project_local_point(pt, solid);
         PointProjection::new(inside, ls_pt)
     }
@@ -71,7 +71,7 @@ impl<T: AD> PointQuery for Aabb<T> {
     fn project_local_point_and_get_feature(
         &self,
         pt: &Point<T>,
-    ) -> (PointProjection, FeatureId) {
+    ) -> (PointProjection<T>, FeatureId) {
         let (inside, ls_pt, shift) = self.do_project_local_point(pt, false);
         let proj = PointProjection::new(inside, ls_pt);
         let mut nzero_shifts = 0;
@@ -89,10 +89,10 @@ impl<T: AD> PointQuery for Aabb<T> {
 
         if nzero_shifts == DIM {
             for i in 0..DIM {
-                if ls_pt[i] > self.maxs[i] - crate::math::DEFAULT_EPSILON {
+                if ls_pt[i] > self.maxs[i] - T::constant(crate::math::DEFAULT_EPSILON) {
                     return (proj, FeatureId::Face(i as u32));
                 }
-                if ls_pt[i] <= self.mins[i] + crate::math::DEFAULT_EPSILON {
+                if ls_pt[i] <= self.mins[i] + T::constant(crate::math::DEFAULT_EPSILON) {
                     return (proj, FeatureId::Face((i + DIM) as u32));
                 }
             }

@@ -17,9 +17,9 @@ pub fn nonlinear_time_of_impact_composite_shape_shape<D: ?Sized, G1: ?Sized, T: 
     start_time: T,
     end_time: T,
     stop_at_penetration: bool,
-) -> Option<TOI>
+) -> Option<TOI<T>>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     let mut visitor = NonlinearTOICompositeShapeShapeBestFirstVisitor::new(
@@ -48,9 +48,9 @@ pub fn nonlinear_time_of_impact_shape_composite_shape<D: ?Sized, G2: ?Sized, T: 
     start_time: T,
     end_time: T,
     stop_at_penetration: bool,
-) -> Option<TOI>
+) -> Option<TOI<T>>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G2: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     nonlinear_time_of_impact_composite_shape_shape(
@@ -82,7 +82,7 @@ pub struct NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D: ?Sized, G1: ?S
 
 impl<'a, D: ?Sized, G1: ?Sized, T: AD> NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     /// Initializes visitor used to determine the non-linear time of impact between
@@ -114,10 +114,10 @@ where
 impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>, T>
     for NonlinearTOICompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
-    type Result = (G1::PartId, TOI);
+    type Result = (G1::PartId, TOI<T>);
 
     #[inline]
     fn visit(
@@ -132,7 +132,7 @@ where
 
         // let centers1: [Point<Real>; SIMD_WIDTH] = bv.center().into();
         let centers1 = bv.center();
-        let radius1: [T; SIMD_WIDTH] = bv.radius().into();
+        let radius1: [T; SIMD_WIDTH] = [bv.radius()];
 
         for ii in 0..SIMD_WIDTH {
             let center1 = centers1.extract(ii);

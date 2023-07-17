@@ -154,7 +154,7 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     }
 
     #[allow(dead_code)] // Not sure yet if we want to keep this.
-    pub(crate) fn clear_changed_flag(&mut self, workspace: &mut QbvhUpdateWorkspace) {
+    pub(crate) fn clear_changed_flag(&mut self, workspace: &mut QbvhUpdateWorkspace<T>) {
         if self.nodes.is_empty() {
             return;
         }
@@ -178,7 +178,7 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     }
 
     #[doc(hidden)]
-    pub fn check_topology(&self, check_aabbs: bool, aabb_builder: impl Fn(&LeafData) -> Aabb) {
+    pub fn check_topology(&self, check_aabbs: bool, aabb_builder: impl Fn(&LeafData) -> Aabb<T>) {
         if self.nodes.is_empty() {
             return;
         }
@@ -267,15 +267,15 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     pub fn refit<F>(
         &mut self,
         margin: T,
-        workspace: &mut QbvhUpdateWorkspace,
+        workspace: &mut QbvhUpdateWorkspace<T>,
         aabb_builder: F,
     ) -> usize
     where
-        F: Fn(&LeafData) -> Aabb,
+        F: Fn(&LeafData) -> Aabb<T>,
     {
         // Loop on the dirty leaves.
         workspace.clear();
-        let margin = T::constant(margin);
+        // let margin = T::constant(margin);
         let mut first_iter = true;
         let mut num_changed = 0;
 
@@ -385,12 +385,15 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
         self.root_aabb = aabb;
 
         self.nodes[0] = QbvhNode {
+            /*
             simd_aabb: SimdAabb::from([
                 aabb,
                 Aabb::new_invalid(),
                 Aabb::new_invalid(),
                 Aabb::new_invalid(),
-            ]),
+            ])
+            */
+            simd_aabb: SimdAabb::from([aabb]),
             children: [id, u32::MAX, u32::MAX, u32::MAX],
             parent: NodeIndex::invalid(),
             flags: QbvhNodeFlags::default(),
@@ -467,7 +470,7 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
                 }
 
                 let internal_node = QbvhNode {
-                    simd_aabb: SimdAabb::from(internal_aabbs),
+                    simd_aabb: SimdAabb::from([internal_aabbs[0]]),
                     children: internal_ids,
                     parent,
                     flags: QbvhNodeFlags::default(),
@@ -479,7 +482,7 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
 
             if has_leaf {
                 let leaf_node = QbvhNode {
-                    simd_aabb: SimdAabb::from(leaf_aabbs),
+                    simd_aabb: SimdAabb::from([leaf_aabbs[0]]),
                     children: proxy_ids,
                     parent: if has_internal {
                         NodeIndex::new(my_internal_id, new_internal_lane_containing_leaf as u8)
@@ -573,10 +576,11 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
         self.nodes[nid as usize].children =
             [children[0].0, children[1].0, children[2].0, children[3].0];
         self.nodes[nid as usize].simd_aabb =
-            SimdAabb::from([children[0].1, children[1].1, children[2].1, children[3].1]);
+            // SimdAabb::from([children[0].1, children[1].1, children[2].1, children[3].1]);
+            SimdAabb::from([children[0].1]);
         self.nodes[nid as usize]
             .simd_aabb
-            .loosen(SimdReal::splat(margin));
+            .loosen(margin);
 
         let my_aabb = self.nodes[nid as usize].simd_aabb.to_merged_aabb();
         (nid, my_aabb)

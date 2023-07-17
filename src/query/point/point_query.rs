@@ -93,7 +93,7 @@ pub trait PointQuery<T: AD> {
     }
 
     /// Projects a point on `self` transformed by `m`.
-    fn project_point(&self, m: &Isometry<T>, pt: &Point<T>, solid: bool) -> PointProjection {
+    fn project_point(&self, m: &Isometry<T>, pt: &Point<T>, solid: bool) -> PointProjection<T> {
         self.project_local_point(&m.inverse_transform_point(pt), solid)
             .transform_by(m)
     }
@@ -110,7 +110,7 @@ pub trait PointQuery<T: AD> {
         &self,
         m: &Isometry<T>,
         pt: &Point<T>,
-    ) -> (PointProjection, FeatureId) {
+    ) -> (PointProjection<T>, FeatureId) {
         let res = self.project_local_point_and_get_feature(&m.inverse_transform_point(pt));
         (res.0.transform_by(m), res.1)
     }
@@ -158,7 +158,7 @@ pub trait PointQueryWithLocation<T: AD> {
         m: &Isometry<T>,
         pt: &Point<T>,
         solid: bool,
-    ) -> (PointProjection, Self::Location) {
+    ) -> (PointProjection<T>, Self::Location) {
         let res = self.project_local_point_and_get_location(&m.inverse_transform_point(pt), solid);
         (res.0.transform_by(m), res.1)
     }

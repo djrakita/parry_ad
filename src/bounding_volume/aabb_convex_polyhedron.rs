@@ -6,7 +6,7 @@ use ad_trait::AD;
 impl<T: AD> ConvexPolyhedron<T> {
     /// Computes the world-space Aabb of this convex polyhedron, transformed by `pos`.
     #[inline]
-    pub fn aabb(&self, pos: &Isometry<T>) -> Aabb {
+    pub fn aabb(&self, pos: &Isometry<T>) -> Aabb<T> {
         super::details::point_cloud_aabb(pos, self.points())
     }
 

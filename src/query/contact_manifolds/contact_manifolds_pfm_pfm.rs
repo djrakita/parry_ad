@@ -5,12 +5,12 @@ use crate::query::{
     ContactManifold, TrackedContact,
 };
 use crate::shape::{PackedFeatureId, PolygonalFeature, PolygonalFeatureMap, Shape};
-use na::Unit;
-use ad_trait::AD;
+use na::{ArrayStorage, Const, OPoint, Unit};
+use ad_trait::{AD, NalgebraMatMulAD, NalgebraMatMulNoRefAD, NalgebraPointMulNoRefAD};
 
 /// Computes the contact manifold between two convex shapes implementing the `PolygonalSupportMap`
 /// trait, both represented as `Shape` trait-objects.
-pub fn contact_manifold_pfm_pfm_shapes<ManifoldData, ContactData, T: AD>(
+pub fn contact_manifold_pfm_pfm_shapes<ManifoldData, ContactData, T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>>(
     pos12: &Isometry<T>,
     shape1: &dyn Shape<T>,
     shape2: &dyn Shape<T>,
@@ -18,7 +18,7 @@ pub fn contact_manifold_pfm_pfm_shapes<ManifoldData, ContactData, T: AD>(
     manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
 ) where
     ManifoldData: Default,
-    ContactData: Default + Copy,
+    ContactData: Default + Copy
 {
     if let (Some((pfm1, border_radius1)), Some((pfm2, border_radius2))) = (
         shape1.as_polygonal_feature_map(),
@@ -37,11 +37,11 @@ pub fn contact_manifold_pfm_pfm_shapes<ManifoldData, ContactData, T: AD>(
 }
 
 /// Computes the contact manifold between two convex shapes implementing the `PolygonalSupportMap` trait.
-pub fn contact_manifold_pfm_pfm<'a, ManifoldData, ContactData, S1, S2, T: AD>(
+pub fn contact_manifold_pfm_pfm<ManifoldData, ContactData, S1, S2, T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>>(
     pos12: &Isometry<T>,
-    pfm1: &'a S1,
+    pfm1: &S1,
     border_radius1: T,
-    pfm2: &'a S2,
+    pfm2: &S2,
     border_radius2: T,
     prediction: T,
     manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
@@ -49,16 +49,16 @@ pub fn contact_manifold_pfm_pfm<'a, ManifoldData, ContactData, S1, S2, T: AD>(
     S1: ?Sized + PolygonalFeatureMap<T>,
     S2: ?Sized + PolygonalFeatureMap<T>,
     ManifoldData: Default,
-    ContactData: Default + Copy,
+    ContactData: Default + Copy
 {
     // We use very small thresholds for the manifold update because something to high would
     // cause numerical drifts with the effect of introducing bumps in
     // what should have been smooth rolling motions.
-    if manifold.try_update_contacts_eps(&pos12, crate::utils::COS_1_DEGREES, T::constant(1.0e-6)) {
+    if manifold.try_update_contacts_eps(&pos12, T::constant(crate::utils::COS_1_DEGREES), T::constant(1.0e-6)) {
         return;
     }
 
-    let init_dir = Unit::try_new(manifold.local_n1, crate::math::DEFAULT_EPSILON);
+    let init_dir = Unit::try_new(manifold.local_n1, T::constant(crate::math::DEFAULT_EPSILON));
     let total_prediction = prediction + border_radius1 + border_radius2;
     let contact = query::details::contact_support_map_support_map_with_params(
         &pos12,

@@ -6,9 +6,9 @@ use crate::shape::{Ball, FeatureId};
 
 use ad_trait::AD;
 
-impl<T: AD> PointQuery for Ball<T> {
+impl<T: AD> PointQuery<T> for Ball<T> {
     #[inline]
-    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection<T> {
         let distance_squared = pt.coords.norm_squared();
 
         let inside = distance_squared <= self.radius * self.radius;
@@ -26,7 +26,7 @@ impl<T: AD> PointQuery for Ball<T> {
     fn project_local_point_and_get_feature(
         &self,
         pt: &Point<T>,
-    ) -> (PointProjection, FeatureId) {
+    ) -> (PointProjection<T>, FeatureId) {
         (self.project_local_point(pt, false), FeatureId::Face(0))
     }
 
@@ -34,8 +34,8 @@ impl<T: AD> PointQuery for Ball<T> {
     fn distance_to_local_point(&self, pt: &Point<T>, solid: bool) -> T {
         let dist = pt.coords.norm() - self.radius;
 
-        if solid && dist < 0.0 {
-            0.0
+        if solid && dist < T::zero() {
+            T::zero()
         } else {
             dist
         }

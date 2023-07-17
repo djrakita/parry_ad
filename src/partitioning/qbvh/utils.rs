@@ -1,5 +1,6 @@
 use crate::bounding_volume::Aabb;
 use crate::math::{Point};
+use ad_trait::AD;
 
 pub fn split_indices_wrt_dim<'a, T: AD>(
     indices: &'a mut [usize],

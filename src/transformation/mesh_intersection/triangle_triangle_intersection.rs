@@ -99,7 +99,7 @@ pub fn triangle_triangle_intersection<T: AD>(
             return None;
         }
 
-        if range1[1].0 <= range2[0].0 + EPS || range2[1].0 <= range1[0].0 + EPS {
+        if range1[1].0 <= range2[0].0 + T::constant(EPS) || range2[1].0 <= range1[0].0 + T::constant(EPS) {
             // The two triangles intersect each others’ plane, but these intersections are disjoint.
             return None;
         }
@@ -136,14 +136,14 @@ pub fn triangle_triangle_intersection<T: AD>(
             _ => FeatureId::Face(0),
         };
 
-        let a = if range2[0].0 > range1[0].0 + EPS {
+        let a = if range2[0].0 > range1[0].0 + T::constant(EPS) {
             TriangleTriangleIntersectionPoint {
                 p1: range2[0].1,
                 p2: range2[0].1,
                 f1: inter_f1,
                 f2: range2[0].2,
             }
-        } else if range2[0].0 < range1[0].0 - EPS {
+        } else if range2[0].0 < range1[0].0 - T::constant(EPS) {
             TriangleTriangleIntersectionPoint {
                 p1: range1[0].1,
                 p2: range1[0].1,
@@ -159,14 +159,14 @@ pub fn triangle_triangle_intersection<T: AD>(
             }
         };
 
-        let b = if range2[1].0 < range1[1].0 - EPS {
+        let b = if range2[1].0 < range1[1].0 - T::constant(EPS) {
             TriangleTriangleIntersectionPoint {
                 p1: range2[1].1,
                 p2: range2[1].1,
                 f1: inter_f1,
                 f2: range2[1].2,
             }
-        } else if range2[1].0 > range1[1].0 + EPS {
+        } else if range2[1].0 > range1[1].0 + T::constant(EPS) {
             TriangleTriangleIntersectionPoint {
                 p1: range1[1].1,
                 p2: range1[1].1,
@@ -185,7 +185,7 @@ pub fn triangle_triangle_intersection<T: AD>(
         Some(TriangleTriangleIntersection::Segment { a, b })
     } else {
         let unit_normal2 = normal2.normalize();
-        if (tri1.a - tri2.a).dot(&unit_normal2) < EPS {
+        if (tri1.a - tri2.a).dot(&unit_normal2) < T::constant(EPS) {
             let basis = unit_normal2.orthonormal_basis();
             let proj =
                 |vect: Vector<T>| na::Point2::new(vect.dot(&basis[0]), vect.dot(&basis[1]));
@@ -271,12 +271,12 @@ fn segment_plane_intersection<T: AD>(
         query::details::line_toi_with_halfspace(plane_center, &plane_normal, &segment.a, &dir)?;
     let scaled_toi = toi * dir_norm;
 
-    if scaled_toi < -EPS || scaled_toi > dir_norm + EPS {
+    if scaled_toi < -T::constant(EPS) || scaled_toi > dir_norm + T::constant(EPS) {
         None
     } else {
-        if scaled_toi <= EPS {
+        if scaled_toi <= T::constant(EPS) {
             Some((segment.a, FeatureId::Vertex(vids.0)))
-        } else if scaled_toi >= dir_norm - EPS {
+        } else if scaled_toi >= dir_norm - T::constant(EPS) {
             Some((segment.b, FeatureId::Vertex(vids.1)))
         } else {
             Some((segment.a + dir * toi, FeatureId::Edge(eid)))

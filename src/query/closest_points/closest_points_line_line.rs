@@ -18,7 +18,7 @@ pub fn closest_points_line_line_parameters<T: AD>(
         dir1,
         orig2,
         dir2,
-        crate::math::DEFAULT_EPSILON,
+        T::constant(crate::math::DEFAULT_EPSILON),
     );
     (res.0, res.1)
 }

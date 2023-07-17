@@ -20,7 +20,7 @@ use crate::math::{Point, Vector, DIM};
 use crate::transformation::vhacd::VHACDParameters;
 use crate::transformation::voxelization::{VoxelSet, VoxelizedVolume};
 use std::sync::Arc;
-use ad_trait;
+use ad_trait::AD;
 
 #[cfg(feature = "dim2")]
 type ConvexHull<T: AD> = Vec<Point<T>>;
@@ -38,7 +38,7 @@ pub(crate) struct CutPlane<T: AD> {
 /// Approximate convex decomposition using the VHACD algorithm.
 pub struct VHACD<T: AD> {
     // raycast_mesh: Option<RaycastMesh>,
-    voxel_parts: Vec<VoxelSet>,
+    voxel_parts: Vec<VoxelSet<T>>,
     volume_ch0: T,
     max_concavity: T,
 }
@@ -86,7 +86,7 @@ impl<T: AD> VHACD<T> {
     }
 
     /// Perform an approximate convex decomposition of a set of voxels.
-    pub fn from_voxels(params: &VHACDParameters<T>, voxels: VoxelSet) -> Self {
+    pub fn from_voxels(params: &VHACDParameters<T>, voxels: VoxelSet<T>) -> Self {
         let mut result = Self {
             // raycast_mesh: None,
             voxel_parts: Vec::new(),
@@ -99,7 +99,7 @@ impl<T: AD> VHACD<T> {
     }
 
     /// The almost-convex voxelized parts computed by the VHACD algorithm.
-    pub fn voxel_parts(&self) -> &[VoxelSet] {
+    pub fn voxel_parts(&self) -> &[VoxelSet<T>] {
         &self.voxel_parts
     }
 
@@ -160,14 +160,14 @@ impl<T: AD> VHACD<T> {
             if e == T::zero() {
                 (dir, T::zero())
             } else {
-                (dir, T::one(1.0) - vz / e)
+                (dir, T::one() - vz / e)
             }
         }
     }
 
     // TODO: this should be a method of VoxelSet.
     fn compute_axes_aligned_clipping_planes(
-        vset: &VoxelSet,
+        vset: &VoxelSet<T>,
         downsampling: u32,
         planes: &mut Vec<CutPlane<T>>,
     ) {
@@ -180,19 +180,18 @@ impl<T: AD> VHACD<T> {
 
             for i in (i0..=i1).step_by(downsampling as usize) {
                 let plane = CutPlane {
-                    abc: Vector::ith(dim, 1.0),
+                    abc: Vector::ith(dim, T::constant(1.0)),
                     axis: dim as u8,
-                    d: -(vset.origin[dim] + (T::constant(i as f64 + 0.5)) * vset.scale),
+                    d: -(vset.origin[dim] + T::constant(i as f64 + 0.5) * vset.scale),
                     index: i,
                 };
-
                 planes.push(plane);
             }
         }
     }
 
     fn refine_axes_aligned_clipping_planes(
-        vset: &VoxelSet,
+        vset: &VoxelSet<T>,
         best_plane: &CutPlane<T>,
         downsampling: u32,
         planes: &mut Vec<CutPlane<T>>,
@@ -218,7 +217,7 @@ impl<T: AD> VHACD<T> {
     // Returns the best plane, and the min concavity.
     fn compute_best_clipping_plane(
         &self,
-        input_voxels: &VoxelSet,
+        input_voxels: &VoxelSet<T>,
         input_voxels_ch: &ConvexHull<T>,
         planes: &[CutPlane<T>],
         preferred_cutting_direction: &Vector<T>,
@@ -303,9 +302,9 @@ impl<T: AD> VHACD<T> {
         &mut self,
         params: &VHACDParameters<T>,
         first_iteration: bool,
-        parts: &mut Vec<VoxelSet>,
-        temp: &mut Vec<VoxelSet>,
-        mut voxels: VoxelSet,
+        parts: &mut Vec<VoxelSet<T>>,
+        temp: &mut Vec<VoxelSet<T>>,
+        mut voxels: VoxelSet<T>,
     ) {
         let volume = voxels.compute_volume(); // Compute the volume for this primitive set
         voxels.compute_bb(); // Compute the bounding box for this primitive set.
@@ -389,7 +388,7 @@ impl<T: AD> VHACD<T> {
         }
     }
 
-    fn do_compute_acd(&mut self, params: &VHACDParameters<T>, mut voxels: VoxelSet) {
+    fn do_compute_acd(&mut self, params: &VHACDParameters<T>, mut voxels: VoxelSet<T>) {
         let intersections = voxels.intersections.clone();
         let mut input_parts = Vec::new();
         let mut parts = Vec::new();

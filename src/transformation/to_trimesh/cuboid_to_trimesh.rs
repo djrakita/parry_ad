@@ -2,6 +2,7 @@ use crate::bounding_volume::Aabb;
 use crate::shape::Cuboid;
 use crate::transformation::utils;
 use na::{self, Point3};
+use ad_trait::AD;
 
 impl<T: AD> Aabb<T> {
     /// Discretize the boundary of this Aabb as a triangle-mesh.

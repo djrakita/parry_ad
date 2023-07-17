@@ -94,7 +94,7 @@ impl<T: AD> CSOPoint<T> {
     }
 }
 
-impl<T> Sub<CSOPoint<T>> for CSOPoint<T> {
+impl<T: AD> Sub<CSOPoint<T>> for CSOPoint<T> {
     type Output = Vector<T>;
 
     #[inline]

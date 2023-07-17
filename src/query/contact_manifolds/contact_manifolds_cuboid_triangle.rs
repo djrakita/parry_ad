@@ -1,20 +1,21 @@
+use na::{ArrayStorage, Const, OPoint};
 #[cfg(feature = "dim2")]
 use crate::math::Vector;
 use crate::math::{Isometry};
 use crate::query::{sat, ContactManifold};
 use crate::shape::PolygonalFeature;
 use crate::shape::{Cuboid, Shape, Triangle};
-use ad_trait::AD;
+use ad_trait::{AD, NalgebraMatMulNoRefAD, NalgebraPointMulNoRefAD};
 
 /// Computes the contact manifold between a cuboid and a triangle represented as `Shape` trait-objects.
-pub fn contact_manifold_cuboid_triangle_shapes<ManifoldData, ContactData, T: AD>(
+pub fn contact_manifold_cuboid_triangle_shapes<ManifoldData, ContactData, T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>>(
     pos12: &Isometry<T>,
     shape1: &dyn Shape<T>,
     shape2: &dyn Shape<T>,
     prediction: T,
     manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
 ) where
-    ContactData: Default + Copy,
+    ContactData: Default + Copy
 {
     if let (Some(cuboid1), Some(triangle2)) = (shape1.as_cuboid(), shape2.as_triangle()) {
         contact_manifold_cuboid_triangle(
@@ -40,16 +41,16 @@ pub fn contact_manifold_cuboid_triangle_shapes<ManifoldData, ContactData, T: AD>
 }
 
 /// Computes the contact manifold between a cuboid and a triangle.
-pub fn contact_manifold_cuboid_triangle<'a, ManifoldData, ContactData, T: AD>(
+pub fn contact_manifold_cuboid_triangle<ManifoldData, ContactData, T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>>(
     pos12: &Isometry<T>,
     pos21: &Isometry<T>,
-    cuboid1: &'a Cuboid<T>,
-    triangle2: &'a Triangle<T>,
+    cuboid1: &Cuboid<T>,
+    triangle2: &Triangle<T>,
     prediction: T,
     manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
     flipped: bool,
 ) where
-    ContactData: Default + Copy,
+    ContactData: Default + Copy
 {
     if (!flipped && manifold.try_update_contacts(&pos12))
         || (flipped && manifold.try_update_contacts(&pos21))

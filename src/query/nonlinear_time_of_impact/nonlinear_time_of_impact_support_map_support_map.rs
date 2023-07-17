@@ -66,9 +66,9 @@ pub fn nonlinear_time_of_impact_support_map_support_map<D, SM1, SM2, T: AD>(
     start_time: T,
     end_time: T,
     mode: NonlinearTOIMode<T>,
-) -> Option<TOI>
+) -> Option<TOI<T>>
 where
-    D: ?Sized + QueryDispatcher,
+    D: ?Sized + QueryDispatcher<T>,
     SM1: ?Sized + SupportMap<T>,
     SM2: ?Sized + SupportMap<T>,
 {
@@ -96,16 +96,16 @@ pub fn compute_toi<D, SM1, SM2, T: AD>(
     dispatcher: &D,
     motion1: &NonlinearRigidMotion<T>,
     sm1: &SM1,
-    g1: &dyn Shape,
+    g1: &dyn Shape<T>,
     motion2: &NonlinearRigidMotion<T>,
     sm2: &SM2,
     g2: &dyn Shape<T>,
     start_time: T,
     end_time: T,
     mode: NonlinearTOIMode<T>,
-) -> Option<TOI>
+) -> Option<TOI<T>>
 where
-    D: ?Sized + QueryDispatcher,
+    D: ?Sized + QueryDispatcher<T>,
     SM1: ?Sized + SupportMap<T>,
     SM2: ?Sized + SupportMap<T>,
 {
@@ -128,7 +128,7 @@ where
 
         // TODO: use the _with_params version of the closest points query.
         match dispatcher
-            .closest_points(&pos12, g1, g2, Bounded::max_value())
+            .closest_points(&pos12, g1, g2, T::constant(f64::MAX))
             .ok()?
         {
             ClosestPoints::Intersecting => {
@@ -146,7 +146,7 @@ where
                 result.witness2 = p2;
 
                 if let Some((normal1, dist)) =
-                    Unit::try_new_and_get(pos12 * p2 - p1, crate::math::DEFAULT_EPSILON)
+                    Unit::try_new_and_get(pos12 * p2 - p1, T::constant(crate::math::DEFAULT_EPSILON))
                 {
                     // FIXME: do the "inverse transform unit vector" only when we are about to return.
                     result.normal1 = normal1;
@@ -250,9 +250,9 @@ fn handle_penetration_at_start_time<D, SM1, SM2, T: AD>(
     end_time: T,
     sum_linear_thickness: T,
     max_angular_thickness: T,
-) -> Option<TOI>
+) -> Option<TOI<T>>
 where
-    D: ?Sized + QueryDispatcher,
+    D: ?Sized + QueryDispatcher<T>,
     SM1: ?Sized + SupportMap<T>,
     SM2: ?Sized + SupportMap<T>,
 {
@@ -464,7 +464,7 @@ where
     loop {
         // println!("Bisection dist: {}, range: {:?}", dist, range);
         // TODO: use the secant method too for finding the next iterate and converge more quickly.
-        if dist < 0.0 {
+        if dist < T::zero() {
             // Too close or penetration, go back in time.
             range.max_t = range.curr_t;
             range.curr_t = (range.min_t + range.curr_t) * T::constant(0.5);

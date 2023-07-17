@@ -1,4 +1,4 @@
-use crate::math::{Point, Real, Vector, DIM};
+use crate::math::{Point, Vector, DIM};
 use crate::shape::{FeatureId, PackedFeatureId, PolygonalFeature, PolygonalFeatureMap, SupportMap};
 // use crate::transformation;
 use crate::utils::hashmap::{Entry, HashMap};
@@ -39,7 +39,7 @@ pub struct Edge<T: AD> {
     deleted: bool,
 }
 
-impl Edge {
+impl<T: AD> Edge<T> {
     fn other_triangle(&self, id: u32) -> u32 {
         if id == self.faces[0] {
             self.faces[1]
@@ -101,8 +101,8 @@ impl<T: AD> Triangle<T> {
 pub struct ConvexPolyhedron<T: AD> {
     points: Vec<Point<T>>,
     vertices: Vec<Vertex>,
-    faces: Vec<Face>,
-    edges: Vec<Edge>,
+    faces: Vec<Face<T>>,
+    edges: Vec<Edge<T>>,
     // Faces adjascent to a vertex.
     faces_adj_to_vertex: Vec<u32>,
     // Edges adjascent to a vertex.
@@ -118,7 +118,7 @@ impl<T: AD> ConvexPolyhedron<T> {
     ///
     /// This explicitly computes the convex hull of the given set of points. Use
     /// Returns `None` if the convex hull computation failed.
-    pub fn from_convex_hull(points: &[Point<T>]) -> Option<ConvexPolyhedron> {
+    pub fn from_convex_hull(points: &[Point<T>]) -> Option<ConvexPolyhedron<T>> {
         let (vertices, indices) = crate::transformation::convex_hull(points);
         Self::from_convex_mesh(vertices, &indices)
     }
@@ -134,12 +134,12 @@ impl<T: AD> ConvexPolyhedron<T> {
     pub fn from_convex_mesh(
         points: Vec<Point<T>>,
         indices: &[[u32; DIM]],
-    ) -> Option<ConvexPolyhedron> {
-        let eps = ComplexField::sqrt(crate::math::DEFAULT_EPSILON);
+    ) -> Option<ConvexPolyhedron<T>> {
+        let eps = ComplexField::sqrt(T::constant(crate::math::DEFAULT_EPSILON));
 
         let mut vertices = Vec::new();
-        let mut edges = Vec::<Edge>::new();
-        let mut faces = Vec::<Face>::new();
+        let mut edges = Vec::<Edge<T>>::new();
+        let mut faces = Vec::<Face<T>>::new();
         let mut triangles = Vec::new();
         let mut edge_map = HashMap::default();
 
@@ -190,7 +190,7 @@ impl<T: AD> ConvexPolyhedron<T> {
 
                         let dir = Unit::try_new(
                             points[idx[i2] as usize] - points[idx[i1] as usize],
-                            crate::math::DEFAULT_EPSILON,
+                            T::constant(crate::math::DEFAULT_EPSILON),
                         );
 
                         edges.push(Edge {
@@ -224,7 +224,7 @@ impl<T: AD> ConvexPolyhedron<T> {
         for e in &mut edges {
             let tri1 = triangles.get(e.faces[0] as usize)?;
             let tri2 = triangles.get(e.faces[1] as usize)?;
-            if tri1.normal.dot(&tri2.normal) > 1.0 - eps {
+            if tri1.normal.dot(&tri2.normal) > T::constant(1.0) - eps {
                 e.deleted = true;
             }
         }
@@ -391,7 +391,7 @@ impl<T: AD> ConvexPolyhedron<T> {
                 self.points[self.vertices_adj_to_face[face.first_vertex_or_edge as usize] as usize];
 
             for v in &self.points {
-                assert!((v - p0).dot(face.normal.as_ref()) <= crate::math::DEFAULT_EPSILON);
+                assert!((v - p0).dot(face.normal.as_ref()) <= T::constant(crate::math::DEFAULT_EPSILON));
             }
         }
     }
@@ -410,13 +410,13 @@ impl<T: AD> ConvexPolyhedron<T> {
 
     /// The topology of the edges of this convex polyhedron.
     #[inline]
-    pub fn edges(&self) -> &[Edge] {
+    pub fn edges(&self) -> &[Edge<T>] {
         &self.edges[..]
     }
 
     /// The topology of the faces of this convex polyhedron.
     #[inline]
-    pub fn faces(&self) -> &[Face] {
+    pub fn faces(&self) -> &[Face<T>] {
         &self.faces[..]
     }
 
@@ -448,11 +448,11 @@ impl<T: AD> ConvexPolyhedron<T> {
             .for_each(|pt| pt.coords.component_mul_assign(scale));
 
         for f in &mut self.faces {
-            f.normal = Unit::try_new(f.normal.component_mul(&scale), 0.0).unwrap_or(f.normal);
+            f.normal = Unit::try_new(f.normal.component_mul(&scale), T::zero()).unwrap_or(f.normal);
         }
 
         for e in &mut self.edges {
-            e.dir = Unit::try_new(e.dir.component_mul(&scale), 0.0).unwrap_or(e.dir);
+            e.dir = Unit::try_new(e.dir.component_mul(&scale), T::zero()).unwrap_or(e.dir);
         }
 
         Some(self)
@@ -525,15 +525,15 @@ impl<T: AD> ConvexPolyhedron<T> {
     }
 }
 
-impl<T: AD> SupportMap for ConvexPolyhedron<T> {
+impl<T: AD> SupportMap<T> for ConvexPolyhedron<T> {
     #[inline]
     fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         utils::point_cloud_support_point(dir, self.points())
     }
 }
 
-impl<T: AD> PolygonalFeatureMap for ConvexPolyhedron<T> {
-    fn local_support_feature(&self, dir: &Unit<Vector<T>>, out_feature: &mut PolygonalFeature) {
+impl<T: AD> PolygonalFeatureMap<T> for ConvexPolyhedron<T> {
+    fn local_support_feature(&self, dir: &Unit<Vector<T>>, out_feature: &mut PolygonalFeature<T>) {
         let mut best_fid = 0;
         let mut best_dot = self.faces[0].normal.dot(dir);
 

@@ -322,12 +322,15 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
         );
 
         self.root_aabb = aabb;
+        self.nodes[0].simd_aabb = SimdAabb::from([aabb]);
+        /*
         self.nodes[0].simd_aabb = SimdAabb::from([
             aabb,
             Aabb::new_invalid(),
             Aabb::new_invalid(),
             Aabb::new_invalid(),
         ]);
+        */
     }
 
     fn do_recurse_build_generic(
@@ -351,13 +354,15 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
             }
 
             let mut node = QbvhNode {
-                simd_aabb: SimdAabb::from(leaf_aabbs),
+                // simd_aabb: SimdAabb::from(leaf_aabbs),
+                simd_aabb: SimdAabb::from([leaf_aabbs[0]]),
                 children: proxy_ids,
                 parent,
                 flags: QbvhNodeFlags::LEAF,
             };
 
-            node.simd_aabb.dilate_by_factor(SimdReal::splat(dilation));
+            // node.simd_aabb.dilate_by_factor(SimdReal::splat(dilation));
+            node.simd_aabb.dilate_by_factor(dilation);
             let my_aabb = node.simd_aabb.to_merged_aabb();
             self.nodes.push(node);
 
@@ -436,10 +441,11 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
         self.nodes[id as usize].children =
             [children[0].0, children[1].0, children[2].0, children[3].0];
         self.nodes[id as usize].simd_aabb =
-            SimdAabb::from([children[0].1, children[1].1, children[2].1, children[3].1]);
+            // SimdAabb::from([children[0].1, children[1].1, children[2].1, children[3].1]);
+            SimdAabb::from([children[0].1]);
         self.nodes[id as usize]
             .simd_aabb
-            .dilate_by_factor(SimdReal::splat(dilation));
+            .dilate_by_factor(dilation);
 
         let my_aabb = self.nodes[id as usize].simd_aabb.to_merged_aabb();
         (id, my_aabb)

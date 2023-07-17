@@ -3,6 +3,7 @@ use crate::query::epa::EPA;
 use crate::query::gjk::{self, CSOPoint, GJKResult, VoronoiSimplex};
 use crate::query::Contact;
 use crate::shape::SupportMap;
+use ad_trait::AD;
 
 use na::Unit;
 
@@ -42,9 +43,9 @@ pub fn contact_support_map_support_map_with_params<T: AD, G1: ?Sized, G2: ?Sized
     g1: &G1,
     g2: &G2,
     prediction: T,
-    simplex: &mut VoronoiSimplex,
+    simplex: &mut VoronoiSimplex<T>,
     init_dir: Option<Unit<Vector<T>>>,
-) -> GJKResult
+) -> GJKResult<T>
 where
     G1: SupportMap<T>,
     G2: SupportMap<T>,
@@ -52,7 +53,7 @@ where
     let dir = if let Some(init_dir) = init_dir {
         init_dir
     } else if let Some(init_dir) =
-        Unit::try_new(pos12.translation.vector, crate::math::DEFAULT_EPSILON)
+        Unit::try_new(pos12.translation.vector, T::constant(crate::math::DEFAULT_EPSILON))
     {
         init_dir
     } else {

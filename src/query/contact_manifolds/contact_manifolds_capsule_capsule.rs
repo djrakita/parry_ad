@@ -16,7 +16,7 @@ pub fn contact_manifold_capsule_capsule_shapes<T: AD, ManifoldData, ContactData>
     shape1: &dyn Shape<T>,
     shape2: &dyn Shape<T>,
     prediction: T,
-    manifold: &mut ContactManifold<T, ManifoldData, ContactData>,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
 ) where
     ContactData: Default + Copy,
 {
@@ -140,7 +140,7 @@ pub fn contact_manifold_capsule_capsule<'a, T: AD, ManifoldData, ContactData>(
     capsule1: &'a Capsule<T>,
     capsule2: &'a Capsule<T>,
     prediction: T,
-    manifold: &mut ContactManifold<T, ManifoldData, ContactData>,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
 ) where
     ContactData: Default + Copy,
 {

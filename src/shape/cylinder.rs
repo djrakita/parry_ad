@@ -1,6 +1,6 @@
 //! Support mapping based Cylinder shape.
 
-use crate::math::{Point, Real, Vector};
+use crate::math::{Point, Vector};
 use crate::shape::SupportMap;
 use na;
 use num::Zero;
@@ -31,7 +31,7 @@ pub struct Cylinder<T: AD> {
     pub radius: T,
 }
 
-impl<T> Cylinder<T> {
+impl<T: AD> Cylinder<T> {
     /// Creates a new cylinder.
     ///
     /// # Arguments:
@@ -58,7 +58,7 @@ impl<T> Cylinder<T> {
         self,
         scale: &Vector<T>,
         nsubdivs: u32,
-    ) -> Option<Either<Self, super::ConvexPolyhedron>> {
+    ) -> Option<Either<Self, super::ConvexPolyhedron<T>>> {
         if scale.x != scale.z {
             // The scaled shape isn’t a cylinder.
             let (mut vtx, idx) = self.to_trimesh(nsubdivs);
@@ -76,8 +76,8 @@ impl<T> Cylinder<T> {
     }
 }
 
-impl<T: AD> SupportMap for Cylinder<T> {
-    fn local_support_point(&self, dir: &Vector<Real>) -> Point<Real> {
+impl<T: AD> SupportMap<T> for Cylinder<T> {
+    fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         let mut vres = *dir;
 
         vres[1] = T::zero();

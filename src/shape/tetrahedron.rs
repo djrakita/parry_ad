@@ -69,12 +69,12 @@ impl<T: AD> TetrahedronPointLocation<T> {
         match self {
             TetrahedronPointLocation::OnVertex(i) => bcoords[*i as usize] = T::constant(1.0),
             TetrahedronPointLocation::OnEdge(i, uv) => {
-                let idx = Tetrahedron::edge_ids(*i);
+                let idx = Tetrahedron::<T>::edge_ids(*i);
                 bcoords[idx.0 as usize] = uv[0];
                 bcoords[idx.1 as usize] = uv[1];
             }
             TetrahedronPointLocation::OnFace(i, uvw) => {
-                let idx = Tetrahedron::face_ids(*i);
+                let idx = Tetrahedron::<T>::face_ids(*i);
                 bcoords[idx.0 as usize] = uvw[0];
                 bcoords[idx.1 as usize] = uvw[1];
                 bcoords[idx.2 as usize] = uvw[2];
@@ -88,7 +88,7 @@ impl<T: AD> TetrahedronPointLocation<T> {
     }
 
     /// Returns `true` if both `self` and `other` correspond to points on the same feature of a tetrahedron.
-    pub fn same_feature_as(&self, other: &TetrahedronPointLocation) -> bool {
+    pub fn same_feature_as(&self, other: &TetrahedronPointLocation<T>) -> bool {
         match (*self, *other) {
             (TetrahedronPointLocation::OnVertex(i), TetrahedronPointLocation::OnVertex(j)) => {
                 i == j
@@ -108,12 +108,12 @@ impl<T: AD> TetrahedronPointLocation<T> {
 impl<T: AD> Tetrahedron<T> {
     /// Creates a tetrahedron from three points.
     #[inline]
-    pub fn new(a: Point<T>, b: Point<T>, c: Point<T>, d: Point<T>) -> Tetrahedron {
+    pub fn new(a: Point<T>, b: Point<T>, c: Point<T>, d: Point<T>) -> Tetrahedron<T> {
         Tetrahedron { a, b, c, d }
     }
 
     /// Creates the reference to a tetrahedron from the reference to an array of four points.
-    pub fn from_array(arr: &[Point<T>; 4]) -> &Tetrahedron {
+    pub fn from_array(arr: &[Point<T>; 4]) -> &Tetrahedron<T> {
         unsafe { mem::transmute(arr) }
     }
 
@@ -123,7 +123,7 @@ impl<T: AD> Tetrahedron<T> {
     /// The 1-st face is the triangle ABD.
     /// The 2-nd face is the triangle ACD.
     /// The 3-rd face is the triangle BCD.
-    pub fn face(&self, i: usize) -> Triangle {
+    pub fn face(&self, i: usize) -> Triangle<T> {
         match i {
             0 => Triangle::new(self.a, self.b, self.c),
             1 => Triangle::new(self.a, self.b, self.d),
@@ -157,7 +157,7 @@ impl<T: AD> Tetrahedron<T> {
     /// The 3-rd edge is the segment BC.
     /// The 4-th edge is the segment BD.
     /// The 5-th edge is the segment CD.
-    pub fn edge(&self, i: u32) -> Segment {
+    pub fn edge(&self, i: u32) -> Segment<T> {
         match i {
             0 => Segment::new(self.a, self.b),
             1 => Segment::new(self.a, self.c),
@@ -201,7 +201,7 @@ impl<T: AD> Tetrahedron<T> {
         m.try_inverse().map(|im| {
             let bcoords = im * (p - self.a);
             [
-                1.0 - bcoords.x - bcoords.y - bcoords.z,
+                T::one() - bcoords.x - bcoords.y - bcoords.z,
                 bcoords.x,
                 bcoords.y,
                 bcoords.z,
@@ -229,7 +229,7 @@ impl<T: AD> Tetrahedron<T> {
             p1p2[0], p1p3[0], p1p4[0], p1p2[1], p1p3[1], p1p4[1], p1p2[2], p1p3[2], p1p4[2],
         );
 
-        mat.determinant() / T::constant(6.0f64);
+        mat.determinant() / T::constant(6.0f64)
     }
 
     /// Computes the center of this tetrahedron.

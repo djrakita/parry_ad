@@ -1,4 +1,4 @@
-use crate::math::{Real, Vector};
+use crate::math::{Vector};
 use crate::shape::{Cuboid, PolygonalFeature, Segment, SupportMap, Triangle};
 use na::Unit;
 #[cfg(feature = "dim3")]
@@ -16,9 +16,9 @@ use ad_trait::AD;
 use na::{ComplexField, RealField}; // for .abs() and .copysign()
 
 /// Trait implemented by convex shapes with features with polyhedral approximations.
-pub trait PolygonalFeatureMap<T: AD>: SupportMap {
+pub trait PolygonalFeatureMap<T: AD>: SupportMap<T> {
     /// Compute the support polygonal face of `self` towards the `dir`.
-    fn local_support_feature(&self, dir: &Unit<Vector<T>>, out_feature: &mut PolygonalFeature);
+    fn local_support_feature(&self, dir: &Unit<Vector<T>>, out_feature: &mut PolygonalFeature<T>);
 
     // TODO: this is currently just a workaround for https://github.com/dimforge/rapier/issues/417
     //       until we get a better way to deal with the issue without breaking internal edges
@@ -29,7 +29,7 @@ pub trait PolygonalFeatureMap<T: AD>: SupportMap {
     }
 }
 
-impl<T: AD> PolygonalFeatureMap<T> for Segment {
+impl<T: AD> PolygonalFeatureMap<T> for Segment<T> {
     fn local_support_feature(&self, _: &Unit<Vector<T>>, out_feature: &mut PolygonalFeature<T>) {
         *out_feature = PolygonalFeature::from(*self);
     }
@@ -70,7 +70,7 @@ impl<T: AD> PolygonalFeatureMap<T> for Cylinder<T> {
             .try_normalize(T::constant(f64::default_epsilon()))
             .unwrap_or(Vector2::x());
 
-        if dir.y.abs() < 0.5 {
+        if dir.y.abs() < T::constant(0.5) {
             // We return a segment lying on the cylinder's curved part.
             out_features.vertices[0] = Point::new(
                 dir2.x * self.radius,

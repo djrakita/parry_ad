@@ -3,6 +3,7 @@ use crate::query::Contact;
 use crate::shape::Ball;
 use na::{self, ComplexField, Unit};
 use num::Zero;
+use ad_trait::AD;
 
 /// Contact between balls.
 #[inline]

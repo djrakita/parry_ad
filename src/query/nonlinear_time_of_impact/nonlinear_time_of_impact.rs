@@ -28,7 +28,7 @@ pub fn nonlinear_time_of_impact<T: AD>(
     start_time: T,
     end_time: T,
     stop_at_penetration: bool,
-) -> Result<Option<TOI>, Unsupported> {
+) -> Result<Option<TOI<T>>, Unsupported> {
     DefaultQueryDispatcher.nonlinear_time_of_impact(
         motion1,
         g1,

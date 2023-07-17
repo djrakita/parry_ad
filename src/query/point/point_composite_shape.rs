@@ -11,7 +11,7 @@ use crate::shape::{
     TypedSimdCompositeShape,
 };
 use na;
-use simba::simd::{SimdBool as _, SimdPartialOrd, SimdValue};
+use simba::simd::{SimdBool as _, SimdPartialOrd};
 
 #[cfg(feature = "dim3")]
 use crate::utils::Array1;
@@ -20,9 +20,9 @@ use crate::utils::Array1;
 use crate::shape::{Compound, Polyline};
 
 #[cfg(feature = "std")]
-impl<T: AD> PointQuery for Polyline<T> {
+impl<T: AD> PointQuery<T> for Polyline<T> {
     #[inline]
-    fn project_local_point(&self, point: &Point<T>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, point: &Point<T>, solid: bool) -> PointProjection<T> {
         self.project_local_point_and_get_location(point, solid).0
     }
 
@@ -30,7 +30,7 @@ impl<T: AD> PointQuery for Polyline<T> {
     fn project_local_point_and_get_feature(
         &self,
         point: &Point<T>,
-    ) -> (PointProjection, FeatureId) {
+    ) -> (PointProjection<T>, FeatureId) {
         let mut visitor =
             PointCompositeShapeProjWithFeatureBestFirstVisitor::new(self, point, false);
         let (proj, (id, feature)) = self.qbvh().traverse_best_first(&mut visitor).unwrap().1;
@@ -49,9 +49,9 @@ impl<T: AD> PointQuery for Polyline<T> {
     }
 }
 
-impl<Storage: TriMeshStorage<T>, T: AD> PointQuery for GenericTriMesh<Storage, T> {
+impl<Storage: TriMeshStorage<T>, T: AD> PointQuery<T> for GenericTriMesh<Storage, T> {
     #[inline]
-    fn project_local_point(&self, point: &Point<T>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, point: &Point<T>, solid: bool) -> PointProjection<T> {
         self.project_local_point_and_get_location(point, solid).0
     }
 
@@ -59,7 +59,7 @@ impl<Storage: TriMeshStorage<T>, T: AD> PointQuery for GenericTriMesh<Storage, T
     fn project_local_point_and_get_feature(
         &self,
         point: &Point<T>,
-    ) -> (PointProjection, FeatureId) {
+    ) -> (PointProjection<T>, FeatureId) {
         #[cfg(feature = "dim3")]
         if self.pseudo_normals().is_some() {
             // If we can, in 3D, take the pseudo-normals into account.
@@ -99,25 +99,26 @@ impl<Storage: TriMeshStorage<T>, T: AD> PointQuery for GenericTriMesh<Storage, T
         pt: &Point<T>,
         solid: bool,
         max_dist: T,
-    ) -> Option<PointProjection> {
+    ) -> Option<PointProjection<T>> {
         self.project_local_point_and_get_location_with_max_dist(pt, solid, max_dist)
             .map(|proj| proj.0)
     }
 }
 
 #[cfg(feature = "std")]
-impl<T: AD> PointQuery for Compound<T> {
+impl<T: AD> PointQuery<T> for Compound<T> {
     #[inline]
-    fn project_local_point(&self, point: &Point<T>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, point: &Point<T>, solid: bool) -> PointProjection<T> {
         let mut visitor = PointCompositeShapeProjBestFirstVisitor::new(self, point, solid);
-        self.qbvh().traverse_best_first(&mut visitor).unwrap().1 .0
+        // self.qbvh().traverse_best_first(&mut visitor).unwrap().1 .0
+        self.qbvh().traverse_best_first(&mut visitor).unwrap().1
     }
 
     #[inline]
     fn project_local_point_and_get_feature(
         &self,
         point: &Point<T>,
-    ) -> (PointProjection, FeatureId) {
+    ) -> (PointProjection<T>, FeatureId) {
         (self.project_local_point(point, false), FeatureId::Unknown)
     }
 
@@ -130,7 +131,7 @@ impl<T: AD> PointQuery for Compound<T> {
 }
 
 #[cfg(feature = "std")]
-impl<T: AD> PointQueryWithLocation for Polyline<T> {
+impl<T: AD> PointQueryWithLocation<T> for Polyline<T> {
     type Location = (u32, SegmentPointLocation<T>);
 
     #[inline]
@@ -138,14 +139,14 @@ impl<T: AD> PointQueryWithLocation for Polyline<T> {
         &self,
         point: &Point<T>,
         solid: bool,
-    ) -> (PointProjection, Self::Location) {
+    ) -> (PointProjection<T>, Self::Location) {
         let mut visitor =
             PointCompositeShapeProjWithLocationBestFirstVisitor::new(self, point, solid);
         self.qbvh().traverse_best_first(&mut visitor).unwrap().1
     }
 }
 
-impl<Storage: TriMeshStorage<T>, T: AD> PointQueryWithLocation for GenericTriMesh<Storage, T> {
+impl<Storage: TriMeshStorage<T>, T: AD> PointQueryWithLocation<T> for GenericTriMesh<Storage, T> {
     type Location = (u32, TrianglePointLocation<T>);
 
     #[inline]
@@ -154,7 +155,7 @@ impl<Storage: TriMeshStorage<T>, T: AD> PointQueryWithLocation for GenericTriMes
         &self,
         point: &Point<T>,
         solid: bool,
-    ) -> (PointProjection, Self::Location) {
+    ) -> (PointProjection<T>, Self::Location) {
         self.project_local_point_and_get_location_with_max_dist(point, solid, T::constant(f64::MAX))
             .unwrap()
     }
@@ -165,7 +166,7 @@ impl<Storage: TriMeshStorage<T>, T: AD> PointQueryWithLocation for GenericTriMes
         point: &Point<T>,
         solid: bool,
         max_dist: T,
-    ) -> Option<(PointProjection, Self::Location)> {
+    ) -> Option<(PointProjection<T>, Self::Location)> {
         let mut visitor =
             PointCompositeShapeProjWithLocationBestFirstVisitor::new(self, point, solid);
 
@@ -207,6 +208,7 @@ impl<Storage: TriMeshStorage<T>, T: AD> PointQueryWithLocation for GenericTriMes
 }
 
 /*
+/*
  * Visitors
  */
 macro_rules! gen_visitor(
@@ -225,17 +227,17 @@ macro_rules! gen_visitor(
                 Self {
                     shape,
                     point,
-                    simd_point: Point::splat(*point),
+                    simd_point: *point,
                     solid,
                 }
             }
         }
 
-        impl<'a, S, T:AD> SimdBestFirstVisitor<S::PartId, SimdAabb<T>> for $Visitor<'a, S, T>
+        impl<'a, S, T:AD> SimdBestFirstVisitor<S::PartId, SimdAabb<T>, T> for $Visitor<'a, S, T>
         where S: TypedSimdCompositeShape<T>
               $(, $Location: Copy)*
               $(, S::PartShape: $PartShapeBound)* {
-            type Result = (PointProjection, (S::PartId $(, $Location)*));
+            type Result = (PointProjection<T>, (S::PartId $(, $Location)*));
 
             #[inline]
             fn visit(
@@ -245,10 +247,10 @@ macro_rules! gen_visitor(
                 data: Option<[Option<&S::PartId>; SIMD_WIDTH]>,
             ) -> SimdBestFirstVisitStatus<Self::Result> {
                 let dist = aabb.distance_to_local_point(&self.simd_point);
-                let mask = dist.simd_lt(SimdReal::splat(best));
+                let mask = dist.simd_lt(best);
 
                 if let Some(data) = data {
-                    let mut weights = [0.0; SIMD_WIDTH];
+                    let mut weights = [T::zero(); SIMD_WIDTH];
                     let mut results = [None; SIMD_WIDTH];
                     let bitmask = mask.bitmask();
 
@@ -282,7 +284,7 @@ macro_rules! gen_visitor(
                     }
 
                     SimdBestFirstVisitStatus::MaybeContinue {
-                        weights: SimdReal::from(weights),
+                        weights: weights[0],
                         mask,
                         results,
                     }
@@ -297,21 +299,26 @@ macro_rules! gen_visitor(
         }
     }
 );
-
+*/
+/*
 gen_visitor!(
     PointCompositeShapeProjBestFirstVisitor,
     project_local_point,
     project_point | solid
 );
+*/
+/*
 gen_visitor!(
     PointCompositeShapeProjWithLocationBestFirstVisitor,
     project_local_point_and_get_location,
     project_point_and_get_location,
-    <S::PartShape as PointQueryWithLocation>::Location,
+    <S::PartShape as PointQueryWithLocation<T>>::Location,
     extra_info | solid
     where PointQueryWithLocation
     where Copy
 );
+*/
+/*
 gen_visitor!(
     PointCompositeShapeProjWithFeatureBestFirstVisitor,
     project_local_point_and_get_feature,
@@ -319,3 +326,253 @@ gen_visitor!(
     FeatureId,
     extra_info
 );
+*/
+
+/// A visitor for the projection of a point on a composite shape.
+pub struct PointCompositeShapeProjBestFirstVisitor<'a, S, T: AD> {
+    shape: &'a S,
+    point: &'a Point<T>,
+    simd_point: Point<T>,
+    solid: bool,
+}
+
+impl<'a, S, T: AD> PointCompositeShapeProjBestFirstVisitor<'a, S, T> {
+    /// Initialize a visitor for the projection of a point on a composite shape.
+    pub fn new(shape: &'a S, point: &'a Point<T>, solid: bool) -> Self {
+        Self {
+            shape,
+            point,
+            simd_point: *point,
+            solid,
+        }
+    }
+}
+
+impl<'a, S, T:AD> SimdBestFirstVisitor<S::PartId, SimdAabb<T>, T> for PointCompositeShapeProjBestFirstVisitor<'a, S, T>
+where S: TypedSimdCompositeShape<T> {
+    type Result = (PointProjection<T>);
+
+    #[inline]
+    fn visit(
+        &mut self,
+        best: T,
+        aabb: &SimdAabb<T>,
+        data: Option<[Option<&S::PartId>; SIMD_WIDTH]>,
+    ) -> SimdBestFirstVisitStatus<Self::Result, T> {
+        let dist = aabb.distance_to_local_point(&self.simd_point);
+        let mask = dist.simd_lt(best);
+
+        if let Some(data) = data {
+            let mut weights = [T::zero(); SIMD_WIDTH];
+            let mut results = [None; SIMD_WIDTH];
+            let bitmask = mask.bitmask();
+
+            for ii in 0..SIMD_WIDTH {
+                if (bitmask & (1 << ii)) != 0 && data[ii].is_some() {
+                    let mut is_inside = false;
+                    let subshape_id = *data[ii].unwrap();
+                    self.shape.map_typed_part_at(subshape_id, |part_pos, part_shape| {
+                        let (proj) = if let Some(part_pos) = part_pos {
+                            part_shape.project_point(
+                                part_pos,
+                                self.point,
+                                self.solid
+                            )
+                        } else {
+                            part_shape.project_local_point(
+                                self.point,
+                                self.solid
+                            )
+                        };
+
+                        is_inside = proj.is_inside;
+                        weights[ii] = na::distance(self.point, &proj.point);
+                        results[ii] = Some(proj);
+                    });
+
+                    if self.solid && is_inside {
+                        return SimdBestFirstVisitStatus::ExitEarly(results[ii]);
+                    }
+                }
+            }
+
+            SimdBestFirstVisitStatus::MaybeContinue {
+                weights: weights[0],
+                mask,
+                results,
+            }
+        } else {
+            SimdBestFirstVisitStatus::MaybeContinue {
+                weights: dist,
+                mask,
+                results: [None; SIMD_WIDTH],
+            }
+        }
+    }
+}
+
+pub struct PointCompositeShapeProjWithLocationBestFirstVisitor<'a, S, T: AD> {
+    shape: &'a S,
+    point: &'a Point<T>,
+    simd_point: Point<T>,
+    solid: bool,
+}
+
+impl<'a, S, T: AD> PointCompositeShapeProjWithLocationBestFirstVisitor<'a, S, T> {
+    /// Initialize a visitor for the projection of a point on a composite shape.
+    pub fn new(shape: &'a S, point: &'a Point<T>, solid: bool) -> Self {
+        Self {
+            shape,
+            point,
+            simd_point: *point,
+            solid,
+        }
+    }
+}
+
+impl<'a, S, T:AD> SimdBestFirstVisitor<S::PartId, SimdAabb<T>, T> for PointCompositeShapeProjWithLocationBestFirstVisitor<'a, S, T>
+where S: TypedSimdCompositeShape<T>,
+      <S::PartShape as PointQueryWithLocation<T>>::Location: Copy,
+      S::PartShape: PointQueryWithLocation<T>,
+      S::PartShape: Copy {
+    type Result = (PointProjection<T>, (S::PartId, <S::PartShape as PointQueryWithLocation<T>>::Location));
+
+    #[inline]
+    fn visit(
+        &mut self,
+        best: T,
+        aabb: &SimdAabb<T>,
+        data: Option<[Option<&S::PartId>; SIMD_WIDTH]>,
+    ) -> SimdBestFirstVisitStatus<Self::Result, T> {
+        let dist = aabb.distance_to_local_point(&self.simd_point);
+        let mask = dist.simd_lt(best);
+
+        if let Some(data) = data {
+            let mut weights = [T::zero(); SIMD_WIDTH];
+            let mut results = [None; SIMD_WIDTH];
+            let bitmask = mask.bitmask();
+
+            for ii in 0..SIMD_WIDTH {
+                if (bitmask & (1 << ii)) != 0 && data[ii].is_some() {
+                    let mut is_inside = false;
+                    let subshape_id = *data[ii].unwrap();
+                    self.shape.map_typed_part_at(subshape_id, |part_pos, part_shape| {
+                        let (proj, extra_info) = if let Some(part_pos) = part_pos {
+                            part_shape.project_point_and_get_location(
+                                part_pos,
+                                self.point,
+                                self.solid
+                            )
+                        } else {
+                            part_shape.project_local_point_and_get_location(
+                                self.point,
+                                self.solid
+                            )
+                        };
+
+                        is_inside = proj.is_inside;
+                        weights[ii] = na::distance(self.point, &proj.point);
+                        results[ii] = Some((proj, (subshape_id, extra_info)));
+                    });
+
+                    if self.solid && is_inside {
+                        return SimdBestFirstVisitStatus::ExitEarly(results[ii]);
+                    }
+                }
+            }
+
+            SimdBestFirstVisitStatus::MaybeContinue {
+                weights: weights[0],
+                mask,
+                results,
+            }
+        } else {
+            SimdBestFirstVisitStatus::MaybeContinue {
+                weights: dist,
+                mask,
+                results: [None; SIMD_WIDTH],
+            }
+        }
+    }
+}
+
+
+pub struct PointCompositeShapeProjWithFeatureBestFirstVisitor<'a, S, T: AD> {
+    shape: &'a S,
+    point: &'a Point<T>,
+    simd_point: Point<T>,
+    solid: bool,
+}
+
+impl<'a, S, T: AD> PointCompositeShapeProjWithFeatureBestFirstVisitor<'a, S, T> {
+    /// Initialize a visitor for the projection of a point on a composite shape.
+    pub fn new(shape: &'a S, point: &'a Point<T>, solid: bool) -> Self {
+        Self {
+            shape,
+            point,
+            simd_point: *point,
+            solid,
+        }
+    }
+}
+
+impl<'a, S, T:AD> SimdBestFirstVisitor<S::PartId, SimdAabb<T>, T> for PointCompositeShapeProjWithFeatureBestFirstVisitor<'a, S, T>
+where S: TypedSimdCompositeShape<T>, FeatureId: Copy {
+    type Result = (PointProjection<T>, (S::PartId, FeatureId));
+
+    #[inline]
+    fn visit(
+        &mut self,
+        best: T,
+        aabb: &SimdAabb<T>,
+        data: Option<[Option<&S::PartId>; SIMD_WIDTH]>,
+    ) -> SimdBestFirstVisitStatus<Self::Result, T> {
+        let dist = aabb.distance_to_local_point(&self.simd_point);
+        let mask = dist.simd_lt(best);
+
+        if let Some(data) = data {
+            let mut weights = [T::zero(); SIMD_WIDTH];
+            let mut results = [None; SIMD_WIDTH];
+            let bitmask = mask.bitmask();
+
+            for ii in 0..SIMD_WIDTH {
+                if (bitmask & (1 << ii)) != 0 && data[ii].is_some() {
+                    let mut is_inside = false;
+                    let subshape_id = *data[ii].unwrap();
+                    self.shape.map_typed_part_at(subshape_id, |part_pos, part_shape| {
+                        let (proj, extra_info) = if let Some(part_pos) = part_pos {
+                            part_shape.project_point_and_get_feature(
+                                part_pos,
+                                self.point
+                            )
+                        } else {
+                            part_shape.project_local_point_and_get_feature(
+                                self.point
+                            )
+                        };
+
+                        is_inside = proj.is_inside;
+                        weights[ii] = na::distance(self.point, &proj.point);
+                        results[ii] = Some((proj, (subshape_id, extra_info)));
+                    });
+
+                    if self.solid && is_inside {
+                        return SimdBestFirstVisitStatus::ExitEarly(results[ii]);
+                    }
+                }
+            }
+
+            SimdBestFirstVisitStatus::MaybeContinue {
+                weights: weights[0],
+                mask,
+                results,
+            }
+        } else {
+            SimdBestFirstVisitStatus::MaybeContinue {
+                weights: dist,
+                mask,
+                results: [None; SIMD_WIDTH],
+            }
+        }
+    }
+}

@@ -1,5 +1,5 @@
 use crate::bounding_volume::{Aabb, SimdAabb};
-use crate::math::{Real, Vector};
+use crate::math::{Vector};
 use crate::partitioning::qbvh::storage::QbvhStorage;
 use crate::utils::DefaultStorage;
 use bitflags::bitflags;
@@ -247,15 +247,15 @@ pub struct GenericQbvh<LeafData, T: AD, Storage: QbvhStorage<LeafData, T>> {
 /// A quaternary bounding-volume-hierarchy.
 ///
 /// This is a bounding-volume-hierarchy where each node has either four children or none.
-pub type Qbvh<LeafData, T: AD> = GenericQbvh<LeafData, DefaultStorage, T>;
+pub type Qbvh<LeafData, T: AD> = GenericQbvh<LeafData, T, DefaultStorage>;
 #[cfg(feature = "cuda")]
 /// A Qbvh stored in CUDA memory.
-pub type CudaQbvh<LeafData, T: AD> = GenericQbvh<LeafData, CudaStorage, T>;
+pub type CudaQbvh<LeafData, T: AD> = GenericQbvh<LeafData, T, CudaStorage>;
 #[cfg(feature = "cuda")]
 /// A Qbvh accessible from CUDA kernels.
-pub type CudaQbvhPtr<LeafData, T: AD> = GenericQbvh<LeafData, CudaStoragePtr, T>;
+pub type CudaQbvhPtr<LeafData, T: AD> = GenericQbvh<LeafData, T, CudaStoragePtr>;
 
-impl<LeafData, Storage, T: AD> Clone for GenericQbvh<LeafData, Storage, T>
+impl<LeafData, Storage, T: AD> Clone for GenericQbvh<LeafData, T, Storage>
 where
     Storage: QbvhStorage<LeafData, T>,
     Storage::Nodes: Clone,
@@ -273,14 +273,13 @@ where
     }
 }
 
-impl<LeafData, Storage, T: AD> Copy for GenericQbvh<LeafData, Storage, T>
+impl<LeafData,  T: AD, Storage> Copy for GenericQbvh<LeafData,T, Storage>
 where
     Storage: QbvhStorage<LeafData, T>,
     Storage::Nodes: Copy,
     Storage::ArrayU32: Copy,
     Storage::ArrayProxies: Copy,
-{
-}
+{ }
 
 #[cfg(feature = "cuda")]
 unsafe impl<LeafData, Storage, T: AD> DeviceCopy for GenericQbvh<LeafData, Storage, T>
@@ -345,7 +344,7 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     }
 
     /// The Aabb of the given node.
-    pub fn node_aabb(&self, node_id: NodeIndex) -> Option<Aabb> {
+    pub fn node_aabb(&self, node_id: NodeIndex) -> Option<Aabb<T>> {
         self.nodes
             .get(node_id.index as usize)
             .map(|n| n.simd_aabb.extract(node_id.lane as usize))
@@ -397,9 +396,9 @@ impl<LeafData: IndexedData, T: AD> Qbvh<LeafData, T> {
     }
 }
 
-impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbvh<LeafData, Storage, T> {
+impl<LeafData: IndexedData, T: AD, Storage: QbvhStorage<LeafData, T>> GenericQbvh<LeafData, T, Storage> {
     /// The Aabb of the root of this tree.
-    pub fn root_aabb(&self) -> &Aabb {
+    pub fn root_aabb(&self) -> &Aabb<T> {
         &self.root_aabb
     }
 }

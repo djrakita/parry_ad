@@ -116,7 +116,7 @@ pub fn time_of_impact_heightfield_shape<Storage, D: ?Sized, T: AD>(
 ) -> Result<Option<TOI<T>>, Unsupported>
 where
     Storage: HeightFieldStorage<T>,
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
 {
     let aabb1 = heightfield1.local_aabb();
     let mut aabb2_1 = g2.compute_aabb(pos12);
@@ -175,7 +175,7 @@ where
                         max_toi,
                         stop_at_penetration,
                     )? {
-                        if hit.toi < best_hit.map(|toi| toi.toi).unwrap_or(T::contant(f64::MAX)) {
+                        if hit.toi < best_hit.map(|toi| toi.toi).unwrap_or(T::constant(f64::MAX)) {
                             best_hit = Some(hit);
                         }
                     }
@@ -229,11 +229,11 @@ where
         }
 
         if toi_x >= T::zero() && toi_x <= toi_z {
-            cell.1 += ray.dir.x.signum() as isize;
+            cell.1 += ray.dir.x.signum().to_constant() as isize;
         }
 
         if toi_z >= T::zero() && toi_z <= toi_x {
-            cell.0 += ray.dir.z.signum() as isize;
+            cell.0 += ray.dir.z.signum().to_constant() as isize;
         }
 
         if cell == prev_cell {
@@ -293,7 +293,7 @@ pub fn time_of_impact_shape_heightfield<Storage, D: ?Sized, T: AD>(
 ) -> Result<Option<TOI<T>>, Unsupported>
 where
     Storage: HeightFieldStorage<T>,
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
 {
     Ok(time_of_impact_heightfield_shape(
         dispatcher,

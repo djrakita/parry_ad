@@ -1,5 +1,4 @@
 use crate::math::{Isometry, Point, Vector};
-use na::SimdComplexField;
 use na::Unit; // for .abs()
 use ad_trait::AD;
 
@@ -20,6 +19,7 @@ impl<T: AD> IsometryOps<T> for Isometry<T> {
     }
 }
 
+/*
 impl<T: AD> IsometryOps<T> for Isometry<T> {
     #[inline]
     fn absolute_transform_vector(&self, v: &Vector<T>) -> Vector<T> {
@@ -30,6 +30,7 @@ impl<T: AD> IsometryOps<T> for Isometry<T> {
             * *v
     }
 }
+*/
 
 /// Various operations usable with `Option<Isometry>` and `Option<&Isometry>`
 /// where `None` is assumed to be equivalent to the identity.

@@ -138,7 +138,9 @@ impl<T: AD> VoxelSet<T> {
     }
 
     fn get_voxel_point(&self, voxel: &Voxel) -> Point<T> {
-        self.get_point(na::convert(voxel.coords))
+        // self.get_point(na::convert(voxel.coords))
+        let s: Vec<T> = voxel.coords.iter().map(|x| T::constant(*x as f64)).collect();
+        self.get_point( Point::from_slice( &s ) )
     }
 
     pub(crate) fn get_point(&self, voxel: Point<T>) -> Point<T> {
@@ -310,7 +312,7 @@ impl<T: AD> VoxelSet<T> {
                 &self.intersections[voxel.intersections_range.0..voxel.intersections_range.1];
             for prim_id in intersections {
                 let aabb_center = self.origin + voxel.coords.coords.map(|k| T::constant(k as f64)) * self.scale;
-                let aabb = Aabb::from_half_extents(aabb_center, Vector::repeat(self.scale / 2.0));
+                let aabb = Aabb::from_half_extents(aabb_center, Vector::repeat(self.scale / T::constant(2.0)));
 
                 let pa = points[indices[*prim_id as usize][0] as usize];
                 let pb = points[indices[*prim_id as usize][1] as usize];
@@ -394,7 +396,7 @@ impl<T: AD> VoxelSet<T> {
 
     /// Gets the vertices of the given voxel.
     fn map_voxel_points(&self, voxel: &Voxel, mut f: impl FnMut(Point<T>)) {
-        let ijk = voxel.coords.coords.map(|e| e as T);
+        let ijk = voxel.coords.coords.map(|e| T::constant(e as f64));
 
         #[cfg(feature = "dim2")]
         let shifts = [
@@ -446,7 +448,7 @@ impl<T: AD> VoxelSet<T> {
             // if      (d >= 0.0 && d <= d0) positive_pts.push(pt);
             // else if (d < 0.0 && -d <= d0) negative_pts.push(pt);
 
-            if d >= 0.0 {
+            if d >= T::zero() {
                 if d <= d0 {
                     self.map_voxel_points(&voxel, |p| positive_pts.push(p));
                 } else {
@@ -535,7 +537,7 @@ impl<T: AD> VoxelSet<T> {
             let pt = self.get_voxel_point(&voxel);
             let d = plane.abc.dot(&pt.coords) + plane.d;
 
-            if d >= 0.0 {
+            if d >= T::zero() {
                 if voxel.is_on_surface || d <= d0 {
                     voxel.is_on_surface = true;
                     positive_part.voxels.push(voxel);

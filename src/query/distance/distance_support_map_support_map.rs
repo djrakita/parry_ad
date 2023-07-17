@@ -1,6 +1,7 @@
 use crate::math::{Isometry, Vector};
 use crate::query::gjk::{self, CSOPoint, GJKResult, VoronoiSimplex};
 use crate::shape::SupportMap;
+use ad_trait::AD;
 
 use na::{self, Unit};
 use num::Bounded;
@@ -25,7 +26,7 @@ pub fn distance_support_map_support_map_with_params<G1: ?Sized, G2: ?Sized, T: A
     pos12: &Isometry<T>,
     g1: &G1,
     g2: &G2,
-    simplex: &mut VoronoiSimplex,
+    simplex: &mut VoronoiSimplex<T>,
     init_dir: Option<Vector<T>>,
 ) -> T
 where
@@ -35,18 +36,18 @@ where
     // FIXME: or m2.translation - m1.translation ?
     let dir = init_dir.unwrap_or_else(|| -pos12.translation.vector);
 
-    if let Some(dir) = Unit::try_new(dir, crate::math::DEFAULT_EPSILON) {
+    if let Some(dir) = Unit::try_new(dir, T::constant(crate::math::DEFAULT_EPSILON)) {
         simplex.reset(CSOPoint::from_shapes(pos12, g1, g2, &dir));
     } else {
         simplex.reset(CSOPoint::from_shapes(
             pos12,
             g1,
             g2,
-            &Vector::<Real>::x_axis(),
+            &Vector::<T>::x_axis(),
         ));
     }
 
-    match gjk::closest_points(pos12, g1, g2, Real::max_value(), true, simplex) {
+    match gjk::closest_points(pos12, g1, g2, T::constant(f64::max_value()), true, simplex) {
         GJKResult::Intersection => T::zero(),
         GJKResult::ClosestPoints(p1, p2, _) => na::distance(&p1, &p2),
         GJKResult::Proximity(_) => unreachable!(),

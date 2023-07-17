@@ -1,6 +1,6 @@
 use ad_trait::AD;
-#[cfg(feature = "dim3")]
-use crate::approx::AbsDiffEq;
+// #[cfg(feature = "dim3")]
+// use crate::approx::AbsDiffEq;
 use crate::math::{Isometry, Vector};
 #[cfg(feature = "dim3")]
 use crate::query::sat;

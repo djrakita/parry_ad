@@ -5,9 +5,9 @@ use crate::shape::{Capsule, FeatureId, Segment};
 use na::{self, Unit};
 use ad_trait::AD;
 
-impl<T: AD> PointQuery for Capsule<T> {
+impl<T: AD> PointQuery<T> for Capsule<T> {
     #[inline]
-    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection<T> {
         let seg = Segment::new(self.segment.a, self.segment.b);
         let proj = seg.project_local_point(pt, solid);
         let dproj = *pt - proj.point;
@@ -46,7 +46,7 @@ impl<T: AD> PointQuery for Capsule<T> {
     fn project_local_point_and_get_feature(
         &self,
         pt: &Point<T>,
-    ) -> (PointProjection, FeatureId) {
+    ) -> (PointProjection<T>, FeatureId) {
         (self.project_local_point(pt, false), FeatureId::Face(0))
     }
 }

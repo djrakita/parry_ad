@@ -128,12 +128,12 @@ impl<T: AD> VoronoiSimplex<T> {
 
             match location {
                 SegmentPointLocation::OnVertex(0) => {
-                    self.proj[0] = 1.0;
+                    self.proj[0] = T::constant(1.0);
                     self.dim = 0;
                 }
                 SegmentPointLocation::OnVertex(1) => {
                     self.swap(0, 1);
-                    self.proj[0] = 1.0;
+                    self.proj[0] = T::constant(1.0);
                     self.dim = 0;
                 }
                 SegmentPointLocation::OnEdge(coords) => {
@@ -158,7 +158,7 @@ impl<T: AD> VoronoiSimplex<T> {
             match location {
                 TrianglePointLocation::OnVertex(i) => {
                     self.swap(0, i as usize);
-                    self.proj[0] = 1.0;
+                    self.proj[0] = T::constant(1.0);
                     self.dim = 0;
                 }
                 TrianglePointLocation::OnEdge(0, coords) => {

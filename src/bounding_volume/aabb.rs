@@ -1,7 +1,7 @@
 //! Axis Aligned Bounding Box.
 
 use crate::bounding_volume::{BoundingSphere, BoundingVolume};
-use crate::math::{Isometry, Point, Real, UnitVector, Vector, DIM, TWO_DIM};
+use crate::math::{Isometry, Point, UnitVector, Vector, DIM, TWO_DIM};
 use crate::shape::{Cuboid, SupportMap};
 use crate::utils::IsometryOps;
 use arrayvec::ArrayVec;
@@ -174,7 +174,7 @@ impl<T: AD> Aabb<T> {
 
     /// The smallest bounding sphere containing this Aabb.
     #[inline]
-    pub fn bounding_sphere(&self) -> BoundingSphere {
+    pub fn bounding_sphere(&self) -> BoundingSphere<T> {
         let center = self.center();
         let radius = na::distance(&self.mins, &self.maxs) * T::constant(0.5);
         BoundingSphere::new(center, radius)
@@ -506,7 +506,7 @@ impl<T: AD> Aabb<T> {
     }
 }
 
-impl<T: AD> BoundingVolume for Aabb<T> {
+impl<T: AD> BoundingVolume<T> for Aabb<T> {
     #[inline]
     fn center(&self) -> Point<T> {
         self.center()

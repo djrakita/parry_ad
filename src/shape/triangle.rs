@@ -64,7 +64,7 @@ impl<T: AD> TrianglePointLocation<T> {
     ///
     /// Returns `None` if the location is `TrianglePointLocation::OnSolid`.
     pub fn barycentric_coordinates(&self) -> Option<[T; 3]> {
-        let mut bcoords = [0.0; 3];
+        let mut bcoords = [T::zero(); 3];
 
         match self {
             TrianglePointLocation::OnVertex(i) => bcoords[*i as usize] = T::constant(1.0),
@@ -148,7 +148,7 @@ impl<T: AD> Triangle<T> {
 
     /// The three edges of this triangle: [AB, BC, CA].
     #[inline]
-    pub fn edges(&self) -> [Segment; 3] {
+    pub fn edges(&self) -> [Segment<T>; 3] {
         [
             Segment::new(self.a, self.b),
             Segment::new(self.b, self.c),
@@ -179,7 +179,7 @@ impl<T: AD> Triangle<T> {
 
     /// Return the edge segment of this cuboid with a normal cone containing
     /// a direction that that maximizes the dot product with `local_dir`.
-    pub fn local_support_edge_segment(&self, dir: Vector<T>) -> Segment {
+    pub fn local_support_edge_segment(&self, dir: Vector<T>) -> Segment<T> {
         let dots = na::Vector3::new(
             dir.dot(&self.a.coords),
             dir.dot(&self.b.coords),
@@ -196,7 +196,7 @@ impl<T: AD> Triangle<T> {
     /// Return the face of this triangle with a normal that maximizes
     /// the dot product with `dir`.
     #[cfg(feature = "dim3")]
-    pub fn support_face(&self, _dir: Vector<T>) -> PolygonalFeature {
+    pub fn support_face(&self, _dir: Vector<T>) -> PolygonalFeature<T> {
         PolygonalFeature::from(*self)
     }
 
@@ -342,7 +342,7 @@ impl<T: AD> Triangle<T> {
 
         // We take the max(0.0) because it can be slightly negative
         // because of numerical errors due to almost-degenerate triangles.
-        ComplexField::sqrt(sqr.max(0.0)) * 0.25
+        ComplexField::sqrt(sqr.max(T::zero())) * T::constant(0.25)
     }
 
     /// Computes the unit angular inertia of this triangle.
@@ -397,19 +397,19 @@ impl<T: AD> Triangle<T> {
                 // Longest segment: [&self.a, &self.b]
                 (
                     na::center(&self.a, &self.b),
-                    ComplexField::sqrt(nc) / na::convert::<f64, Real>(2.0f64),
+                    ComplexField::sqrt(nc) / T::constant(2.0),
                 )
             } else if na >= nb && na >= nc {
                 // Longest segment: [&self.a, pc]
                 (
                     na::center(&self.a, &self.c),
-                    ComplexField::sqrt(na) / na::convert::<f64, Real>(2.0f64),
+                    ComplexField::sqrt(na) / T::constant(2.0),
                 )
             } else {
                 // Longest segment: [&self.b, &self.c]
                 (
                     na::center(&self.b, &self.c),
-                    ComplexField::sqrt(nb) / na::convert::<f64, Real>(2.0f64),
+                    ComplexField::sqrt(nb) / T::constant(2.0),
                 )
             }
         } else {
@@ -429,7 +429,7 @@ impl<T: AD> Triangle<T> {
 
         let p1p2 = self.b - self.a;
         let p1p3 = self.c - self.a;
-        relative_eq!(p1p2.cross(&p1p3).norm_squared(), T::constant(0.0), epsilon = T::constant(eps * eps))
+        relative_eq!(p1p2.cross(&p1p3).norm_squared(), T::constant(0.0), epsilon = eps * eps)
 
         // relative_eq!(
         //     self.area(),
@@ -446,7 +446,7 @@ impl<T: AD> Triangle<T> {
         relative_eq!(
             p1p2.cross(&p1p3).norm(),
             T::constant(0.0),
-            epsilon = T::constant(eps * p1p2.norm().max(p1p3.norm()))
+            epsilon = eps * p1p2.norm().max(p1p3.norm())
         )
 
         // relative_eq!(
@@ -567,7 +567,7 @@ impl<T: AD> Triangle<T> {
     }
 }
 
-impl<T: AD> SupportMap for Triangle<T> {
+impl<T: AD> SupportMap<T> for Triangle<T> {
     #[inline]
     fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         let d1 = self.a.coords.dot(dir);

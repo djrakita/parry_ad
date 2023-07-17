@@ -4,14 +4,14 @@ use crate::shape::{Cone, FeatureId, Segment};
 use na;
 use ad_trait::AD;
 
-impl<T: AD> PointQuery for Cone<T> {
+impl<T: AD> PointQuery<T> for Cone<T> {
     #[inline]
-    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection<T> {
         // Project on the basis.
         let mut dir_from_basis_center = pt.coords.xz();
         let planar_dist_from_basis_center = dir_from_basis_center.normalize_mut();
 
-        if planar_dist_from_basis_center <= crate::math::DEFAULT_EPSILON {
+        if planar_dist_from_basis_center <= T::constant(crate::math::DEFAULT_EPSILON) {
             dir_from_basis_center = na::Vector2::x();
         }
 
@@ -33,7 +33,7 @@ impl<T: AD> PointQuery for Cone<T> {
         let conic_side_segment_dir = conic_side_segment.scaled_direction();
         let mut proj = conic_side_segment.project_local_point(pt, true);
 
-        let apex_to_basis_center = Vector::new(T::zero(), -2.0 * self.half_height, T::zero());
+        let apex_to_basis_center = Vector::new(T::zero(), T::constant(-2.0) * self.half_height, T::zero());
 
         // Now determine if the point is inside of the cone.
         if pt.y >= -self.half_height
@@ -66,7 +66,7 @@ impl<T: AD> PointQuery for Cone<T> {
     fn project_local_point_and_get_feature(
         &self,
         pt: &Point<T>,
-    ) -> (PointProjection, FeatureId) {
+    ) -> (PointProjection<T>, FeatureId) {
         // TODO: get the actual feature.
         (self.project_local_point(pt, false), FeatureId::Unknown)
     }

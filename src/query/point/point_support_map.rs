@@ -69,7 +69,7 @@ impl<T: AD> PointQuery<T> for ConvexPolyhedron<T> {
         let dpt = *point - proj.point;
         let local_dir = if proj.is_inside { -dpt } else { dpt };
 
-        if let Some(local_dir) = Unit::try_new(local_dir, crate::math::DEFAULT_EPSILON) {
+        if let Some(local_dir) = Unit::try_new(local_dir, T::constant(crate::math::DEFAULT_EPSILON)) {
             let feature = self.support_feature_id_toward(&local_dir);
             (proj, feature)
         } else {

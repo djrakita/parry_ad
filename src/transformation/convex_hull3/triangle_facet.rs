@@ -33,13 +33,13 @@ impl<T: AD> TriangleFacet<T> {
             pts: [p1, p2, p3],
             visible_points: Vec::new(),
             furthest_point: Bounded::max_value(),
-            furthest_distance: 0.0,
+            furthest_distance: T::zero(),
         }
     }
 
     pub fn add_visible_point(&mut self, pid: usize, points: &[Point3<T>]) {
         let distance = self.distance_to_point(pid, points);
-        assert!(distance > crate::math::DEFAULT_EPSILON);
+        assert!(distance > T::constant(crate::math::DEFAULT_EPSILON));
 
         if distance > self.furthest_distance {
             self.furthest_distance = distance;

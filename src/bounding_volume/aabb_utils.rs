@@ -19,13 +19,13 @@ where
     for d in 0..DIM {
         // FIXME: this could be further improved iterating on `m`'s columns, and passing
         // Id as the transformation matrix.
-        basis[d] = 1.0;
+        basis[d] = T::one();
         max[d] = i.support_point(m, &basis)[d];
 
-        basis[d] = -1.0;
+        basis[d] = T::constant(-1.0);
         min[d] = i.support_point(m, &basis)[d];
 
-        basis[d] = 0.0;
+        basis[d] = T::zero();
     }
 
     Aabb::new(Point::from(min), Point::from(max))
@@ -43,13 +43,13 @@ where
     for d in 0..DIM {
         // FIXME: this could be further improved iterating on `m`'s columns, and passing
         // Id as the transformation matrix.
-        basis[d] = 1.0;
+        basis[d] = T::one();
         max[d] = i.local_support_point(&basis)[d];
 
-        basis[d] = -1.0;
+        basis[d] = T::constant(-1.0);
         min[d] = i.local_support_point(&basis)[d];
 
-        basis[d] = 0.0;
+        basis[d] = T::zero();
     }
 
     Aabb::new(Point::from(min), Point::from(max))

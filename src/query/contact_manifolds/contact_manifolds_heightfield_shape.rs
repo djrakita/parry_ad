@@ -49,13 +49,13 @@ impl HeightFieldShapeContactManifoldsWorkspace {
 
 /// Computes the contact manifold between an heightfield and a shape, both represented as `Shape` trait-objects.
 pub fn contact_manifolds_heightfield_shape_shapes<ManifoldData, ContactData, T: AD>(
-    dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
+    dispatcher: &dyn PersistentQueryDispatcher<T, ManifoldData, ContactData>,
     pos12: &Isometry<T>,
-    shape1: &dyn Shape,
-    shape2: &dyn Shape,
+    shape1: &dyn Shape<T>,
+    shape2: &dyn Shape<T>,
     prediction: T,
-    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData>>,
-    workspace: &mut Option<ContactManifoldsWorkspace>,
+    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
+    workspace: &mut Option<ContactManifoldsWorkspace<T>>,
 ) where
     ManifoldData: Default + Clone,
     ContactData: Default + Copy,
@@ -85,7 +85,7 @@ pub fn contact_manifolds_heightfield_shape_shapes<ManifoldData, ContactData, T: 
     }
 }
 
-fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
+fn ensure_workspace_exists<T: AD>(workspace: &mut Option<ContactManifoldsWorkspace<T>>) {
     if workspace
         .as_ref()
         .and_then(|w| {
@@ -103,13 +103,13 @@ fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
 
 /// Computes the contact manifold between an heightfield and an abstract shape.
 pub fn contact_manifolds_heightfield_shape<ManifoldData, ContactData, T: AD>(
-    dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
+    dispatcher: &dyn PersistentQueryDispatcher<T, ManifoldData, ContactData>,
     pos12: &Isometry<T>,
     heightfield1: &HeightField<T>,
-    shape2: &dyn Shape,
+    shape2: &dyn Shape<T>,
     prediction: T,
     manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
-    workspace: &mut Option<ContactManifoldsWorkspace>,
+    workspace: &mut Option<ContactManifoldsWorkspace<T>>,
     flipped: bool,
 ) where
     ManifoldData: Default + Clone,
@@ -196,12 +196,12 @@ pub fn contact_manifolds_heightfield_shape<ManifoldData, ContactData, T: AD>(
     }
 }
 
-impl WorkspaceData for HeightFieldShapeContactManifoldsWorkspace {
-    fn as_typed_workspace_data(&self) -> TypedWorkspaceData {
+impl<T: AD> WorkspaceData<T> for HeightFieldShapeContactManifoldsWorkspace {
+    fn as_typed_workspace_data(&self) -> TypedWorkspaceData<T> {
         TypedWorkspaceData::HeightfieldShapeContactManifoldsWorkspace(self)
     }
 
-    fn clone_dyn(&self) -> Box<dyn WorkspaceData> {
+    fn clone_dyn(&self) -> Box<dyn WorkspaceData<T>> {
         Box::new(self.clone())
     }
 }

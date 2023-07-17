@@ -1,6 +1,7 @@
 use crate::math::{Isometry};
 use crate::query::Contact;
 use crate::shape::{HalfSpace, SupportMap};
+use ad_trait::AD;
 
 /// Contact between a halfspace and a support-mapped shape (Cuboid, ConvexHull, etc.)
 pub fn contact_halfspace_support_map<T: AD, G: ?Sized + SupportMap<T>>(

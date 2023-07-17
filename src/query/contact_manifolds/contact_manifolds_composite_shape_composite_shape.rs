@@ -1,5 +1,5 @@
 use crate::bounding_volume::BoundingVolume;
-use crate::math::{Isometry, Real};
+use crate::math::{Isometry};
 use crate::query::contact_manifolds::contact_manifolds_workspace::{
     TypedWorkspaceData, WorkspaceData,
 };
@@ -7,7 +7,7 @@ use crate::query::contact_manifolds::ContactManifoldsWorkspace;
 use crate::query::query_dispatcher::PersistentQueryDispatcher;
 use crate::query::visitors::BoundingVolumeIntersectionsVisitor;
 use crate::query::ContactManifold;
-use crate::shape::SimdCompositeShape;
+use crate::shape::{Shape, SimdCompositeShape};
 use crate::utils::hashmap::{Entry, HashMap};
 use crate::utils::IsometryOpt;
 use ad_trait::AD;
@@ -40,7 +40,7 @@ impl CompositeShapeCompositeShapeContactManifoldsWorkspace {
     }
 }
 
-fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
+fn ensure_workspace_exists<T: AD>(workspace: &mut Option<ContactManifoldsWorkspace<T>>) {
     if workspace
         .as_ref()
         .and_then(|w| {
@@ -58,13 +58,13 @@ fn ensure_workspace_exists(workspace: &mut Option<ContactManifoldsWorkspace>) {
 
 /// Computes the contact manifolds between two composite shapes.
 pub fn contact_manifolds_composite_shape_composite_shape<'a, ManifoldData, ContactData, T: AD>(
-    dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
+    dispatcher: &dyn PersistentQueryDispatcher<T, ManifoldData, ContactData>,
     pos12: &Isometry<T>,
     mut composite1: &'a dyn SimdCompositeShape<T>,
     mut composite2: &'a dyn SimdCompositeShape<T>,
     prediction: T,
-    manifolds: &mut Vec<ContactManifold<T, ManifoldData, ContactData>>,
-    workspace: &mut Option<ContactManifoldsWorkspace>,
+    manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
+    workspace: &mut Option<ContactManifoldsWorkspace<T>>,
 ) where
     ManifoldData: Default + Clone,
     ContactData: Default + Copy,
@@ -186,15 +186,15 @@ pub fn contact_manifolds_composite_shape_composite_shape<'a, ManifoldData, Conta
 
     workspace
         .sub_detectors
-        .retain(|_, detector| detector.timestamp == new_timestamp)
+        .retain(move |_, detector| detector.timestamp == new_timestamp)
 }
 
-impl WorkspaceData for CompositeShapeCompositeShapeContactManifoldsWorkspace {
-    fn as_typed_workspace_data(&self) -> TypedWorkspaceData {
+impl<T: AD> WorkspaceData<T> for CompositeShapeCompositeShapeContactManifoldsWorkspace {
+    fn as_typed_workspace_data(&self) -> TypedWorkspaceData<T> {
         TypedWorkspaceData::CompositeShapeCompositeShapeContactManifoldsWorkspace(self)
     }
 
-    fn clone_dyn(&self) -> Box<dyn WorkspaceData> {
+    fn clone_dyn(&self) -> Box<dyn WorkspaceData<T>> {
         Box::new(self.clone())
     }
 }

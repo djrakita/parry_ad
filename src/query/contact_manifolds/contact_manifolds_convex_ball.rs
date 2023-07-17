@@ -37,7 +37,7 @@ pub fn contact_manifold_convex_ball<'a, ManifoldData, ContactData, S1, T: AD>(
     let (proj, fid1) = shape1.project_local_point_and_get_feature(&local_p2_1);
     let dpos = local_p2_1 - proj.point;
 
-    if let Some((mut local_n1, mut dist)) = Unit::try_new_and_get(dpos, 0.0) {
+    if let Some((mut local_n1, mut dist)) = Unit::try_new_and_get(dpos, T::zero()) {
         if proj.is_inside {
             local_n1 = -local_n1;
             dist = -dist;

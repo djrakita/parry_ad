@@ -1,7 +1,7 @@
 //! Support mapping based Cone shape.
 
 use ad_trait::AD;
-use crate::math::{Point, Real, Vector};
+use crate::math::{Point, Vector};
 use crate::shape::SupportMap;
 use na;
 use num::Zero;
@@ -56,7 +56,7 @@ impl<T: AD> Cone<T> {
         self,
         scale: &Vector<T>,
         nsubdivs: u32,
-    ) -> Option<Either<Self, super::ConvexPolyhedron>> {
+    ) -> Option<Either<Self, super::ConvexPolyhedron<T>>> {
         // NOTE: if the y scale is negative, the result cone points downwards,
         //       which can’t be represented with this Cone (without a transform).
         if scale.x != scale.z || scale.y < T::zero() {
@@ -76,7 +76,7 @@ impl<T: AD> Cone<T> {
     }
 }
 
-impl<T: AD> SupportMap for Cone<T> {
+impl<T: AD> SupportMap<T> for Cone<T> {
     #[inline]
     fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         let mut vres = *dir;

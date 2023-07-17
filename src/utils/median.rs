@@ -1,4 +1,5 @@
-use na;
+
+use ad_trait::AD;
 
 /// Computes the median of a set of values.
 #[inline]

@@ -2,6 +2,7 @@
 
 use na::{Matrix3, Point2, Point3, Scalar, SimdRealField, Vector2, Vector3};
 use simba::simd::SimdValue;
+
 use ad_trait::AD;
 
 #[cfg(feature = "simd-is-enabled")]
@@ -11,7 +12,7 @@ use na::SimdPartialOrd;
 ///
 /// For each `i in [0..SIMD_WIDTH[`, if `do_swap.extract(i)` is `true` then
 /// `a.extract(i)` is swapped with `b.extract(i)`.
-pub fn simd_swap(do_swap: bool, a: &mut bool, b: &mut bool) {
+pub fn simd_swap<T: AD>(do_swap: bool, a: &mut T, b: &mut T) {
     let _a = *a;
     *a = b.select(do_swap, *a);
     *b = _a.select(do_swap, *b);
@@ -26,9 +27,13 @@ pub trait WSign<Rhs>: Sized {
 
 impl<T: AD> WSign<T> for T {
     fn copy_sign_to(self, to: Self) -> Self {
-        let minus_zero: T = T::constant(-0.0);
-        let signbit = minus_zero.to_bits();
-        T::from_bits((signbit & self.to_bits()) | ((!signbit) & to.to_bits()))
+        // let minus_zero: f64 = -0.0;
+        // let signbit = minus_zero.to_bits();
+        // T::from_bits((signbit & self.to_bits()) | ((!signbit) & to.to_bits()))
+        let mut out = to.clone();
+        let _0 = T::zero();
+        if self > _0 && to < _0 || self < _0 && to > _0 { out *= T::constant(-1.0); }
+        out
     }
 }
 
@@ -48,6 +53,7 @@ impl<N: Scalar + Copy + WSign<N>> WSign<Vector3<N>> for N {
     }
 }
 
+/*
 impl<N: Scalar + Copy + WSign<N>> WSign<Vector2<N>> for Vector2<N> {
     fn copy_sign_to(self, to: Vector2<N>) -> Vector2<N> {
         Vector2::new(self.x.copy_sign_to(to.x), self.y.copy_sign_to(to.y))
@@ -63,13 +69,15 @@ impl<N: Scalar + Copy + WSign<N>> WSign<Vector3<N>> for Vector3<N> {
         )
     }
 }
-
+*/
+/*
 #[cfg(feature = "simd-is-enabled")]
-impl<T: AD> WSign<T> for T {
-    fn copy_sign_to(self, to: T) -> T {
+impl WSign<SimdReal> for SimdReal {
+    fn copy_sign_to(self, to: SimdReal) -> SimdReal {
         to.simd_copysign(self)
     }
 }
+*/
 
 pub(crate) trait WComponent: Sized {
     type Element;
@@ -89,9 +97,10 @@ impl<T: AD> WComponent for T {
     }
 }
 
+/*
 #[cfg(feature = "simd-is-enabled")]
-impl<T: AD> WComponent for T {
-    type Element = T;
+impl WComponent for SimdReal {
+    type Element = Real;
 
     fn min_component(self) -> Self::Element {
         self.simd_horizontal_min()
@@ -100,6 +109,7 @@ impl<T: AD> WComponent for T {
         self.simd_horizontal_max()
     }
 }
+*/
 
 /// Trait to compute the orthonormal basis of a vector.
 pub trait WBasis: Sized {
@@ -298,6 +308,7 @@ impl<T: AD> WDot<Vector2<T>> for Vector2<T> {
     }
 }
 
+/*
 impl<T: AD> WDot<T> for T {
     type Result = T;
 
@@ -305,25 +316,27 @@ impl<T: AD> WDot<T> for T {
         *self * rhs
     }
 }
+*/
 
+/*
 #[cfg(feature = "simd-is-enabled")]
-impl<T: AD> WCrossMatrix for Vector3<T> {
-    type CrossMat = Matrix3<T>;
+impl WCrossMatrix for Vector3<SimdReal> {
+    type CrossMat = Matrix3<SimdReal>;
 
     #[inline]
     #[rustfmt::skip]
     fn gcross_matrix(self) -> Self::CrossMat {
         Matrix3::new(
-            T::zero(), -self.z, self.y,
-            self.z, T::zero(), -self.x,
-            -self.y, self.x, T::zero(),
+            num::zero(), -self.z, self.y,
+            self.z, num::zero(), -self.x,
+            -self.y, self.x, num::zero(),
         )
     }
 }
 
 #[cfg(feature = "simd-is-enabled")]
-impl<T: AD> WCrossMatrix for Vector2<T> {
-    type CrossMat = Vector2<T>;
+impl WCrossMatrix for Vector2<SimdReal> {
+    type CrossMat = Vector2<SimdReal>;
 
     #[inline]
     fn gcross_matrix(self) -> Self::CrossMat {
@@ -332,8 +345,8 @@ impl<T: AD> WCrossMatrix for Vector2<T> {
 }
 
 #[cfg(feature = "simd-is-enabled")]
-impl<T: AD> WCross<Vector3<T>> for Vector3<T> {
-    type Result = Vector3<T>;
+impl WCross<Vector3<SimdReal>> for Vector3<SimdReal> {
+    type Result = Vector3<SimdReal>;
 
     fn gcross(&self, rhs: Self) -> Self::Result {
         self.cross(&rhs)
@@ -341,17 +354,17 @@ impl<T: AD> WCross<Vector3<T>> for Vector3<T> {
 }
 
 #[cfg(feature = "simd-is-enabled")]
-impl<T: AD> WCross<Vector2<T>> for T {
-    type Result = Vector2<T>;
+impl WCross<Vector2<SimdReal>> for SimdReal {
+    type Result = Vector2<SimdReal>;
 
-    fn gcross(&self, rhs: Vector2<T>) -> Self::Result {
+    fn gcross(&self, rhs: Vector2<SimdReal>) -> Self::Result {
         Vector2::new(-rhs.y * *self, rhs.x * *self)
     }
 }
 
 #[cfg(feature = "simd-is-enabled")]
-impl<T: AD> WCross<Vector2<T>> for Vector2<T> {
-    type Result = T;
+impl WCross<Vector2<SimdReal>> for Vector2<SimdReal> {
+    type Result = SimdReal;
 
     fn gcross(&self, rhs: Self) -> Self::Result {
         let yx = Vector2::new(rhs.y, rhs.x);
@@ -361,28 +374,44 @@ impl<T: AD> WCross<Vector2<T>> for Vector2<T> {
 }
 
 #[cfg(feature = "simd-is-enabled")]
-impl<T: AD> WDot<Vector3<T>> for Vector3<T> {
-    type Result = T;
+impl WDot<Vector3<SimdReal>> for Vector3<SimdReal> {
+    type Result = SimdReal;
 
-    fn gdot(&self, rhs: Vector3<T>) -> Self::Result {
+    fn gdot(&self, rhs: Vector3<SimdReal>) -> Self::Result {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
     }
 }
 
 #[cfg(feature = "simd-is-enabled")]
-impl<T: AD> WDot<Vector2<T>> for Vector2<T> {
-    type Result = T;
+impl WDot<Vector2<SimdReal>> for Vector2<SimdReal> {
+    type Result = SimdReal;
 
-    fn gdot(&self, rhs: Vector2<T>) -> Self::Result {
+    fn gdot(&self, rhs: Vector2<SimdReal>) -> Self::Result {
         self.x * rhs.x + self.y * rhs.y
     }
 }
 
 #[cfg(feature = "simd-is-enabled")]
-impl<T: AD> WDot<T> for T {
-    type Result = T;
+impl WDot<SimdReal> for SimdReal {
+    type Result = SimdReal;
 
-    fn gdot(&self, rhs: T) -> Self::Result {
+    fn gdot(&self, rhs: SimdReal) -> Self::Result {
         *self * rhs
     }
+}
+*/
+
+
+
+
+pub fn copy_sign_to_vector2<T: AD>(from: Vector2<T>, to: Vector2<T>) -> Vector2<T> {
+    Vector2::new(from.x.copy_sign_to(to.x), from.y.copy_sign_to(to.y))
+}
+
+pub fn copy_sign_to_vector3<T: AD>(from: Vector3<T>, to: Vector3<T>) -> Vector3<T> {
+    Vector3::new(
+        from.x.copy_sign_to(to.x),
+        from.y.copy_sign_to(to.y),
+        from.z.copy_sign_to(to.z),
+    )
 }

@@ -50,7 +50,7 @@ pub fn eps_tol<T: AD>() -> T {
 pub fn project_origin<G: ?Sized, T: AD>(
     m: &Isometry<T>,
     g: &G,
-    simplex: &mut VoronoiSimplex,
+    simplex: &mut VoronoiSimplex<T>,
 ) -> Option<Point<T>>
 where
     G: SupportMap<T>,
@@ -90,7 +90,7 @@ pub fn closest_points<G1: ?Sized, G2: ?Sized, T: AD>(
     g2: &G2,
     max_dist: T,
     exact_dist: bool,
-    simplex: &mut VoronoiSimplex,
+    simplex: &mut VoronoiSimplex<T>,
 ) -> GJKResult<T>
 where
     G1: SupportMap<T>,
@@ -188,8 +188,8 @@ where
 /// Casts a ray on a support map using the GJK algorithm.
 pub fn cast_local_ray<G: ?Sized, T: AD>(
     shape: &G,
-    simplex: &mut VoronoiSimplex,
-    ray: &Ray,
+    simplex: &mut VoronoiSimplex<T>,
+    ray: &Ray<T>,
     max_toi: T,
 ) -> Option<(T, Vector<T>)>
 where
@@ -208,7 +208,7 @@ pub fn directional_distance<G1: ?Sized, G2: ?Sized, T: AD>(
     g1: &G1,
     g2: &G2,
     dir: &Vector<T>,
-    simplex: &mut VoronoiSimplex,
+    simplex: &mut VoronoiSimplex<T>,
 ) -> Option<(T, Vector<T>, Point<T>, Point<T>)>
 where
     G1: SupportMap<T>,
@@ -233,9 +233,9 @@ fn minkowski_ray_cast<G1: ?Sized, G2: ?Sized, T: AD>(
     pos12: &Isometry<T>,
     g1: &G1,
     g2: &G2,
-    ray: &Ray,
+    ray: &Ray<T>,
     max_toi: T,
-    simplex: &mut VoronoiSimplex,
+    simplex: &mut VoronoiSimplex<T>,
 ) -> Option<(T, Vector<T>)>
 where
     G1: SupportMap<T>,
@@ -366,7 +366,7 @@ where
     }
 }
 
-fn result<T: AD>(simplex: &VoronoiSimplex, prev: bool) -> (Point<T>, Point<T>) {
+fn result<T: AD>(simplex: &VoronoiSimplex<T>, prev: bool) -> (Point<T>, Point<T>) {
     let mut res = (Point::origin(), Point::origin());
     if prev {
         for i in 0..simplex.prev_dimension() + 1 {

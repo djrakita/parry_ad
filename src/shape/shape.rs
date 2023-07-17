@@ -1,6 +1,6 @@
 use crate::bounding_volume::{Aabb, BoundingSphere, BoundingVolume};
 use crate::mass_properties::MassProperties;
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::query::{PointQuery, RayCast};
 #[cfg(feature = "serde-serialize")]
 use crate::shape::SharedShape;
@@ -92,13 +92,13 @@ pub enum ShapeType {
 /// Enum representing the shape with its actual type
 pub enum TypedShape<'a, T: AD> {
     /// A ball shape.
-    Ball(&'a Ball),
+    Ball(&'a Ball<T>),
     /// A cuboid shape.
-    Cuboid(&'a Cuboid),
+    Cuboid(&'a Cuboid<T>),
     /// A capsule shape.
-    Capsule(&'a Capsule),
+    Capsule(&'a Capsule<T>),
     /// A segment shape.
-    Segment(&'a Segment),
+    Segment(&'a Segment<T>),
     /// A triangle shape.
     Triangle(&'a Triangle<T>),
     /// A triangle mesh shape.
@@ -108,10 +108,10 @@ pub enum TypedShape<'a, T: AD> {
     #[cfg(feature = "std")]
     Polyline(&'a Polyline<T>),
     /// A shape representing a full half-space.
-    HalfSpace(&'a HalfSpace),
+    HalfSpace(&'a HalfSpace<T>),
     /// A heightfield shape.
     #[cfg(feature = "std")]
-    HeightField(&'a HeightField),
+    HeightField(&'a HeightField<T>),
     /// A Compound shape.
     #[cfg(feature = "std")]
     Compound(&'a Compound<T>),
@@ -121,17 +121,17 @@ pub enum TypedShape<'a, T: AD> {
     #[cfg(feature = "dim3")]
     #[cfg(feature = "std")]
     /// A convex polyhedron.
-    ConvexPolyhedron(&'a ConvexPolyhedron),
+    ConvexPolyhedron(&'a ConvexPolyhedron<T>),
     #[cfg(feature = "dim3")]
     /// A cylindrical shape.
-    Cylinder(&'a Cylinder),
+    Cylinder(&'a Cylinder<T>),
     #[cfg(feature = "dim3")]
     /// A cone shape.
-    Cone(&'a Cone),
+    Cone(&'a Cone<T>),
     // /// A custom shape type.
     // Custom(u8),
     /// A cuboid with rounded corners.
-    RoundCuboid(&'a RoundCuboid),
+    RoundCuboid(&'a RoundCuboid<T>),
     /// A triangle with rounded corners.
     RoundTriangle(&'a RoundTriangle<T>),
     // /// A triangle-mesh with rounded corners.
@@ -140,14 +140,14 @@ pub enum TypedShape<'a, T: AD> {
     // RoundedHeightField,
     /// A cylinder with rounded corners.
     #[cfg(feature = "dim3")]
-    RoundCylinder(&'a RoundCylinder),
+    RoundCylinder(&'a RoundCylinder<T>),
     /// A cone with rounded corners.
     #[cfg(feature = "dim3")]
-    RoundCone(&'a RoundCone),
+    RoundCone(&'a RoundCone<T>),
     /// A convex polyhedron with rounded corners.
     #[cfg(feature = "dim3")]
     #[cfg(feature = "std")]
-    RoundConvexPolyhedron(&'a RoundConvexPolyhedron),
+    RoundConvexPolyhedron(&'a RoundConvexPolyhedron<T>),
     /// A convex polygon with rounded corners.
     #[cfg(feature = "dim2")]
     #[cfg(feature = "std")]
@@ -160,64 +160,64 @@ pub enum TypedShape<'a, T: AD> {
 #[derive(Deserialize)]
 // NOTE: tha this enum MUST match the `TypedShape` enum.
 /// Enum representing the shape with its actual type
-pub(crate) enum DeserializableTypedShape {
+pub(crate) enum DeserializableTypedShape<T: AD> {
     /// A ball shape.
-    Ball(Ball),
+    Ball(Ball<T>),
     /// A cuboid shape.
-    Cuboid(Cuboid),
+    Cuboid(Cuboid<T>),
     /// A capsule shape.
-    Capsule(Capsule),
+    Capsule(Capsule<T>),
     /// A segment shape.
-    Segment(Segment),
+    Segment(Segment<T>),
     /// A triangle shape.
-    Triangle(Triangle),
+    Triangle(Triangle<T>),
     /// A triangle mesh shape.
     #[cfg(feature = "std")]
-    TriMesh(TriMesh),
+    TriMesh(TriMesh<T>),
     /// A set of segments.
     #[cfg(feature = "std")]
-    Polyline(Polyline),
+    Polyline(Polyline<T>),
     /// A shape representing a full half-space.
-    HalfSpace(HalfSpace),
+    HalfSpace(HalfSpace<T>),
     /// A heightfield shape.
     #[cfg(feature = "std")]
-    HeightField(HeightField),
+    HeightField(HeightField<T>),
     /// A Compound shape.
     #[cfg(feature = "std")]
-    Compound(Compound),
+    Compound(Compound<T>),
     #[cfg(feature = "dim2")]
     #[cfg(feature = "std")]
     ConvexPolygon(ConvexPolygon),
     #[cfg(feature = "dim3")]
     #[cfg(feature = "std")]
     /// A convex polyhedron.
-    ConvexPolyhedron(ConvexPolyhedron),
+    ConvexPolyhedron(ConvexPolyhedron<T>),
     #[cfg(feature = "dim3")]
     /// A cylindrical shape.
-    Cylinder(Cylinder),
+    Cylinder(Cylinder<T>),
     #[cfg(feature = "dim3")]
     /// A cone shape.
-    Cone(Cone),
+    Cone(Cone<T>),
     // /// A custom shape type.
     // Custom(u8),
     /// A cuboid with rounded corners.
-    RoundCuboid(RoundCuboid),
+    RoundCuboid(RoundCuboid<T>),
     /// A triangle with rounded corners.
-    RoundTriangle(RoundTriangle),
+    RoundTriangle(RoundTriangle<T>),
     // /// A triangle-mesh with rounded corners.
     // RoundedTriMesh,
     // /// An heightfield with rounded corners.
     // RoundedHeightField,
     /// A cylinder with rounded corners.
     #[cfg(feature = "dim3")]
-    RoundCylinder(RoundCylinder),
+    RoundCylinder(RoundCylinder<T>),
     /// A cone with rounded corners.
     #[cfg(feature = "dim3")]
-    RoundCone(RoundCone),
+    RoundCone(RoundCone<T>),
     /// A convex polyhedron with rounded corners.
     #[cfg(feature = "dim3")]
     #[cfg(feature = "std")]
-    RoundConvexPolyhedron(RoundConvexPolyhedron),
+    RoundConvexPolyhedron(RoundConvexPolyhedron<T>),
     /// A convex polygon with rounded corners.
     #[cfg(feature = "dim2")]
     #[cfg(feature = "std")]
@@ -227,9 +227,9 @@ pub(crate) enum DeserializableTypedShape {
 }
 
 #[cfg(feature = "serde-serialize")]
-impl DeserializableTypedShape {
+impl<T: AD> DeserializableTypedShape<T> {
     /// Converts `self` to a `SharedShape` if `self` isn't `Custom`.
-    pub fn into_shared_shape(self) -> Option<SharedShape> {
+    pub fn into_shared_shape(self) -> Option<SharedShape<T>> {
         match self {
             DeserializableTypedShape::Ball(s) => Some(SharedShape::new(s)),
             DeserializableTypedShape::Cuboid(s) => Some(SharedShape::new(s)),
@@ -273,22 +273,22 @@ impl DeserializableTypedShape {
 }
 
 /// Trait implemented by shapes usable by Rapier.
-pub trait Shape<T: AD>: RayCast + PointQuery + DowncastSync {
+pub trait Shape<T: AD>: RayCast<T> + PointQuery<T> + DowncastSync {
     /// Computes the Aabb of this shape.
-    fn compute_local_aabb(&self) -> Aabb;
+    fn compute_local_aabb(&self) -> Aabb<T>;
     /// Computes the bounding-sphere of this shape.
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere;
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T>;
 
     /// Clones this shape into a boxed trait-object.
     #[cfg(feature = "std")]
     fn clone_box(&self) -> Box<dyn Shape<T>>;
 
     /// Computes the Aabb of this shape with the given position.
-    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.compute_local_aabb().transform_by(position)
     }
     /// Computes the bounding-sphere of this shape with the given position.
-    fn compute_bounding_sphere(&self, position: &Isometry<T>) -> BoundingSphere {
+    fn compute_bounding_sphere(&self, position: &Isometry<T>) -> BoundingSphere<T> {
         self.compute_local_bounding_sphere().transform_by(position)
     }
 
@@ -321,7 +321,7 @@ pub trait Shape<T: AD>: RayCast + PointQuery + DowncastSync {
     }
 
     /// Convents this shape into its support mapping, if it has one.
-    fn as_support_map(&self) -> Option<&dyn SupportMap> {
+    fn as_support_map(&self) -> Option<&dyn SupportMap<T>> {
         None
     }
 
@@ -331,7 +331,7 @@ pub trait Shape<T: AD>: RayCast + PointQuery + DowncastSync {
     }
 
     /// Converts this shape to a polygonal feature-map, if it is one.
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap<T>, T)> {
         None
     }
 
@@ -350,14 +350,16 @@ pub trait Shape<T: AD>: RayCast + PointQuery + DowncastSync {
 
     /// Computes the swept Aabb of this shape, i.e., the space it would occupy by moving from
     /// the given start position to the given end position.
-    fn compute_swept_aabb(&self, start_pos: &Isometry<T>, end_pos: &Isometry<T>) -> Aabb {
+    fn compute_swept_aabb(&self, start_pos: &Isometry<T>, end_pos: &Isometry<T>) -> Aabb<T> {
         let aabb1 = self.compute_aabb(start_pos);
         let aabb2 = self.compute_aabb(end_pos);
         aabb1.merged(&aabb2)
     }
 }
 
-impl_downcast!(sync Shape);
+// impl_downcast!(sync Shape);
+impl_downcast!(sync Shape<T> where T: AD);
+// impl_downcast!(Base<T> assoc H where T: Clone, H: Copy);
 
 impl<A: AD> dyn Shape<A> {
     /// Converts this abstract shape to the given shape, if it is one.
@@ -370,47 +372,47 @@ impl<A: AD> dyn Shape<A> {
     }
 
     /// Converts this abstract shape to a ball, if it is one.
-    pub fn as_ball(&self) -> Option<&Ball> {
+    pub fn as_ball(&self) -> Option<&Ball<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable ball, if it is one.
-    pub fn as_ball_mut(&mut self) -> Option<&mut Ball> {
+    pub fn as_ball_mut(&mut self) -> Option<&mut Ball<A>> {
         self.downcast_mut()
     }
 
     /// Converts this abstract shape to a cuboid, if it is one.
-    pub fn as_cuboid(&self) -> Option<&Cuboid> {
+    pub fn as_cuboid(&self) -> Option<&Cuboid<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable cuboid, if it is one.
-    pub fn as_cuboid_mut(&mut self) -> Option<&mut Cuboid> {
+    pub fn as_cuboid_mut(&mut self) -> Option<&mut Cuboid<A>> {
         self.downcast_mut()
     }
 
     /// Converts this abstract shape to a halfspace, if it is one.
-    pub fn as_halfspace(&self) -> Option<&HalfSpace> {
+    pub fn as_halfspace(&self) -> Option<&HalfSpace<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a halfspace, if it is one.
-    pub fn as_halfspace_mut(&mut self) -> Option<&mut HalfSpace> {
+    pub fn as_halfspace_mut(&mut self) -> Option<&mut HalfSpace<A>> {
         self.downcast_mut()
     }
 
     /// Converts this abstract shape to a segment, if it is one.
-    pub fn as_segment(&self) -> Option<&Segment> {
+    pub fn as_segment(&self) -> Option<&Segment<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable segment, if it is one.
-    pub fn as_segment_mut(&mut self) -> Option<&mut Segment> {
+    pub fn as_segment_mut(&mut self) -> Option<&mut Segment<A>> {
         self.downcast_mut()
     }
 
     /// Converts this abstract shape to a capsule, if it is one.
-    pub fn as_capsule(&self) -> Option<&Capsule> {
+    pub fn as_capsule(&self) -> Option<&Capsule<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable capsule, if it is one.
-    pub fn as_capsule_mut(&mut self) -> Option<&mut Capsule> {
+    pub fn as_capsule_mut(&mut self) -> Option<&mut Capsule<A>> {
         self.downcast_mut()
     }
 
@@ -458,21 +460,21 @@ impl<A: AD> dyn Shape<A> {
 
     /// Converts this abstract shape to a heightfield, if it is one.
     #[cfg(feature = "std")]
-    pub fn as_heightfield(&self) -> Option<&HeightField> {
+    pub fn as_heightfield(&self) -> Option<&HeightField<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable heightfield, if it is one.
     #[cfg(feature = "std")]
-    pub fn as_heightfield_mut(&mut self) -> Option<&mut HeightField> {
+    pub fn as_heightfield_mut(&mut self) -> Option<&mut HeightField<A>> {
         self.downcast_mut()
     }
 
     /// Converts this abstract shape to a round cuboid, if it is one.
-    pub fn as_round_cuboid(&self) -> Option<&RoundCuboid> {
+    pub fn as_round_cuboid(&self) -> Option<&RoundCuboid<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable round cuboid, if it is one.
-    pub fn as_round_cuboid_mut(&mut self) -> Option<&mut RoundCuboid> {
+    pub fn as_round_cuboid_mut(&mut self) -> Option<&mut RoundCuboid<A>> {
         self.downcast_mut()
     }
 
@@ -513,92 +515,92 @@ impl<A: AD> dyn Shape<A> {
 
     #[cfg(feature = "dim3")]
     #[cfg(feature = "std")]
-    pub fn as_convex_polyhedron(&self) -> Option<&ConvexPolyhedron> {
+    pub fn as_convex_polyhedron(&self) -> Option<&ConvexPolyhedron<A>> {
         self.downcast_ref()
     }
     #[cfg(feature = "dim3")]
     #[cfg(feature = "std")]
-    pub fn as_convex_polyhedron_mut(&mut self) -> Option<&mut ConvexPolyhedron> {
+    pub fn as_convex_polyhedron_mut(&mut self) -> Option<&mut ConvexPolyhedron<A>> {
         self.downcast_mut()
     }
 
     /// Converts this abstract shape to a cylinder, if it is one.
     #[cfg(feature = "dim3")]
-    pub fn as_cylinder(&self) -> Option<&Cylinder> {
+    pub fn as_cylinder(&self) -> Option<&Cylinder<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable cylinder, if it is one.
     #[cfg(feature = "dim3")]
-    pub fn as_cylinder_mut(&mut self) -> Option<&mut Cylinder> {
+    pub fn as_cylinder_mut(&mut self) -> Option<&mut Cylinder<A>> {
         self.downcast_mut()
     }
 
     /// Converts this abstract shape to a cone, if it is one.
     #[cfg(feature = "dim3")]
-    pub fn as_cone(&self) -> Option<&Cone> {
+    pub fn as_cone(&self) -> Option<&Cone<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable cone, if it is one.
     #[cfg(feature = "dim3")]
-    pub fn as_cone_mut(&mut self) -> Option<&mut Cone> {
+    pub fn as_cone_mut(&mut self) -> Option<&mut Cone<A>> {
         self.downcast_mut()
     }
 
     /// Converts this abstract shape to a round cylinder, if it is one.
     #[cfg(feature = "dim3")]
-    pub fn as_round_cylinder(&self) -> Option<&RoundCylinder> {
+    pub fn as_round_cylinder(&self) -> Option<&RoundCylinder<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable round cylinder, if it is one.
     #[cfg(feature = "dim3")]
-    pub fn as_round_cylinder_mut(&mut self) -> Option<&mut RoundCylinder> {
+    pub fn as_round_cylinder_mut(&mut self) -> Option<&mut RoundCylinder<A>> {
         self.downcast_mut()
     }
 
     /// Converts this abstract shape to a round cone, if it is one.
     #[cfg(feature = "dim3")]
-    pub fn as_round_cone(&self) -> Option<&RoundCone> {
+    pub fn as_round_cone(&self) -> Option<&RoundCone<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable round cone, if it is one.
     #[cfg(feature = "dim3")]
-    pub fn as_round_cone_mut(&mut self) -> Option<&mut RoundCone> {
+    pub fn as_round_cone_mut(&mut self) -> Option<&mut RoundCone<A>> {
         self.downcast_mut()
     }
 
     /// Converts this abstract shape to a round convex polyhedron, if it is one.
     #[cfg(feature = "dim3")]
     #[cfg(feature = "std")]
-    pub fn as_round_convex_polyhedron(&self) -> Option<&RoundConvexPolyhedron> {
+    pub fn as_round_convex_polyhedron(&self) -> Option<&RoundConvexPolyhedron<A>> {
         self.downcast_ref()
     }
     /// Converts this abstract shape to a mutable round convex polyhedron, if it is one.
     #[cfg(feature = "dim3")]
     #[cfg(feature = "std")]
-    pub fn as_round_convex_polyhedron_mut(&mut self) -> Option<&mut RoundConvexPolyhedron> {
+    pub fn as_round_convex_polyhedron_mut(&mut self) -> Option<&mut RoundConvexPolyhedron<A>> {
         self.downcast_mut()
     }
 }
 
-impl<T: AD> Shape<T> for Ball {
+impl<T: AD> Shape<T> for Ball<T> {
     #[cfg(feature = "std")]
     fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.aabb(position)
     }
 
-    fn mass_properties(&self, density: Real) -> MassProperties<T> {
+    fn mass_properties(&self, density: T) -> MassProperties<T> {
         MassProperties::from_ball(density, self.radius)
     }
 
@@ -622,8 +624,8 @@ impl<T: AD> Shape<T> for Ball {
         TypedShape::Ball(self)
     }
 
-    fn as_support_map(&self) -> Option<&dyn SupportMap> {
-        Some(self as &dyn SupportMap)
+    fn as_support_map(&self) -> Option<&dyn SupportMap<T>> {
+        Some(self as &dyn SupportMap<T>)
     }
 
     /// The shape's normal at the given point located on a specific feature.
@@ -633,25 +635,25 @@ impl<T: AD> Shape<T> for Ball {
         _: FeatureId,
         point: &Point<T>,
     ) -> Option<Unit<Vector<T>>> {
-        Unit::try_new(point.coords, crate::math::DEFAULT_EPSILON)
+        Unit::try_new(point.coords, T::constant(crate::math::DEFAULT_EPSILON))
     }
 }
 
-impl<T: AD> Shape<T> for Cuboid {
+impl<T: AD> Shape<T> for Cuboid<T> {
     #[cfg(feature = "std")]
     fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.aabb(position)
     }
 
@@ -679,12 +681,12 @@ impl<T: AD> Shape<T> for Cuboid {
         T::constant(f64::frac_pi_2())
     }
 
-    fn as_support_map(&self) -> Option<&dyn SupportMap> {
-        Some(self as &dyn SupportMap)
+    fn as_support_map(&self) -> Option<&dyn SupportMap<T>> {
+        Some(self as &dyn SupportMap<T>)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
-        Some((self as &dyn PolygonalFeatureMap, T::zero()))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap<T>, T)> {
+        Some((self as &dyn PolygonalFeatureMap<T>, T::zero()))
     }
 
     fn feature_normal_at_point(
@@ -696,21 +698,21 @@ impl<T: AD> Shape<T> for Cuboid {
     }
 }
 
-impl<T: AD> Shape<T> for Capsule {
+impl<T: AD> Shape<T> for Capsule<T> {
     #[cfg(feature = "std")]
     fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.aabb(position)
     }
 
@@ -738,12 +740,12 @@ impl<T: AD> Shape<T> for Capsule {
         T::constant(f64::frac_pi_2())
     }
 
-    fn as_support_map(&self) -> Option<&dyn SupportMap> {
-        Some(self as &dyn SupportMap)
+    fn as_support_map(&self) -> Option<&dyn SupportMap<T>> {
+        Some(self as &dyn SupportMap<T>)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
-        Some((&self.segment as &dyn PolygonalFeatureMap, self.radius))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap<T>, T)> {
+        Some((&self.segment as &dyn PolygonalFeatureMap<T>, self.radius))
     }
 }
 
@@ -753,15 +755,15 @@ impl<T: AD> Shape<T> for Triangle<T> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.aabb(position)
     }
 
@@ -793,12 +795,12 @@ impl<T: AD> Shape<T> for Triangle<T> {
         T::constant(f64::frac_pi_2())
     }
 
-    fn as_support_map(&self) -> Option<&dyn SupportMap> {
-        Some(self as &dyn SupportMap)
+    fn as_support_map(&self) -> Option<&dyn SupportMap<T>> {
+        Some(self as &dyn SupportMap<T>)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
-        Some((self as &dyn PolygonalFeatureMap, T::zero()))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap<T>, T)> {
+        Some((self as &dyn PolygonalFeatureMap<T>, T::zero()))
     }
 
     fn feature_normal_at_point(
@@ -810,21 +812,21 @@ impl<T: AD> Shape<T> for Triangle<T> {
     }
 }
 
-impl<T: AD> Shape<T> for Segment {
+impl<T: AD> Shape<T> for Segment<T> {
     #[cfg(feature = "std")]
     fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.aabb(position)
     }
 
@@ -841,7 +843,7 @@ impl<T: AD> Shape<T> for Segment {
     }
 
     fn ccd_angular_thickness(&self) -> T {
-        T::contant(f64::frac_pi_2())
+        T::constant(f64::frac_pi_2())
     }
 
     fn shape_type(&self) -> ShapeType {
@@ -852,12 +854,12 @@ impl<T: AD> Shape<T> for Segment {
         TypedShape::Segment(self)
     }
 
-    fn as_support_map(&self) -> Option<&dyn SupportMap> {
-        Some(self as &dyn SupportMap)
+    fn as_support_map(&self) -> Option<&dyn SupportMap<T>> {
+        Some(self as &dyn SupportMap<T>)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
-        Some((self as &dyn PolygonalFeatureMap, T::zero()))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap<T>, T)> {
+        Some((self as &dyn PolygonalFeatureMap<T>, T::zero()))
     }
 
     fn feature_normal_at_point(
@@ -875,15 +877,15 @@ impl<T: AD> Shape<T> for Compound<T> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         *self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.local_aabb().transform_by(position)
     }
 
@@ -923,15 +925,15 @@ impl<T: AD> Shape<T> for Polyline<T> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         *self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.aabb(position)
     }
 
@@ -969,15 +971,15 @@ impl<T: AD> Shape<T> for TriMesh<T> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         *self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.aabb(position)
     }
 
@@ -1011,20 +1013,20 @@ impl<T: AD> Shape<T> for TriMesh<T> {
 }
 
 #[cfg(feature = "std")]
-impl<T: AD> Shape<T> for HeightField {
+impl<T: AD> Shape<T> for HeightField<T> {
     fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.aabb(position)
     }
 
@@ -1053,20 +1055,20 @@ impl<T: AD> Shape<T> for HeightField {
 
 #[cfg(feature = "dim2")]
 #[cfg(feature = "std")]
-impl<T: AD> Shape<T> for ConvexPolygon {
+impl<T: AD> Shape<T> for ConvexPolygon<T> {
     fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.aabb(position)
     }
 
@@ -1082,7 +1084,7 @@ impl<T: AD> Shape<T> for ConvexPolygon {
         ShapeType::ConvexPolygon
     }
 
-    fn as_typed_shape(&self) -> TypedShape {
+    fn as_typed_shape(&self) -> TypedShape<T> {
         TypedShape::ConvexPolygon(self)
     }
 
@@ -1121,15 +1123,15 @@ impl<T: AD> Shape<T> for ConvexPolyhedron<T> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.aabb(position)
     }
 
@@ -1161,12 +1163,12 @@ impl<T: AD> Shape<T> for ConvexPolyhedron<T> {
         T::constant(f64::frac_pi_4())
     }
 
-    fn as_support_map(&self) -> Option<&dyn SupportMap> {
-        Some(self as &dyn SupportMap)
+    fn as_support_map(&self) -> Option<&dyn SupportMap<T>> {
+        Some(self as &dyn SupportMap<T>)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
-        Some((self as &dyn PolygonalFeatureMap, T::zero()))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap<T>, T)> {
+        Some((self as &dyn PolygonalFeatureMap<T>, T::zero()))
     }
 
     fn feature_normal_at_point(
@@ -1185,15 +1187,15 @@ impl<T: AD> Shape<T> for Cylinder<T> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.aabb(position)
     }
 
@@ -1221,31 +1223,31 @@ impl<T: AD> Shape<T> for Cylinder<T> {
         T::constant(f64::frac_pi_2())
     }
 
-    fn as_support_map(&self) -> Option<&dyn SupportMap> {
-        Some(self as &dyn SupportMap)
+    fn as_support_map(&self) -> Option<&dyn SupportMap<T>> {
+        Some(self as &dyn SupportMap<T>)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
-        Some((self as &dyn PolygonalFeatureMap, T::zero()))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap<T>, T)> {
+        Some((self as &dyn PolygonalFeatureMap<T>, T::zero()))
     }
 }
 
 #[cfg(feature = "dim3")]
-impl<T: AD> Shape<T> for Cone {
+impl<T: AD> Shape<T> for Cone<T> {
     #[cfg(feature = "std")]
     fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.aabb(position)
     }
 
@@ -1271,35 +1273,35 @@ impl<T: AD> Shape<T> for Cone {
 
     fn ccd_angular_thickness(&self) -> T {
         let apex_half_angle = self.radius.atan2(self.half_height);
-        assert!(apex_half_angle >= 0.0);
+        assert!(apex_half_angle >= T::zero());
         let basis_angle = T::constant(f64::frac_pi_2()) - apex_half_angle;
-        basis_angle.min(apex_half_angle * 2.0)
+        basis_angle.min(apex_half_angle * T::constant(2.0))
     }
 
-    fn as_support_map(&self) -> Option<&dyn SupportMap> {
-        Some(self as &dyn SupportMap)
+    fn as_support_map(&self) -> Option<&dyn SupportMap<T>> {
+        Some(self as &dyn SupportMap<T>)
     }
 
-    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
-        Some((self as &dyn PolygonalFeatureMap, T::zero()))
+    fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap<T>, T)> {
+        Some((self as &dyn PolygonalFeatureMap<T>, T::zero()))
     }
 }
 
-impl<T: AD> Shape<T> for HalfSpace {
+impl<T: AD> Shape<T> for HalfSpace<T> {
     #[cfg(feature = "std")]
     fn clone_box(&self) -> Box<dyn Shape<T>> {
         Box::new(self.clone())
     }
 
-    fn compute_local_aabb(&self) -> Aabb {
+    fn compute_local_aabb(&self) -> Aabb<T> {
         self.local_aabb()
     }
 
-    fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+    fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
         self.local_bounding_sphere()
     }
 
-    fn compute_aabb(&self, position: &Isometry<Real>) -> Aabb {
+    fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
         self.aabb(position)
     }
 
@@ -1307,15 +1309,15 @@ impl<T: AD> Shape<T> for HalfSpace {
         true
     }
 
-    fn ccd_thickness(&self) -> Real {
-        f32::MAX as Real
+    fn ccd_thickness(&self) -> T {
+        T::constant(f64::MAX)
     }
 
     fn ccd_angular_thickness(&self) -> T {
         T::constant(f64::pi())
     }
 
-    fn mass_properties(&self, _: Real) -> MassProperties<T> {
+    fn mass_properties(&self, _: T) -> MassProperties<T> {
         MassProperties::zero()
     }
 
@@ -1330,25 +1332,25 @@ impl<T: AD> Shape<T> for HalfSpace {
 
 macro_rules! impl_shape_for_round_shape(
     ($($S: ty, $Tag: ident);*) => {$(
-        impl<T: AD> Shape for RoundShape<$S> {
+        impl<T: AD> Shape<T> for RoundShape<$S, T> {
             #[cfg(feature = "std")]
-            fn clone_box(&self) -> Box<dyn Shape> {
+            fn clone_box(&self) -> Box<dyn Shape<T>> {
                 Box::new(self.clone())
             }
 
-            fn compute_local_aabb(&self) -> Aabb {
+            fn compute_local_aabb(&self) -> Aabb<T> {
                 self.inner_shape.local_aabb().loosened(self.border_radius)
             }
 
-            fn compute_local_bounding_sphere(&self) -> BoundingSphere {
+            fn compute_local_bounding_sphere(&self) -> BoundingSphere<T> {
                 self.inner_shape.local_bounding_sphere().loosened(self.border_radius)
             }
 
-            fn compute_aabb(&self, position: &Isometry<T>) -> Aabb {
+            fn compute_aabb(&self, position: &Isometry<T>) -> Aabb<T> {
                 self.inner_shape.aabb(position).loosened(self.border_radius)
             }
 
-            fn mass_properties(&self, density: T) -> MassProperties {
+            fn mass_properties(&self, density: T) -> MassProperties<T> {
                 self.inner_shape.mass_properties(density)
             }
 
@@ -1360,7 +1362,7 @@ macro_rules! impl_shape_for_round_shape(
                 ShapeType::$Tag
             }
 
-            fn as_typed_shape(&self) -> TypedShape {
+            fn as_typed_shape(&self) -> TypedShape<T> {
                 TypedShape::$Tag(self)
             }
 
@@ -1374,20 +1376,20 @@ macro_rules! impl_shape_for_round_shape(
                 self.inner_shape.ccd_angular_thickness()
             }
 
-            fn as_support_map(&self) -> Option<&dyn SupportMap> {
-                Some(self as &dyn SupportMap)
+            fn as_support_map(&self) -> Option<&dyn SupportMap<T>> {
+                Some(self as &dyn SupportMap<T>)
             }
 
-            fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap, T)> {
-                Some((&self.inner_shape as &dyn PolygonalFeatureMap, self.border_radius))
+            fn as_polygonal_feature_map(&self) -> Option<(&dyn PolygonalFeatureMap<T>, T)> {
+                Some((&self.inner_shape as &dyn PolygonalFeatureMap<T>, self.border_radius))
             }
         }
     )*}
 );
 
 impl_shape_for_round_shape!(
-    Cuboid, RoundCuboid;
-    Triangle, RoundTriangle
+    Cuboid<T>, RoundCuboid;
+    Triangle<T>, RoundTriangle
 );
 
 #[cfg(feature = "dim2")]
@@ -1395,10 +1397,10 @@ impl_shape_for_round_shape!(
 impl_shape_for_round_shape!(ConvexPolygon, RoundConvexPolygon);
 #[cfg(feature = "dim3")]
 impl_shape_for_round_shape!(
-    Cylinder, RoundCylinder;
-    Cone, RoundCone
+    Cylinder<T>, RoundCylinder;
+    Cone<T>, RoundCone
 );
 
 #[cfg(feature = "dim3")]
 #[cfg(feature = "std")]
-impl_shape_for_round_shape!(ConvexPolyhedron, RoundConvexPolyhedron);
+impl_shape_for_round_shape!(ConvexPolyhedron<T>, RoundConvexPolyhedron);

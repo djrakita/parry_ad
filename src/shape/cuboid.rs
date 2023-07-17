@@ -1,6 +1,6 @@
 //! Support mapping based Cuboid shape.
 
-use crate::math::{Point, Real, Vector};
+use crate::math::{Point, Vector};
 #[cfg(feature = "dim3")]
 use crate::shape::Segment;
 use crate::shape::{FeatureId, PackedFeatureId, PolygonalFeature, SupportMap};
@@ -10,7 +10,8 @@ use na::Unit;
 use ad_trait::AD;
 
 #[cfg(not(feature = "std"))]
-use na::RealField; // for .copysign()
+use na::RealField;
+use crate::utils::wops::copy_sign_to_vector3; // for .copysign()
 
 /// Shape of a box.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -126,7 +127,7 @@ impl<T: AD> Cuboid<T> {
     /// Return the edge segment of this cuboid with a normal cone containing
     /// a direction that that maximizes the dot product with `local_dir`.
     #[cfg(feature = "dim3")]
-    pub fn local_support_edge_segment(&self, local_dir: Vector<T>) -> Segment {
+    pub fn local_support_edge_segment(&self, local_dir: Vector<T>) -> Segment<T> {
         let he = self.half_extents;
         let i = local_dir.iamin();
         let j = (i + 1) % 3;
@@ -178,7 +179,7 @@ impl<T: AD> Cuboid<T> {
             i * 2
         }
 
-        let sign_index = ((sign as i8 + 1) / 2) as usize;
+        let sign_index = ((sign.to_constant() as i8 + 1) / 2) as usize;
         // The vertex id as numbered depending on the sign of the vertex
         // component. A + sign means the corresponding bit is 0 while a -
         // sign means the corresponding bit is 1.
@@ -331,10 +332,11 @@ impl<T: AD> Cuboid<T> {
     }
 }
 
-impl<T: AD> SupportMap for Cuboid<T> {
+impl<T: AD> SupportMap<T> for Cuboid<T> {
     #[inline]
     fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
-        dir.copy_sign_to(self.half_extents).into()
+        // dir.copy_sign_to(self.half_extents).into()
+        copy_sign_to_vector3(self.half_extents.clone(), dir.clone()).into()
     }
 }
 

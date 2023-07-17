@@ -3,10 +3,11 @@ use crate::math::Vector;
 use crate::math::{Isometry};
 use crate::query::{sat, ContactManifold};
 use crate::shape::{Cuboid, PolygonalFeature, Shape};
-use ad_trait::AD;
+use ad_trait::{AD, NalgebraMatMulAD, NalgebraMatMulNoRefAD, NalgebraPointMulAD, NalgebraPointMulNoRefAD};
+use nalgebra::{OPoint, Const, ArrayStorage};
 
 /// Computes the contact manifold between two cuboids represented as `Shape` trait-objects.
-pub fn contact_manifold_cuboid_cuboid_shapes<ManifoldData, ContactData: Default + Copy, T: AD>(
+pub fn contact_manifold_cuboid_cuboid_shapes<ManifoldData, ContactData: Default + Copy, T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>>(
     pos12: &Isometry<T>,
     g1: &dyn Shape<T>,
     g2: &dyn Shape<T>,
@@ -19,12 +20,12 @@ pub fn contact_manifold_cuboid_cuboid_shapes<ManifoldData, ContactData: Default 
 }
 
 /// Computes the contact manifold between two cuboids.
-pub fn contact_manifold_cuboid_cuboid<'a, ManifoldData, ContactData: Default + Copy, T: AD>(
+pub fn contact_manifold_cuboid_cuboid<ManifoldData, ContactData: Default + Copy, T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>> (
     pos12: &Isometry<T>,
-    cuboid1: &'a Cuboid<T>,
-    cuboid2: &'a Cuboid<T>,
+    cuboid1: &Cuboid<T>,
+    cuboid2: &Cuboid<T>,
     prediction: T,
-    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>
 ) {
     if manifold.try_update_contacts(&pos12) {
         return;

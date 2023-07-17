@@ -81,7 +81,7 @@ pub struct GenericHeightField<Storage: HeightFieldStorage<T>, T: AD> {
     status: Storage::Status,
 
     scale: Vector<T>,
-    aabb: Aabb,
+    aabb: Aabb<T>,
     num_triangles: usize,
 }
 
@@ -141,7 +141,7 @@ impl<T: AD> HeightField<T> {
         );
         let max = heights.max();
         let min = heights.min();
-        let hscale = scale * T::constant(T::constant(0.5));
+        let hscale = scale * T::constant(0.5);
         let aabb = Aabb::new(
             Point3::new(-hscale.x, min * scale.y, -hscale.z),
             Point3::new(hscale.x, max * scale.y, hscale.z),
@@ -231,23 +231,23 @@ impl<Storage: HeightFieldStorage<T>, T: AD> GenericHeightField<Storage, T> {
     }
 
     fn quantize_floor_unclamped(&self, val: T, cell_size: T) -> isize {
-        ((val + T::constant(0.5)) / cell_size).floor() as isize
+        ((val + T::constant(0.5)) / cell_size).floor().to_constant() as isize
     }
 
     fn quantize_ceil_unclamped(&self, val: T, cell_size: T) -> isize {
-        ((val + T::constant(0.5)) / cell_size).ceil() as isize
+        ((val + T::constant(0.5)) / cell_size).ceil().to_constant() as isize
     }
 
     fn quantize_floor(&self, val: T, cell_size: T, num_cells: usize) -> usize {
         na::clamp(
             ((val + T::constant(0.5)) / cell_size).floor(),
             T::zero(),
-            (num_cells - 1) as T,
-        ) as usize
+            T::constant((num_cells - 1) as f64),
+        ).to_constant() as usize
     }
 
     fn quantize_ceil(&self, val: T, cell_size: T, num_cells: usize) -> usize {
-        na::clamp(((val + T::constant(0.5)) / cell_size).ceil(), T::zero(), num_cells as T) as usize
+        na::clamp(((val + T::constant(0.5)) / cell_size).ceil(), T::zero(), T::constant(num_cells as f64)).to_constant() as usize
     }
 
     /// The pair of index of the cell containing the vertical projection of the given point.
@@ -313,7 +313,7 @@ impl<Storage: HeightFieldStorage<T>, T: AD> GenericHeightField<Storage, T> {
     }
 
     /// An iterator through all the triangles of this heightfield.
-    pub fn triangles<'a>(&'a self) -> impl Iterator<Item = Triangle> + 'a {
+    pub fn triangles<'a>(&'a self) -> impl Iterator<Item = Triangle<T>> + 'a {
         HeightFieldTriangles {
             heightfield: self,
             curr: (0, 0),
@@ -325,7 +325,7 @@ impl<Storage: HeightFieldStorage<T>, T: AD> GenericHeightField<Storage, T> {
     pub fn triangles_around_point<'a>(
         &'a self,
         point: &Point3<T>,
-    ) -> HeightFieldRadialTriangles<Storage> {
+    ) -> HeightFieldRadialTriangles<Storage, T> {
         let center = self.closest_cell_at_point(point);
         HeightFieldRadialTriangles {
             heightfield: self,
@@ -337,7 +337,7 @@ impl<Storage: HeightFieldStorage<T>, T: AD> GenericHeightField<Storage, T> {
     }
 
     /// Gets the the vertices of the triangle identified by `id`.
-    pub fn triangle_at_id(&self, id: u32) -> Option<Triangle> {
+    pub fn triangle_at_id(&self, id: u32) -> Option<Triangle<T>> {
         let (i, j, left) = self.split_triangle_id(id);
         if left {
             self.triangles_at(i, j).0
@@ -411,7 +411,7 @@ impl<Storage: HeightFieldStorage<T>, T: AD> GenericHeightField<Storage, T> {
     ///
     /// Returns `None` fore triangles that have been removed because of their user-defined status
     /// flags (described by the `HeightFieldCellStatus` bitfield).
-    pub fn triangles_at(&self, i: usize, j: usize) -> (Option<Triangle>, Option<Triangle>) {
+    pub fn triangles_at(&self, i: usize, j: usize) -> (Option<Triangle<T>>, Option<Triangle<T>>) {
         if i >= self.heights.nrows() - 1 || j >= self.heights.ncols() - 1 {
             return (None, None);
         }
@@ -429,10 +429,10 @@ impl<Storage: HeightFieldStorage<T>, T: AD> GenericHeightField<Storage, T> {
         let cell_height = self.unit_cell_height();
 
         let z0 = -T::constant(0.5) + cell_height * T::constant(i as f64);
-        let z1 = -T::constant(0.5) + cell_height * ((i + 1) as T);
+        let z1 = -T::constant(0.5) + cell_height * T::constant((i + 1) as f64);
 
         let x0 = -T::constant(0.5) + cell_width * T::constant(j as f64);
-        let x1 = -T::constant(0.5) + cell_width * ((j + 1) as T);
+        let x1 = -T::constant(0.5) + cell_width * T::constant((j + 1) as f64);
 
         let y00 = self.heights.get(i + 0, j + 0);
         let y10 = self.heights.get(i + 1, j + 0);
@@ -551,7 +551,7 @@ impl<Storage: HeightFieldStorage<T>, T: AD> GenericHeightField<Storage, T> {
     }
 
     /// The Aabb of this heightmap.
-    pub fn root_aabb(&self) -> &Aabb {
+    pub fn root_aabb(&self) -> &Aabb<T> {
         &self.aabb
     }
 
@@ -652,7 +652,7 @@ impl<Storage: HeightFieldStorage<T>, T: AD> GenericHeightField<Storage, T> {
     /// The range of segment ids that may intersect the given local Aabb.
     pub fn unclamped_elements_range_in_local_aabb(
         &self,
-        aabb: &Aabb,
+        aabb: &Aabb<T>,
     ) -> (Range<isize>, Range<isize>) {
         let ref_mins = aabb.mins.coords.component_div(&self.scale);
         let ref_maxs = aabb.maxs.coords.component_div(&self.scale);
@@ -668,7 +668,7 @@ impl<Storage: HeightFieldStorage<T>, T: AD> GenericHeightField<Storage, T> {
     }
 
     /// Applies the function `f` to all the triangles of this heightfield intersecting the given Aabb.
-    pub fn map_elements_in_local_aabb(&self, aabb: &Aabb, f: &mut impl FnMut(u32, &Triangle)) {
+    pub fn map_elements_in_local_aabb(&self, aabb: &Aabb<T>, f: &mut impl FnMut(u32, &Triangle<T>)) {
         let ncells_x = self.ncols();
         let ncells_z = self.nrows();
 
@@ -755,13 +755,13 @@ impl<Storage: HeightFieldStorage<T>, T: AD> GenericHeightField<Storage, T> {
     }
 }
 
-struct HeightFieldTriangles<'a, Storage: HeightFieldStorage, T: AD> {
+struct HeightFieldTriangles<'a, Storage: HeightFieldStorage<T>, T: AD> {
     heightfield: &'a GenericHeightField<Storage, T>,
     curr: (usize, usize),
     tris: (Option<Triangle<T>>, Option<Triangle<T>>),
 }
 
-impl<'a, Storage: HeightFieldStorage, T: AD> Iterator for HeightFieldTriangles<'a, Storage, T> {
+impl<'a, Storage: HeightFieldStorage<T>, T: AD> Iterator for HeightFieldTriangles<'a, Storage, T> {
     type Item = Triangle<T>;
 
     fn next(&mut self) -> Option<Triangle<T>> {
@@ -790,7 +790,7 @@ impl<'a, Storage: HeightFieldStorage, T: AD> Iterator for HeightFieldTriangles<'
 }
 
 /// An iterator through all the triangles around the given point, after vertical projection on the heightfield.
-pub struct HeightFieldRadialTriangles<'a, Storage: HeightFieldStorage, T: AD> {
+pub struct HeightFieldRadialTriangles<'a, Storage: HeightFieldStorage<T>, T: AD> {
     heightfield: &'a GenericHeightField<Storage, T>,
     center: (usize, usize),
     curr_radius: usize,
@@ -798,7 +798,7 @@ pub struct HeightFieldRadialTriangles<'a, Storage: HeightFieldStorage, T: AD> {
     tris: (Option<Triangle<T>>, Option<Triangle<T>>),
 }
 
-impl<'a, Storage: HeightFieldStorage, T: AD> HeightFieldRadialTriangles<'a, Storage, T> {
+impl<'a, Storage: HeightFieldStorage<T>, T: AD> HeightFieldRadialTriangles<'a, Storage, T> {
     /// Returns the next triangle in this iterator.
     ///
     /// Returns `None` no triangle closest than `max_dist` remain
@@ -810,7 +810,7 @@ impl<'a, Storage: HeightFieldStorage, T: AD> HeightFieldRadialTriangles<'a, Stor
         } else {
             (max_dist / self.heightfield.cell_width())
                 .ceil()
-                .max((max_dist / self.heightfield.cell_height()).ceil()) as usize
+                .max((max_dist / self.heightfield.cell_height()).ceil()).to_constant() as usize
         };
 
         loop {

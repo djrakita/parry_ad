@@ -1,6 +1,5 @@
 use crate::math::{Point, Vector};
 use crate::query::Ray;
-use simba::simd::SimdValue;
 use ad_trait::AD;
 
 /// A structure representing 4 rays in an SIMD SoA fashion.

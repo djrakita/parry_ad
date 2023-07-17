@@ -1,5 +1,5 @@
 use crate::bounding_volume::Aabb;
-use crate::math::{Isometry, Point, Real, Vector};
+use crate::math::{Isometry, Point, Vector};
 use crate::partitioning::Qbvh;
 use crate::query::{PointProjection, PointQueryWithLocation};
 use crate::shape::composite_shape::SimdCompositeShape;
@@ -26,7 +26,7 @@ pub struct Polyline<T: AD> {
 
 impl<T: AD> Polyline<T> {
     /// Creates a new polyline from a vertex buffer and an index buffer.
-    pub fn new(vertices: Vec<Point<Real>>, indices: Option<Vec<[u32; 2]>>) -> Self {
+    pub fn new(vertices: Vec<Point<T>>, indices: Option<Vec<[u32; 2]>>) -> Self {
         let indices =
             indices.unwrap_or_else(|| (0..vertices.len() as u32 - 1).map(|i| [i, i + 1]).collect());
         let data = indices.iter().enumerate().map(|(i, idx)| {
@@ -38,7 +38,7 @@ impl<T: AD> Polyline<T> {
         let mut qbvh = Qbvh::new();
         // NOTE: we apply no dilation factor because we won't
         // update this tree dynamically.
-        qbvh.clear_and_rebuild(data, 0.0);
+        qbvh.clear_and_rebuild(data, T::zero());
 
         Self {
             qbvh,
@@ -48,12 +48,12 @@ impl<T: AD> Polyline<T> {
     }
 
     /// Compute the axis-aligned bounding box of this polyline.
-    pub fn aabb(&self, pos: &Isometry<Real>) -> Aabb {
+    pub fn aabb(&self, pos: &Isometry<T>) -> Aabb<T> {
         self.qbvh.root_aabb().transform_by(pos)
     }
 
     /// Gets the local axis-aligned bounding box of this polyline.
-    pub fn local_aabb(&self) -> &Aabb {
+    pub fn local_aabb(&self) -> &Aabb<T> {
         &self.qbvh.root_aabb()
     }
 
@@ -67,7 +67,7 @@ impl<T: AD> Polyline<T> {
     }
 
     /// An iterator through all the segments of this mesh.
-    pub fn segments(&self) -> impl ExactSizeIterator<Item = Segment> + '_ {
+    pub fn segments(&self) -> impl ExactSizeIterator<Item = Segment<T>> + '_ {
         self.indices.iter().map(move |ids| {
             Segment::new(
                 self.vertices[ids[0] as usize],
@@ -77,7 +77,7 @@ impl<T: AD> Polyline<T> {
     }
 
     /// Get the `i`-th segment of this mesh.
-    pub fn segment(&self, i: u32) -> Segment {
+    pub fn segment(&self, i: u32) -> Segment<T> {
         let idx = self.indices[i as usize];
         Segment::new(
             self.vertices[idx[0] as usize],
@@ -118,7 +118,7 @@ impl<T: AD> Polyline<T> {
     }
 
     /// Computes a scaled version of this polyline.
-    pub fn scaled(mut self, scale: &Vector<Real>) -> Self {
+    pub fn scaled(mut self, scale: &Vector<T>) -> Self {
         self.vertices
             .iter_mut()
             .for_each(|pt| pt.coords.component_mul_assign(scale));
@@ -222,9 +222,9 @@ impl<T: AD> Polyline<T> {
     /// These properties are not checked.
     pub fn project_local_point_assuming_solid_interior_ccw(
         &self,
-        point: Point<Real>,
+        point: Point<T>,
         #[cfg(feature = "dim3")] axis: u8,
-    ) -> (PointProjection, (u32, SegmentPointLocation)) {
+    ) -> (PointProjection<T>, (u32, SegmentPointLocation<T>)) {
         let mut proj = self.project_local_point_and_get_location(&point, false);
         let segment1 = self.segment((proj.1).0);
 
@@ -259,18 +259,18 @@ impl<T: AD> Polyline<T> {
                     //       We did encounter some cases where this was needed, but perhaps the
                     //       actual problem was an issue with the SegmentPointLocation (which should
                     //       perhaps have been Edge instead of Vertex)?
-                    let threshold = 1.0e-3 * dir2.norm();
+                    let threshold = T::constant(1.0e-3) * dir2.norm();
                     if dot.abs() > threshold {
                         // If the vertex is a reentrant vertex, then the point is
                         // inside. Otherwise, it is outside.
-                        dot >= 0.0
+                        dot >= T::zero()
                     } else {
                         // If the two edges are collinear, we can’t classify the vertex.
                         // So check against the edge’s normal instead.
-                        (point - proj.0.point).dot(&normal1) <= 0.0
+                        (point - proj.0.point).dot(&normal1) <= T::zero()
                     }
                 }
-                SegmentPointLocation::OnEdge(_) => (point - proj.0.point).dot(&normal1) <= 0.0,
+                SegmentPointLocation::OnEdge(_) => (point - proj.0.point).dot(&normal1) <= T::zero(),
             };
         }
 
@@ -279,18 +279,18 @@ impl<T: AD> Polyline<T> {
 }
 
 impl<T: AD> SimdCompositeShape<T> for Polyline<T> {
-    fn map_part_at(&self, i: u32, f: &mut dyn FnMut(Option<&Isometry<Real>>, &dyn Shape)) {
+    fn map_part_at(&self, i: u32, f: &mut dyn FnMut(Option<&Isometry<T>>, &dyn Shape<T>)) {
         let tri = self.segment(i);
         f(None, &tri)
     }
 
-    fn qbvh(&self) -> &Qbvh<T, u32> {
+    fn qbvh(&self) -> &Qbvh<u32, T> {
         &self.qbvh
     }
 }
 
 impl<T: AD> TypedSimdCompositeShape<T> for Polyline<T> {
-    type PartShape = Segment;
+    type PartShape = Segment<T>;
     type PartId = u32;
     type QbvhStorage = DefaultStorage;
 
@@ -298,19 +298,19 @@ impl<T: AD> TypedSimdCompositeShape<T> for Polyline<T> {
     fn map_typed_part_at(
         &self,
         i: u32,
-        mut f: impl FnMut(Option<&Isometry<Real>>, &Self::PartShape),
+        mut f: impl FnMut(Option<&Isometry<T>>, &Self::PartShape),
     ) {
         let seg = self.segment(i);
         f(None, &seg)
     }
 
     #[inline(always)]
-    fn map_untyped_part_at(&self, i: u32, mut f: impl FnMut(Option<&Isometry<Real>>, &dyn Shape)) {
+    fn map_untyped_part_at(&self, i: u32, mut f: impl FnMut(Option<&Isometry<T>>, &dyn Shape<T>)) {
         let seg = self.segment(i);
         f(None, &seg)
     }
 
-    fn typed_qbvh(&self) -> &Qbvh<T, u32> {
+    fn typed_qbvh(&self) -> &Qbvh<u32, T> {
         &self.qbvh
     }
 }

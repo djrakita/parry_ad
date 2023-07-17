@@ -4,9 +4,9 @@ use crate::query::{PointProjection, PointQuery};
 use crate::shape::{Ball, FeatureId};
 use ad_trait::AD;
 
-impl<T: AD> PointQuery for BoundingSphere<T> {
+impl<T: AD> PointQuery<T> for BoundingSphere<T> {
     #[inline]
-    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection {
+    fn project_local_point(&self, pt: &Point<T>, solid: bool) -> PointProjection<T> {
         let centered_pt = pt - self.center().coords;
         let mut proj = Ball::new(self.radius()).project_local_point(&centered_pt, solid);
 
@@ -18,7 +18,7 @@ impl<T: AD> PointQuery for BoundingSphere<T> {
     fn project_local_point_and_get_feature(
         &self,
         pt: &Point<T>,
-    ) -> (PointProjection, FeatureId) {
+    ) -> (PointProjection<T>, FeatureId) {
         (self.project_local_point(pt, false), FeatureId::Face(0))
     }
 

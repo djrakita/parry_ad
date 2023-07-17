@@ -1,4 +1,4 @@
-use ad_trait::AD;
+use ad_trait::{AD, NalgebraMatMulAD, NalgebraMatMulNoRefAD, NalgebraPointMulAD, NalgebraPointMulNoRefAD};
 use crate::approx::AbsDiffEq;
 use crate::math::{Isometry, Point, Real, Vector};
 #[cfg(feature = "std")]
@@ -6,6 +6,7 @@ use crate::query::{ContactManifold, TrackedContact};
 use crate::shape::{PackedFeatureId, Segment, Triangle};
 use crate::utils::WBasis;
 use na::Point2;
+use nalgebra::{OPoint, Const, ArrayStorage};
 
 /// A polygonal feature representing the local polygonal approximation of
 /// a vertex, face, or edge of a convex shape.
@@ -35,8 +36,8 @@ impl<T: AD> Default for PolygonalFeature<T> {
     }
 }
 
-impl<T: AD> From<Triangle> for PolygonalFeature<T> {
-    fn from(tri: Triangle) -> Self {
+impl<T: AD> From<Triangle<T>> for PolygonalFeature<T> {
+    fn from(tri: Triangle<T>) -> Self {
         Self {
             vertices: [tri.a, tri.b, tri.c, tri.c],
             vids: PackedFeatureId::vertices([0, 1, 2, 2]),
@@ -47,8 +48,8 @@ impl<T: AD> From<Triangle> for PolygonalFeature<T> {
     }
 }
 
-impl<T: AD> From<Segment> for PolygonalFeature<T> {
-    fn from(seg: Segment) -> Self {
+impl<T: AD> From<Segment<T>> for PolygonalFeature<T> {
+    fn from(seg: Segment<T>) -> Self {
         Self {
             vertices: [seg.a, seg.b, seg.b, seg.b],
             vids: PackedFeatureId::vertices([0, 1, 1, 1]),
@@ -59,14 +60,14 @@ impl<T: AD> From<Segment> for PolygonalFeature<T> {
     }
 }
 
-impl<T: AD> PolygonalFeature<T> {
+impl<T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>> PolygonalFeature<T> {
     /// Creates a new empty polygonal feature.
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Transform each vertex of this polygonal feature by the given position `pos`.
-    pub fn transform_by(&mut self, pos: &Isometry<Real>) {
+    pub fn transform_by(&mut self, pos: &Isometry<T>) {
         for p in &mut self.vertices[0..self.num_vertices] {
             *p = pos * *p;
         }
@@ -82,7 +83,7 @@ impl<T: AD> PolygonalFeature<T> {
         feature1: &Self,
         feature2: &Self,
         prediction: T,
-        manifold: &mut ContactManifold<ManifoldData, ContactData>,
+        manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
         flipped: bool,
     ) {
         match (feature1.num_vertices, feature2.num_vertices) {
@@ -98,11 +99,11 @@ impl<T: AD> PolygonalFeature<T> {
     #[cfg(feature = "std")]
     fn contacts_edge_edge<ManifoldData, ContactData: Default + Copy>(
         pos12: &Isometry<T>,
-        face1: &PolygonalFeature,
+        face1: &PolygonalFeature<T>,
         sep_axis1: &Vector<T>,
-        face2: &PolygonalFeature,
+        face2: &PolygonalFeature<T>,
         prediction: T,
-        manifold: &mut ContactManifold<ManifoldData, ContactData>,
+        manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
         flipped: bool,
     ) {
         // Project the faces to a 2D plane for contact clipping.
@@ -141,7 +142,7 @@ impl<T: AD> PolygonalFeature<T> {
         // TODO: not sure what the best value for eps is.
         // Empirically, it appears that an epsilon smaller than 1.0e-3 is too small.
         if let (Some(tangent1), Some(tangent2)) = (tangent1, tangent2) {
-            let parallel = tangent1.dot(&tangent2) >= crate::utils::COS_FRAC_PI_8;
+            let parallel = tangent1.dot(&tangent2) >= T::constant(crate::utils::COS_FRAC_PI_8);
 
             if !parallel {
                 let seg1 = (&projected_edge1[0], &projected_edge1[1]);
@@ -152,13 +153,13 @@ impl<T: AD> PolygonalFeature<T> {
                     );
 
                 // Found a contact between the two edges.
-                let bcoords1 = loc1.barycentric_coordinates();
-                let bcoords2 = loc2.barycentric_coordinates();
+                let bcoords1: [T; 2] = loc1.barycentric_coordinates();
+                let bcoords2: [T; 2] = loc2.barycentric_coordinates();
 
-                let edge1 = (face1.vertices[0], face1.vertices[1]);
-                let edge2 = (vertices2_1[0], vertices2_1[1]);
-                let local_p1 = edge1.0 * bcoords1[0] + edge1.1.coords * bcoords1[1];
-                let local_p2_1 = edge2.0 * bcoords2[0] + edge2.1.coords * bcoords2[1];
+                let edge1: (Point<T>, Point<T>) = (face1.vertices[0], face1.vertices[1]);
+                let edge2: (Point<T>, Point<T>) = (vertices2_1[0], vertices2_1[1]);
+                let local_p1: Point<T> = bcoords1[0]*edge1.0 + bcoords1[1]*edge1.1.coords;
+                let local_p2_1: Point<T> = bcoords2[0]*edge2.0 + bcoords2[1]*edge2.1.coords;
                 let dist = (local_p2_1 - local_p1).dot(&sep_axis1);
 
                 if dist <= prediction {
@@ -184,7 +185,7 @@ impl<T: AD> PolygonalFeature<T> {
             (face1.vertices[0], face1.vertices[1]),
             (vertices2_1[0], vertices2_1[1]),
         ) {
-            let feature_at = |face: &PolygonalFeature, id| match id {
+            let feature_at = |face: &PolygonalFeature<T>, id| match id {
                 0 => face.vids[0],
                 1 => face.eids[0],
                 2 => face.vids[1],
@@ -214,11 +215,11 @@ impl<T: AD> PolygonalFeature<T> {
     #[cfg(feature = "std")]
     fn contacts_face_face<ManifoldData, ContactData: Default + Copy>(
         pos12: &Isometry<T>,
-        face1: &PolygonalFeature,
+        face1: &PolygonalFeature<T>,
         sep_axis1: &Vector<T>,
-        face2: &PolygonalFeature,
+        face2: &PolygonalFeature<T>,
         prediction: T,
-        manifold: &mut ContactManifold<ManifoldData, ContactData>,
+        manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
         flipped: bool,
     ) {
         // Project the faces to a 2D plane for contact clipping.
@@ -276,7 +277,7 @@ impl<T: AD> PolygonalFeature<T> {
                 (vertices2_1[2] - vertices2_1[1]).cross(&(vertices2_1[0] - vertices2_1[1]));
             let denom = normal2_1.dot(&sep_axis1);
 
-            if !relative_eq!(denom, 0.0) {
+            if !relative_eq!(denom, T::zero()) {
                 let last_index2 = face2.num_vertices as usize - 1;
                 'point_loop1: for i in 0..face1.num_vertices as usize {
                     let p1 = projected_face1[i];
@@ -287,7 +288,7 @@ impl<T: AD> PolygonalFeature<T> {
                         let new_sign = (projected_face2[j + 1] - projected_face2[j])
                             .perp(&(p1 - projected_face2[j]));
 
-                        if sign == 0.0 {
+                        if sign == T::zero() {
                             sign = new_sign;
                         } else if sign * new_sign < T::zero() {
                             // The point lies outside.
@@ -299,7 +300,7 @@ impl<T: AD> PolygonalFeature<T> {
                     // Output the contact.
                     let dist = (vertices2_1[0] - face1.vertices[i]).dot(&normal2_1) / denom;
                     let local_p1 = face1.vertices[i];
-                    let local_p2_1 = face1.vertices[i] + dist * sep_axis1;
+                    let local_p2_1 = face1.vertices[i] + dist * *sep_axis1;
 
                     if dist <= prediction {
                         manifold.points.push(TrackedContact::flipped(
@@ -343,7 +344,7 @@ impl<T: AD> PolygonalFeature<T> {
                     // Output the contact.
                     let dist = (face1.vertices[0] - vertices2_1[i]).dot(&normal1) / denom;
                     let local_p2_1 = vertices2_1[i];
-                    let local_p1 = vertices2_1[i] - dist * sep_axis1;
+                    let local_p1 = vertices2_1[i] - dist * *sep_axis1;
 
                     if true {
                         // dist <= prediction {
@@ -439,7 +440,7 @@ fn closest_points_line2d<T: AD>(
             let s = if !parallel {
                 (b * f - c * e) / denom
             } else {
-                0.0
+                T::zero()
             };
 
             if parallel {

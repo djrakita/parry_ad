@@ -1,9 +1,8 @@
 use crate::bounding_volume::Aabb;
-use crate::math::{Isometry, Point, Real, SimdBool, SimdReal, Vector, DIM, SIMD_WIDTH};
+use crate::math::{Isometry, Point, Vector, DIM, SIMD_WIDTH};
 use crate::query::SimdRay;
 use crate::utils::{self, IsometryOps};
-use num::{One, Zero};
-use simba::simd::{SimdPartialOrd, SimdValue};
+use simba::simd::{SimdValue};
 use ad_trait::AD;
 
 /// Four Aabb represented as a single SoA Aabb with SIMD components.
@@ -130,7 +129,7 @@ impl<T: AD> SimdAabb<T> {
     }
 
     /// Builds an SIMD aabb composed of four identical aabbs.
-    pub fn splat(aabb: Aabb) -> Self {
+    pub fn splat(aabb: Aabb<T>) -> Self {
         Self {
             mins: Point::splat(aabb.mins),
             maxs: Point::splat(aabb.maxs),
@@ -204,7 +203,7 @@ impl<T: AD> SimdAabb<T> {
     }
 
     /// Casts a ray on all the Aabbs represented by `self`.
-    pub fn cast_local_ray(&self, ray: &SimdRay, max_toi: T) -> (SimdBool, T) {
+    pub fn cast_local_ray(&self, ray: &SimdRay<T>, max_toi: T) -> (bool, T) {
         let zero = T::zero();
         let one = T::one();
         let infinity = T::constant(f64::MAX);
@@ -220,10 +219,12 @@ impl<T: AD> SimdAabb<T> {
                 ray.origin[i].simd_ge(self.mins[i]) & ray.origin[i].simd_le(self.maxs[i]);
             let is_not_zero_test = {
                 let denom = one / ray.dir[i];
+                let tmp1: T = (self.mins[i] - ray.origin[i]) * denom;
                 let mut inter_with_near_plane =
-                    ((self.mins[i] - ray.origin[i]) * denom).select(is_not_zero, -infinity);
+                    tmp1.select(is_not_zero, -infinity);
+                let tmp2: T = (self.maxs[i] - ray.origin[i]) * denom;
                 let mut inter_with_far_plane =
-                    ((self.maxs[i] - ray.origin[i]) * denom).select(is_not_zero, infinity);
+                    tmp2.select(is_not_zero, infinity);
 
                 let gt = inter_with_near_plane.simd_gt(inter_with_far_plane);
                 utils::simd_swap(gt, &mut inter_with_near_plane, &mut inter_with_far_plane);
@@ -277,7 +278,7 @@ impl<T: AD> SimdAabb<T> {
     /// Lanewise check which Aabb represented by `self` contains the given set of `other` aabbs.
     /// The check is performed lane-wise.
     #[cfg(feature = "dim2")]
-    pub fn contains(&self, other: &SimdAabb) -> SimdBool {
+    pub fn contains(&self, other: &SimdAabb) -> bool {
         self.mins.x.simd_le(other.mins.x)
             & self.mins.y.simd_le(other.mins.y)
             & self.maxs.x.simd_ge(other.maxs.x)
@@ -322,8 +323,8 @@ impl<T: AD> SimdAabb<T> {
     ///
     /// The result is an array such that `result[i].extract(j)` contains the intersection
     /// result between `self.extract(i)` and `other.extract(j)`.
-    pub fn intersects_permutations(&self, other: &SimdAabb<T>) -> [SimdBool; SIMD_WIDTH] {
-        let mut result = [SimdBool::splat(false); SIMD_WIDTH];
+    pub fn intersects_permutations(&self, other: &SimdAabb<T>) -> [bool; SIMD_WIDTH] {
+        let mut result = [false; SIMD_WIDTH];
         for ii in 0..SIMD_WIDTH {
             // TODO: use SIMD-accelerated shuffling?
             let extracted = SimdAabb::splat(self.extract(ii));
@@ -349,12 +350,16 @@ impl<T: AD> SimdAabb<T> {
 
 impl<T: AD> From<[Aabb<T>; SIMD_WIDTH]> for SimdAabb<T> {
     fn from(aabbs: [Aabb<T>; SIMD_WIDTH]) -> Self {
-        let mins = array![|ii| aabbs[ii].mins; SIMD_WIDTH];
-        let maxs = array![|ii| aabbs[ii].maxs; SIMD_WIDTH];
+        // const SIMD_WIDTH: usize = SIMD_WIDTH;
+        // let mins = array![|ii| aabbs[ii].mins; SIMD_WIDTH];
+        // let maxs = array![|ii| aabbs[ii].maxs; SIMD_WIDTH];
+
+        let mins = aabbs[0].mins;
+        let maxs = aabbs[0].maxs;
 
         SimdAabb {
-            mins: Point::from(mins),
-            maxs: Point::from(maxs),
+            mins: mins,
+            maxs: maxs,
         }
     }
 }

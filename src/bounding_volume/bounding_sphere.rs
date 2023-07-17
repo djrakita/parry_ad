@@ -47,7 +47,7 @@ impl<T: AD> BoundingSphere<T> {
     }
 }
 
-impl<T: AD> BoundingVolume for BoundingSphere<T> {
+impl<T: AD> BoundingVolume<T> for BoundingSphere<T> {
     #[inline]
     fn center(&self) -> Point<T> {
         *self.center()

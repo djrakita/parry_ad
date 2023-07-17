@@ -4,7 +4,7 @@ use crate::query::{PointProjection, PointQuery, PointQueryWithLocation};
 use crate::shape::{FeatureId, Triangle, TrianglePointLocation};
 
 #[inline]
-fn compute_result(pt: &Point<T>, proj: Point<T>) -> PointProjection<T> {
+fn compute_result<T: AD>(pt: &Point<T>, proj: Point<T>) -> PointProjection<T> {
     #[cfg(feature = "dim2")]
     {
         PointProjection::new(*pt == proj, proj)
@@ -97,46 +97,46 @@ impl<T: AD> PointQueryWithLocation<T> for Triangle<T> {
             return (compute_result(pt, c), TrianglePointLocation::OnVertex(2));
         }
 
-        enum ProjectionInfo {
+        enum ProjectionInfo<A: AD> {
             OnAB,
             OnAC,
             OnBC,
             // The usize indicates if we are on the CW side (0) or CCW side (1) of the face.
-            OnFace(usize, T, T, T),
+            OnFace(usize, A, A, A),
         }
 
         // Checks on which edge voronoï region the point is.
         // For 2D and 3D, it uses explicit cross/perp products that are
         // more numerically stable.
-        fn stable_check_edges_voronoi(
-            ab: &Vector<T>,
-            ac: &Vector<T>,
-            bc: &Vector<T>,
-            ap: &Vector<T>,
-            bp: &Vector<T>,
-            cp: &Vector<T>,
-            ab_ap: T,
-            ab_bp: T,
-            ac_ap: T,
-            ac_cp: T,
-            ac_bp: T,
-            ab_cp: T,
-        ) -> ProjectionInfo {
+        fn stable_check_edges_voronoi<A: AD>(
+            ab: &Vector<A>,
+            ac: &Vector<A>,
+            bc: &Vector<A>,
+            ap: &Vector<A>,
+            bp: &Vector<A>,
+            cp: &Vector<A>,
+            ab_ap: A,
+            ab_bp: A,
+            ac_ap: A,
+            ac_cp: A,
+            ac_bp: A,
+            ab_cp: A,
+        ) -> ProjectionInfo<A> {
             #[cfg(feature = "dim2")]
             {
                 let n = ab.perp(&ac);
                 let vc = n * ab.perp(&ap);
-                if vc < T::zero() && ab_ap >= T::zero() && ab_bp <= T::zero() {
+                if vc < A::zero() && ab_ap >= A::zero() && ab_bp <= A::zero() {
                     return ProjectionInfo::OnAB;
                 }
 
                 let vb = -n * ac.perp(&cp);
-                if vb < T::zero() && ac_ap >= T::zero() && ac_cp <= T::zero() {
+                if vb < A::zero() && ac_ap >= A::zero() && ac_cp <= A::zero() {
                     return ProjectionInfo::OnAC;
                 }
 
                 let va = n * bc.perp(&bp);
-                if va < T::zero() && ac_bp - ab_bp >= T::zero() && ab_cp - ac_cp >= T::zero() {
+                if va < A::zero() && ac_bp - ab_bp >= A::zero() && ab_cp - ac_cp >= A::zero() {
                     return ProjectionInfo::OnBC;
                 }
 
@@ -149,7 +149,7 @@ impl<T: AD> PointQueryWithLocation<T> for Triangle<T> {
                 #[cfg(feature = "improved_fixed_point_support")]
                 {
                     let scaled_n = ab.cross(&ac);
-                    n = scaled_n.try_normalize(T::zero()).unwrap_or(scaled_n);
+                    n = scaled_n.try_normalize(A::zero()).unwrap_or(scaled_n);
                 }
 
                 #[cfg(not(feature = "improved_fixed_point_support"))]
@@ -158,21 +158,21 @@ impl<T: AD> PointQueryWithLocation<T> for Triangle<T> {
                 }
 
                 let vc = n.dot(&ab.cross(&ap));
-                if vc < T::zero() && ab_ap >= T::zero() && ab_bp <= T::zero() {
+                if vc < A::zero() && ab_ap >= A::zero() && ab_bp <= A::zero() {
                     return ProjectionInfo::OnAB;
                 }
 
                 let vb = -n.dot(&ac.cross(&cp));
-                if vb < T::zero() && ac_ap >= T::zero() && ac_cp <= T::zero() {
+                if vb < A::zero() && ac_ap >= A::zero() && ac_cp <= A::zero() {
                     return ProjectionInfo::OnAC;
                 }
 
                 let va = n.dot(&bc.cross(&bp));
-                if va < T::zero() && ac_bp - ab_bp >= T::zero() && ab_cp - ac_cp >= T::zero() {
+                if va < A::zero() && ac_bp - ab_bp >= A::zero() && ab_cp - ac_cp >= A::zero() {
                     return ProjectionInfo::OnBC;
                 }
 
-                let clockwise = if n.dot(&ap) >= T::zero() { 0 } else { 1 };
+                let clockwise = if n.dot(&ap) >= A::zero() { 0 } else { 1 };
 
                 return ProjectionInfo::OnFace(clockwise, va, vb, vc);
             }

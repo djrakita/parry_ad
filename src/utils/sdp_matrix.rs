@@ -293,7 +293,7 @@ impl<N: Add<N>> Add<SdpMatrix3<N>> for SdpMatrix3<N> {
     }
 }
 
-impl Mul<T: AD> for SdpMatrix3<T> {
+impl<T: AD> Mul<T> for SdpMatrix3<T> {
     type Output = SdpMatrix3<T>;
 
     fn mul(self, rhs: T) -> Self::Output {
@@ -355,7 +355,7 @@ impl<N: AD + Copy> Mul<Matrix3x2<N>> for SdpMatrix3<N> {
     }
 }
 
-impl<T> From<[SdpMatrix3<T>; 4]> for SdpMatrix3<T>
+impl<T: AD> From<[SdpMatrix3<T>; 4]> for SdpMatrix3<T>
 where
     T: From<[T; 4]>,
 {

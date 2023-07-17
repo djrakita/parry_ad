@@ -1,4 +1,4 @@
-use na;
+
 #[cfg(not(feature = "std"))]
 use na::ComplexField; // for .abs()
 

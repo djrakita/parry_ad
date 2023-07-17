@@ -42,9 +42,9 @@ pub fn closest_points_support_map_support_map_with_params<T: AD, G1: ?Sized, G2:
     g1: &G1,
     g2: &G2,
     prediction: T,
-    simplex: &mut VoronoiSimplex,
+    simplex: &mut VoronoiSimplex<T>,
     init_dir: Option<Vector<T>>,
-) -> GJKResult
+) -> GJKResult<T>
 where
     G1: SupportMap<T>,
     G2: SupportMap<T>,
@@ -55,7 +55,7 @@ where
         Some(dir) => dir,
     };
 
-    if let Some(dir) = Unit::try_new(dir, crate::math::DEFAULT_EPSILON) {
+    if let Some(dir) = Unit::try_new(dir, T::constant(crate::math::DEFAULT_EPSILON)) {
         simplex.reset(CSOPoint::from_shapes(pos12, g1, g2, &dir));
     } else {
         simplex.reset(CSOPoint::from_shapes(

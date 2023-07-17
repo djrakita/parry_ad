@@ -1,7 +1,7 @@
 #![allow(deprecated)] // Silence warning until we actually remove IntersectionCompositeShapeShapeBestFirstVisitor
 
 use crate::bounding_volume::SimdAabb;
-use crate::math::{Isometry, Real, SimdReal, Vector, SIMD_WIDTH};
+use crate::math::{Isometry, Vector, SIMD_WIDTH};
 use crate::partitioning::{
     SimdBestFirstVisitStatus, SimdBestFirstVisitor, SimdVisitStatus, SimdVisitor,
 };
@@ -19,7 +19,7 @@ pub fn intersection_test_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(
     g2: &dyn Shape<T>,
 ) -> bool
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     let mut visitor = IntersectionCompositeShapeShapeVisitor::new(dispatcher, pos12, g1, g2);
@@ -36,7 +36,7 @@ pub fn intersection_test_shape_composite_shape<D: ?Sized, G2: ?Sized, T: AD>(
     g2: &G2,
 ) -> bool
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G2: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     intersection_test_composite_shape_shape(dispatcher, &pos12.inverse(), g2, g1)
@@ -56,7 +56,7 @@ pub struct IntersectionCompositeShapeShapeVisitor<'a, D: ?Sized, G1: ?Sized + 'a
 
 impl<'a, D: ?Sized, G1: ?Sized, T: AD> IntersectionCompositeShapeShapeVisitor<'a, D, G1, T>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     /// Initialize a visitor for checking if a composite-shape and a shape intersect.
@@ -82,7 +82,7 @@ where
 impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdVisitor<G1::PartId, SimdAabb<T>>
     for IntersectionCompositeShapeShapeVisitor<'a, D, G1,T>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     fn visit(
@@ -133,7 +133,7 @@ pub struct IntersectionCompositeShapeShapeBestFirstVisitor<'a, D: ?Sized, G1: ?S
 
 impl<'a, D: ?Sized, G1: ?Sized, T: AD> IntersectionCompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     /// Initialize a visitor for checking if a composite-shape and a shape intersect.
@@ -159,7 +159,7 @@ where
 impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>, T>
     for IntersectionCompositeShapeShapeBestFirstVisitor<'a, D, G1, T>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     type Result = (G1::PartId, bool);
@@ -176,7 +176,7 @@ where
             maxs: bv.maxs + self.msum_shift + self.msum_margin,
         };
         let dist = msum.distance_to_origin();
-        let mask = dist.simd_lt(SimdReal::splat(best));
+        let mask = dist.simd_lt(best);
 
         if let Some(data) = data {
             let bitmask = mask.bitmask();

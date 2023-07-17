@@ -1,4 +1,4 @@
-use crate::math::{Isometry, Point, Real, Rotation, Vector};
+use crate::math::{Isometry, Point, Rotation, Vector};
 use crate::shape::{Segment, SupportMap};
 use na::Unit;
 
@@ -21,7 +21,7 @@ use ad_trait::AD;
 /// A capsule shape defined as a round segment.
 pub struct Capsule<T: AD> {
     /// The axis and endpoint of the capsule.
-    pub segment: Segment,
+    pub segment: Segment<T>,
     /// The radius of the capsule.
     pub radius: T,
 }
@@ -83,7 +83,7 @@ impl<T: AD> Capsule<T> {
     /// The rotation `r` such that `r * Y` is collinear with `b - a`.
     pub fn rotation_wrt_y(&self) -> Rotation<T> {
         let mut dir = self.segment.b - self.segment.a;
-        if dir.y < 0.0 {
+        if dir.y < T::zero() {
             dir = -dir;
         }
 
@@ -145,7 +145,7 @@ impl<T: AD> Capsule<T> {
         self,
         scale: &Vector<T>,
         nsubdivs: u32,
-    ) -> Option<Either<Self, super::ConvexPolyhedron>> {
+    ) -> Option<Either<Self, super::ConvexPolyhedron<T>>> {
         if scale.x != scale.y || scale.x != scale.z || scale.y != scale.z {
             // The scaled shape is not a capsule.
             let (mut vtx, idx) = self.to_trimesh(nsubdivs, nsubdivs);
@@ -165,7 +165,7 @@ impl<T: AD> Capsule<T> {
     }
 }
 
-impl<T: AD> SupportMap for Capsule<T> {
+impl<T: AD> SupportMap<T> for Capsule<T> {
     fn local_support_point(&self, dir: &Vector<T>) -> Point<T> {
         let dir = Unit::try_new(*dir, T::zero()).unwrap_or(Vector::y_axis());
         self.local_support_point_toward(&dir)

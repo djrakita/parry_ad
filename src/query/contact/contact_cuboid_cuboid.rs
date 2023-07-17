@@ -42,7 +42,7 @@ pub fn contact_cuboid_cuboid<T: AD>(
         let proj1 = cuboid1.project_local_point(&pt2_1, false);
 
         let separation = (pt2_1 - proj1.point).dot(&sep1.1);
-        let normalized_dir = Unit::try_new_and_get(pt2_1 - proj1.point, Real::default_epsilon());
+        let normalized_dir = Unit::try_new_and_get(pt2_1 - proj1.point, T::constant(f64::default_epsilon()));
         let normal1;
         let dist;
 
@@ -81,7 +81,7 @@ pub fn contact_cuboid_cuboid<T: AD>(
         let proj2 = cuboid2.project_local_point(&pt1_2, false);
 
         let separation = (pt1_2 - proj2.point).dot(&sep2.1);
-        let normalized_dir = Unit::try_new_and_get(pt1_2 - proj2.point, Real::default_epsilon());
+        let normalized_dir = Unit::try_new_and_get(pt1_2 - proj2.point, T::constant(f64::default_epsilon()));
         let normal2;
         let dist;
 

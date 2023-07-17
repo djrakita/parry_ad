@@ -9,7 +9,7 @@ pub fn contact_manifold_ball_ball_shapes<T: AD, ManifoldData, ContactData: Defau
     shape1: &dyn Shape<T>,
     shape2: &dyn Shape<T>,
     prediction: T,
-    manifold: &mut ContactManifold<T, ManifoldData, ContactData>,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
 ) {
     if let (Some(ball1), Some(ball2)) = (shape1.as_ball(), shape2.as_ball()) {
         contact_manifold_ball_ball(pos12, ball1, ball2, prediction, manifold);
@@ -22,7 +22,7 @@ pub fn contact_manifold_ball_ball<T: AD, ManifoldData, ContactData: Default + Co
     ball1: &Ball<T>,
     ball2: &Ball<T>,
     prediction: T,
-    manifold: &mut ContactManifold<T, ManifoldData, ContactData>,
+    manifold: &mut ContactManifold<ManifoldData, ContactData, T>,
 ) {
     let radius_a = ball1.radius;
     let radius_b = ball2.radius;

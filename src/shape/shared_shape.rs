@@ -1,4 +1,4 @@
-use crate::math::{Isometry, Point, Real, Vector, DIM};
+use crate::math::{Isometry, Point, Vector, DIM};
 #[cfg(feature = "dim2")]
 use crate::shape::ConvexPolygon;
 #[cfg(feature = "serde-serialize")]
@@ -17,30 +17,30 @@ use ad_trait::AD;
 
 /// The shape of a collider.
 #[derive(Clone)]
-pub struct SharedShape<T: AD>(pub Arc<dyn Shape>);
+pub struct SharedShape<T: AD>(pub Arc<dyn Shape<T>>);
 
 impl<T: AD> Deref for SharedShape<T> {
-    type Target = dyn Shape;
-    fn deref(&self) -> &dyn Shape {
+    type Target = dyn Shape<T>;
+    fn deref(&self) -> &dyn Shape<T> {
         &*self.0
     }
 }
 
-impl<T: AD> AsRef<dyn Shape> for SharedShape<T> {
-    fn as_ref(&self) -> &dyn Shape {
+impl<T: AD> AsRef<dyn Shape<T>> for SharedShape<T> {
+    fn as_ref(&self) -> &dyn Shape<T> {
         &*self.0
     }
 }
 
 impl<T: AD> SharedShape<T> {
     /// Wraps the given shape as a shared shape.
-    pub fn new(shape: impl Shape) -> Self {
+    pub fn new(shape: impl Shape<T>) -> Self {
         Self(Arc::new(shape))
     }
 
     /// If this shape is shared, then the content of `self` is cloned into a unique instance,
     /// and a mutable reference to that instance is returned.
-    pub fn make_mut(&mut self) -> &mut dyn Shape {
+    pub fn make_mut(&mut self) -> &mut dyn Shape<T> {
         if Arc::get_mut(&mut self.0).is_none() {
             let unique_self = self.0.clone_box();
             self.0 = unique_self.into();
@@ -49,26 +49,26 @@ impl<T: AD> SharedShape<T> {
     }
 
     /// Initialize a compound shape defined by its subshapes.
-    pub fn compound(shapes: Vec<(Isometry<Real>, SharedShape)>) -> Self {
+    pub fn compound(shapes: Vec<(Isometry<T>, SharedShape<T>)>) -> Self {
         let raw_shapes = shapes.into_iter().map(|s| (s.0, s.1)).collect();
         let compound = Compound::new(raw_shapes);
         SharedShape(Arc::new(compound))
     }
 
     /// Initialize a ball shape defined by its radius.
-    pub fn ball(radius: Real) -> Self {
+    pub fn ball(radius: T) -> Self {
         SharedShape(Arc::new(Ball::new(radius)))
     }
 
     /// Initialize a plane shape defined by its outward normal.
-    pub fn halfspace(outward_normal: Unit<Vector<Real>>) -> Self {
+    pub fn halfspace(outward_normal: Unit<Vector<T>>) -> Self {
         SharedShape(Arc::new(HalfSpace::new(outward_normal)))
     }
 
     /// Initialize a cylindrical shape defined by its half-height
     /// (along along the y axis) and its radius.
     #[cfg(feature = "dim3")]
-    pub fn cylinder(half_height: Real, radius: Real) -> Self {
+    pub fn cylinder(half_height: T, radius: T) -> Self {
         SharedShape(Arc::new(Cylinder::new(half_height, radius)))
     }
 
@@ -76,7 +76,7 @@ impl<T: AD> SharedShape<T> {
     /// (along along the y axis), its radius, and its roundedness (the
     /// radius of the sphere used for dilating the cylinder).
     #[cfg(feature = "dim3")]
-    pub fn round_cylinder(half_height: Real, radius: Real, border_radius: Real) -> Self {
+    pub fn round_cylinder(half_height: T, radius: T, border_radius: T) -> Self {
         SharedShape(Arc::new(RoundShape {
             inner_shape: Cylinder::new(half_height, radius),
             border_radius,
@@ -87,7 +87,7 @@ impl<T: AD> SharedShape<T> {
     /// (along along the y axis), its radius, and its roundedness (the
     /// radius of the sphere used for dilating the cylinder).
     #[cfg(feature = "dim3")]
-    pub fn round_cone(half_height: Real, radius: Real, border_radius: Real) -> Self {
+    pub fn round_cone(half_height: T, radius: T, border_radius: T) -> Self {
         SharedShape(Arc::new(RoundShape {
             inner_shape: Cone::new(half_height, radius),
             border_radius,
@@ -97,19 +97,19 @@ impl<T: AD> SharedShape<T> {
     /// Initialize a cone shape defined by its half-height
     /// (along along the y axis) and its basis radius.
     #[cfg(feature = "dim3")]
-    pub fn cone(half_height: Real, radius: Real) -> Self {
+    pub fn cone(half_height: T, radius: T) -> Self {
         SharedShape(Arc::new(Cone::new(half_height, radius)))
     }
 
     /// Initialize a cuboid shape defined by its half-extents.
     #[cfg(feature = "dim2")]
-    pub fn cuboid(hx: Real, hy: Real) -> Self {
+    pub fn cuboid(hx: T, hy: T) -> Self {
         SharedShape(Arc::new(Cuboid::new(Vector::new(hx, hy))))
     }
 
     /// Initialize a round cuboid shape defined by its half-extents and border radius.
     #[cfg(feature = "dim2")]
-    pub fn round_cuboid(hx: Real, hy: Real, border_radius: Real) -> Self {
+    pub fn round_cuboid(hx: T, hy: T, border_radius: T) -> Self {
         SharedShape(Arc::new(RoundShape {
             inner_shape: Cuboid::new(Vector::new(hx, hy)),
             border_radius,
@@ -118,13 +118,13 @@ impl<T: AD> SharedShape<T> {
 
     /// Initialize a cuboid shape defined by its half-extents.
     #[cfg(feature = "dim3")]
-    pub fn cuboid(hx: Real, hy: Real, hz: Real) -> Self {
+    pub fn cuboid(hx: T, hy: T, hz: T) -> Self {
         SharedShape(Arc::new(Cuboid::new(Vector::new(hx, hy, hz))))
     }
 
     /// Initialize a round cuboid shape defined by its half-extents and border radius.
     #[cfg(feature = "dim3")]
-    pub fn round_cuboid(hx: Real, hy: Real, hz: Real, border_radius: Real) -> Self {
+    pub fn round_cuboid(hx: T, hy: T, hz: T, border_radius: T) -> Self {
         SharedShape(Arc::new(RoundShape {
             inner_shape: Cuboid::new(Vector::new(hx, hy, hz)),
             border_radius,
@@ -132,44 +132,44 @@ impl<T: AD> SharedShape<T> {
     }
 
     /// Initialize a capsule shape from its endpoints and radius.
-    pub fn capsule(a: Point<Real>, b: Point<Real>, radius: Real) -> Self {
+    pub fn capsule(a: Point<T>, b: Point<T>, radius: T) -> Self {
         SharedShape(Arc::new(Capsule::new(a, b, radius)))
     }
 
     /// Initialize a capsule shape aligned with the `x` axis.
-    pub fn capsule_x(half_height: Real, radius: Real) -> Self {
+    pub fn capsule_x(half_height: T, radius: T) -> Self {
         let p = Point::from(Vector::x() * half_height);
         Self::capsule(-p, p, radius)
     }
 
     /// Initialize a capsule shape aligned with the `y` axis.
-    pub fn capsule_y(half_height: Real, radius: Real) -> Self {
+    pub fn capsule_y(half_height: T, radius: T) -> Self {
         let p = Point::from(Vector::y() * half_height);
         Self::capsule(-p, p, radius)
     }
 
     /// Initialize a capsule shape aligned with the `z` axis.
     #[cfg(feature = "dim3")]
-    pub fn capsule_z(half_height: Real, radius: Real) -> Self {
+    pub fn capsule_z(half_height: T, radius: T) -> Self {
         let p = Point::from(Vector::z() * half_height);
         Self::capsule(-p, p, radius)
     }
 
     /// Initialize a segment shape from its endpoints.
-    pub fn segment(a: Point<Real>, b: Point<Real>) -> Self {
+    pub fn segment(a: Point<T>, b: Point<T>) -> Self {
         SharedShape(Arc::new(Segment::new(a, b)))
     }
 
     /// Initializes a triangle shape.
-    pub fn triangle(a: Point<Real>, b: Point<Real>, c: Point<Real>) -> Self {
+    pub fn triangle(a: Point<T>, b: Point<T>, c: Point<T>) -> Self {
         SharedShape(Arc::new(Triangle::new(a, b, c)))
     }
     /// Initializes a triangle shape with round corners.
     pub fn round_triangle(
-        a: Point<Real>,
-        b: Point<Real>,
-        c: Point<Real>,
-        border_radius: Real,
+        a: Point<T>,
+        b: Point<T>,
+        c: Point<T>,
+        border_radius: T,
     ) -> Self {
         SharedShape(Arc::new(RoundShape {
             inner_shape: Triangle::new(a, b, c),
@@ -180,19 +180,19 @@ impl<T: AD> SharedShape<T> {
     /// Initializes a polyline shape defined by its vertex and index buffers.
     ///
     /// If no index buffer is provided, the polyline is assumed to describe a line strip.
-    pub fn polyline(vertices: Vec<Point<Real>>, indices: Option<Vec<[u32; 2]>>) -> Self {
+    pub fn polyline(vertices: Vec<Point<T>>, indices: Option<Vec<[u32; 2]>>) -> Self {
         SharedShape(Arc::new(Polyline::new(vertices, indices)))
     }
 
     /// Initializes a triangle mesh shape defined by its vertex and index buffers.
-    pub fn trimesh(vertices: Vec<Point<Real>>, indices: Vec<[u32; 3]>) -> Self {
+    pub fn trimesh(vertices: Vec<Point<T>>, indices: Vec<[u32; 3]>) -> Self {
         SharedShape(Arc::new(TriMesh::new(vertices, indices)))
     }
 
     /// Initializes a triangle mesh shape defined by its vertex and index buffers and
     /// pre-processing flags.
     pub fn trimesh_with_flags(
-        vertices: Vec<Point<Real>>,
+        vertices: Vec<Point<T>>,
         indices: Vec<[u32; 3]>,
         flags: TriMeshFlags,
     ) -> Self {
@@ -201,16 +201,16 @@ impl<T: AD> SharedShape<T> {
 
     /// Initializes a compound shape obtained from the decomposition of the given trimesh (in 3D) or
     /// polyline (in 2D) into convex parts.
-    pub fn convex_decomposition(vertices: &[Point<Real>], indices: &[[u32; DIM]]) -> Self {
+    pub fn convex_decomposition(vertices: &[Point<T>], indices: &[[u32; DIM]]) -> Self {
         Self::convex_decomposition_with_params(vertices, indices, &VHACDParameters::default())
     }
 
     /// Initializes a compound shape obtained from the decomposition of the given trimesh (in 3D) or
     /// polyline (in 2D) into convex parts dilated with round corners.
     pub fn round_convex_decomposition(
-        vertices: &[Point<Real>],
+        vertices: &[Point<T>],
         indices: &[[u32; DIM]],
-        border_radius: Real,
+        border_radius: T,
     ) -> Self {
         Self::round_convex_decomposition_with_params(
             vertices,
@@ -223,9 +223,9 @@ impl<T: AD> SharedShape<T> {
     /// Initializes a compound shape obtained from the decomposition of the given trimesh (in 3D) or
     /// polyline (in 2D) into convex parts.
     pub fn convex_decomposition_with_params(
-        vertices: &[Point<Real>],
+        vertices: &[Point<T>],
         indices: &[[u32; DIM]],
-        params: &VHACDParameters,
+        params: &VHACDParameters<T>,
     ) -> Self {
         let mut parts = vec![];
         let decomp = VHACD::decompose(params, &vertices, &indices, true);
@@ -250,10 +250,10 @@ impl<T: AD> SharedShape<T> {
     /// Initializes a compound shape obtained from the decomposition of the given trimesh (in 3D) or
     /// polyline (in 2D) into convex parts dilated with round corners.
     pub fn round_convex_decomposition_with_params(
-        vertices: &[Point<Real>],
+        vertices: &[Point<T>],
         indices: &[[u32; DIM]],
-        params: &VHACDParameters,
-        border_radius: Real,
+        params: &VHACDParameters<T>,
+        border_radius: T,
     ) -> Self {
         let mut parts = vec![];
         let decomp = VHACD::decompose(params, &vertices, &indices, true);
@@ -276,7 +276,7 @@ impl<T: AD> SharedShape<T> {
     }
 
     /// Creates a new shared shape that is the convex-hull of the given points.
-    pub fn convex_hull(points: &[Point<Real>]) -> Option<Self> {
+    pub fn convex_hull(points: &[Point<T>]) -> Option<Self> {
         #[cfg(feature = "dim2")]
         return ConvexPolygon::from_convex_hull(points).map(|ch| SharedShape(Arc::new(ch)));
         #[cfg(feature = "dim3")]
@@ -287,7 +287,7 @@ impl<T: AD> SharedShape<T> {
     /// given set of points assumed to form a convex polyline (no convex-hull will be automatically
     /// computed).
     #[cfg(feature = "dim2")]
-    pub fn convex_polyline(points: Vec<Point<Real>>) -> Option<Self> {
+    pub fn convex_polyline(points: Vec<Point<T>>) -> Option<Self> {
         ConvexPolygon::from_convex_polyline(points).map(|ch| SharedShape(Arc::new(ch)))
     }
 
@@ -295,13 +295,13 @@ impl<T: AD> SharedShape<T> {
     /// given set of points assumed to form a convex mesh (no convex-hull will be automatically
     /// computed).
     #[cfg(feature = "dim3")]
-    pub fn convex_mesh(points: Vec<Point<Real>>, indices: &[[u32; 3]]) -> Option<Self> {
+    pub fn convex_mesh(points: Vec<Point<T>>, indices: &[[u32; 3]]) -> Option<Self> {
         ConvexPolyhedron::from_convex_mesh(points, indices).map(|ch| SharedShape(Arc::new(ch)))
     }
 
     /// Creates a new shared shape with rounded corners that is the
     /// convex-hull of the given points, dilated by `border_radius`.
-    pub fn round_convex_hull(points: &[Point<Real>], border_radius: Real) -> Option<Self> {
+    pub fn round_convex_hull(points: &[Point<T>], border_radius: T) -> Option<Self> {
         #[cfg(feature = "dim2")]
         return ConvexPolygon::from_convex_hull(points).map(|ch| {
             SharedShape(Arc::new(RoundShape {
@@ -322,7 +322,7 @@ impl<T: AD> SharedShape<T> {
     /// given set of points assumed to form a convex polyline (no convex-hull will be automatically
     /// computed).
     #[cfg(feature = "dim2")]
-    pub fn round_convex_polyline(points: Vec<Point<Real>>, border_radius: Real) -> Option<Self> {
+    pub fn round_convex_polyline(points: Vec<Point<T>>, border_radius: T) -> Option<Self> {
         ConvexPolygon::from_convex_polyline(points).map(|ch| {
             SharedShape(Arc::new(RoundShape {
                 inner_shape: ch,
@@ -336,9 +336,9 @@ impl<T: AD> SharedShape<T> {
     /// computed).
     #[cfg(feature = "dim3")]
     pub fn round_convex_mesh(
-        points: Vec<Point<Real>>,
+        points: Vec<Point<T>>,
         indices: &[[u32; 3]],
-        border_radius: Real,
+        border_radius: T,
     ) -> Option<Self> {
         ConvexPolyhedron::from_convex_mesh(points, indices).map(|ch| {
             SharedShape(Arc::new(RoundShape {
@@ -351,20 +351,20 @@ impl<T: AD> SharedShape<T> {
     /// Initializes an heightfield shape defined by its set of height and a scale
     /// factor along each coordinate axis.
     #[cfg(feature = "dim2")]
-    pub fn heightfield(heights: na::DVector<Real>, scale: Vector<Real>) -> Self {
+    pub fn heightfield(heights: na::DVector<T>, scale: Vector<T>) -> Self {
         SharedShape(Arc::new(HeightField::new(heights, scale)))
     }
 
     /// Initializes an heightfield shape on the x-z plane defined by its set of height and a scale
     /// factor along each coordinate axis.
     #[cfg(feature = "dim3")]
-    pub fn heightfield(heights: na::DMatrix<Real>, scale: Vector<Real>) -> Self {
+    pub fn heightfield(heights: na::DMatrix<T>, scale: Vector<T>) -> Self {
         SharedShape(Arc::new(HeightField::new(heights, scale)))
     }
 }
 
 #[cfg(feature = "serde-serialize")]
-impl serde::Serialize for SharedShape {
+impl<T: AD> serde::Serialize for SharedShape<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -374,7 +374,7 @@ impl serde::Serialize for SharedShape {
 }
 
 #[cfg(feature = "serde-serialize")]
-impl<'de> serde::Deserialize<'de> for SharedShape {
+impl<'de, T: AD> serde::Deserialize<'de> for SharedShape<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,

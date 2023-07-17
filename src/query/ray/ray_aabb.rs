@@ -20,7 +20,7 @@ impl<T: AD> RayCast<T> for Aabb<T> {
                     return None;
                 }
             } else {
-                let denom = 1.0 / ray.dir[i];
+                let denom = T::one() / ray.dir[i];
                 let mut inter_with_near_halfspace = (self.mins[i] - ray.origin[i]) * denom;
                 let mut inter_with_far_halfspace = (self.maxs[i] - ray.origin[i]) * denom;
 

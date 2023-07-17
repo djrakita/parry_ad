@@ -17,7 +17,7 @@ pub fn closest_points_composite_shape_shape<D: ?Sized, G1: ?Sized, T: AD>(
     margin: T,
 ) -> ClosestPoints<T>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     let mut visitor =
@@ -39,7 +39,7 @@ pub fn closest_points_shape_composite_shape<D: ?Sized, G2: ?Sized, T: AD>(
     margin: T,
 ) -> ClosestPoints<T>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G2: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     closest_points_composite_shape_shape(dispatcher, &pos12.inverse(), g2, g1, margin).flipped()
@@ -59,7 +59,7 @@ pub struct CompositeShapeAgainstShapeClosestPointsVisitor<'a, D: ?Sized, G1: ?Si
 
 impl<'a, D: ?Sized, G1: ?Sized, T: AD> CompositeShapeAgainstShapeClosestPointsVisitor<'a, D, G1, T>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     /// Initializes a visitor for computing the closest points between a composite-shape and a shape.
@@ -87,7 +87,7 @@ where
 impl<'a, D: ?Sized, G1: ?Sized, T: AD> SimdBestFirstVisitor<G1::PartId, SimdAabb<T>, T>
     for CompositeShapeAgainstShapeClosestPointsVisitor<'a, D, G1, T>
 where
-    D: QueryDispatcher,
+    D: QueryDispatcher<T>,
     G1: TypedSimdCompositeShape<T, QbvhStorage = DefaultStorage>,
 {
     type Result = (G1::PartId, ClosestPoints<T>);

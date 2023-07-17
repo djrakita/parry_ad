@@ -6,13 +6,13 @@ use crate::shape::{FeatureId, GenericHeightField, HeightFieldStorage, TrianglePo
 #[cfg(not(feature = "std"))]
 use na::ComplexField; // For sqrt.
 
-impl<Storage: HeightFieldStorage<T>, T: AD> PointQuery for GenericHeightField<Storage, T> {
+impl<Storage: HeightFieldStorage<T>, T: AD> PointQuery<T> for GenericHeightField<Storage, T> {
     fn project_local_point_with_max_dist(
         &self,
         pt: &Point<T>,
         solid: bool,
         max_dist: T,
-    ) -> Option<PointProjection> {
+    ) -> Option<PointProjection<T>> {
         let aabb = Aabb::new(pt - Vector::repeat(max_dist), pt + Vector::repeat(max_dist));
         let mut sq_smallest_dist = T::constant(f64::MAX);
         let mut best_proj = None;
@@ -34,7 +34,7 @@ impl<Storage: HeightFieldStorage<T>, T: AD> PointQuery for GenericHeightField<St
     }
 
     #[inline]
-    fn project_local_point(&self, point: &Point<T>, _: bool) -> PointProjection {
+    fn project_local_point(&self, point: &Point<T>, _: bool) -> PointProjection <T>{
         let mut smallest_dist = T::constant(f64::MAX);
         let mut best_proj = PointProjection::new(false, *point);
 
@@ -59,7 +59,7 @@ impl<Storage: HeightFieldStorage<T>, T: AD> PointQuery for GenericHeightField<St
     fn project_local_point_and_get_feature(
         &self,
         point: &Point<T>,
-    ) -> (PointProjection, FeatureId) {
+    ) -> (PointProjection<T>, FeatureId) {
         // FIXME: compute the feature properly.
         (self.project_local_point(point, false), FeatureId::Unknown)
     }
@@ -72,7 +72,7 @@ impl<Storage: HeightFieldStorage<T>, T: AD> PointQuery for GenericHeightField<St
     }
 }
 
-impl<Storage: HeightFieldStorage<T>, T: AD> PointQueryWithLocation for GenericHeightField<Storage, T> {
+impl<Storage: HeightFieldStorage<T>, T: AD> PointQueryWithLocation<T> for GenericHeightField<Storage, T> {
     type Location = (usize, TrianglePointLocation<T>);
 
     #[inline]
@@ -80,7 +80,7 @@ impl<Storage: HeightFieldStorage<T>, T: AD> PointQueryWithLocation for GenericHe
         &self,
         _point: &Point<T>,
         _: bool,
-    ) -> (PointProjection, Self::Location) {
+    ) -> (PointProjection<T>, Self::Location) {
         unimplemented!()
     }
 }

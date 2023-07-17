@@ -7,7 +7,7 @@ use ad_trait::AD;
 
 #[cfg(feature = "std")]
 /// A query dispatcher for queries relying on spatial coherence, including contact-manifold computation.
-pub trait PersistentQueryDispatcher<T: AD, ManifoldData = (), ContactData = ()>: QueryDispatcher {
+pub trait PersistentQueryDispatcher<T: AD, ManifoldData = (), ContactData = ()>: QueryDispatcher<T> {
     /// Compute all the contacts between two shapes.
     ///
     /// The output is written into `manifolds` and `context`. Both can persist
@@ -174,14 +174,14 @@ where
         g1: &dyn Shape<A>,
         g2: &dyn Shape<A>,
         prediction: A,
-    ) -> Option<Contact>);
+    ) -> Option<Contact<A>>);
 
     chain_method!(closest_points(
         pos12: &Isometry<A>,
         g1: &dyn Shape<A>,
         g2: &dyn Shape<A>,
         max_dist: A,
-    ) -> ClosestPoints);
+    ) -> ClosestPoints<A>);
 
     chain_method!(time_of_impact(
         pos12: &Isometry<A>,
@@ -204,7 +204,7 @@ where
 }
 
 #[cfg(feature = "std")]
-impl<ManifoldData, ContactData, T, U, A: AD> PersistentQueryDispatcher<ManifoldData, ContactData, A>
+impl<ManifoldData, ContactData, T, U, A: AD> PersistentQueryDispatcher<A, ManifoldData, ContactData>
     for QueryDispatcherChain<T, U>
 where
     T: PersistentQueryDispatcher<A, ManifoldData, ContactData>,

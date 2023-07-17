@@ -1,6 +1,7 @@
 use crate::bounding_volume::BoundingSphere;
 use crate::math::{Isometry, Point};
 use crate::shape::Cuboid;
+use ad_trait::AD;
 
 impl<T: AD> Cuboid<T> {
     /// Computes the world-space bounding sphere of this cuboid, transformed by `pos`.

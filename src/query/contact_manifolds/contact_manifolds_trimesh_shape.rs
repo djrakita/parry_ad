@@ -36,13 +36,13 @@ impl<T: AD> TriMeshShapeContactManifoldsWorkspace<T> {
 
 /// Computes the contact manifold between a triangle-mesh an a shape, both represented as `Shape` trait-objects.
 pub fn contact_manifolds_trimesh_shape_shapes<ManifoldData, ContactData, T: AD>(
-    dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
+    dispatcher: &dyn PersistentQueryDispatcher<T, ManifoldData, ContactData>,
     pos12: &Isometry<T>,
     shape1: &dyn Shape<T>,
     shape2: &dyn Shape<T>,
     prediction: T,
     manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
-    workspace: &mut Option<ContactManifoldsWorkspace>,
+    workspace: &mut Option<ContactManifoldsWorkspace<T>>,
 ) where
     ManifoldData: Default,
     ContactData: Default + Copy,
@@ -65,7 +65,7 @@ pub fn contact_manifolds_trimesh_shape_shapes<ManifoldData, ContactData, T: AD>(
     }
 }
 
-fn ensure_workspace_exists<T: AD>(workspace: &mut Option<ContactManifoldsWorkspace>) {
+fn ensure_workspace_exists<T: AD>(workspace: &mut Option<ContactManifoldsWorkspace<T>>) {
     if workspace
         .as_mut()
         .and_then(|w| w.0.downcast_mut::<TriMeshShapeContactManifoldsWorkspace<T>>())
@@ -81,13 +81,13 @@ fn ensure_workspace_exists<T: AD>(workspace: &mut Option<ContactManifoldsWorkspa
 
 /// Computes the contact manifold between a triangle-mesh and a shape.
 pub fn contact_manifolds_trimesh_shape<ManifoldData, ContactData, T: AD>(
-    dispatcher: &dyn PersistentQueryDispatcher<ManifoldData, ContactData>,
+    dispatcher: &dyn PersistentQueryDispatcher<T, ManifoldData, ContactData>,
     pos12: &Isometry<T>,
     trimesh1: &TriMesh<T>,
     shape2: &dyn Shape<T>,
     prediction: T,
     manifolds: &mut Vec<ContactManifold<ManifoldData, ContactData, T>>,
-    workspace: &mut Option<ContactManifoldsWorkspace>,
+    workspace: &mut Option<ContactManifoldsWorkspace<T>>,
     flipped: bool,
 ) where
     ManifoldData: Default,
@@ -210,12 +210,12 @@ pub fn contact_manifolds_trimesh_shape<ManifoldData, ContactData, T: AD>(
     );
 }
 
-impl<T: AD> WorkspaceData for TriMeshShapeContactManifoldsWorkspace<T> {
-    fn as_typed_workspace_data(&self) -> TypedWorkspaceData {
+impl<T: AD> WorkspaceData<T> for TriMeshShapeContactManifoldsWorkspace<T> {
+    fn as_typed_workspace_data(&self) -> TypedWorkspaceData<T> {
         TypedWorkspaceData::TriMeshShapeContactManifoldsWorkspace(self)
     }
 
-    fn clone_dyn(&self) -> Box<dyn WorkspaceData> {
+    fn clone_dyn(&self) -> Box<dyn WorkspaceData<T>> {
         Box::new(self.clone())
     }
 }

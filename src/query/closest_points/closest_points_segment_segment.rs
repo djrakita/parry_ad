@@ -58,7 +58,7 @@ pub fn closest_points_segment_segment_with_locations_nD<T: AD, const D: usize>(
     let mut s;
     let mut t;
 
-    let _eps = crate::math::DEFAULT_EPSILON;
+    let _eps = T::constant(crate::math::DEFAULT_EPSILON);
     if a <= _eps && e <= _eps {
         s = _0;
         t = _0;
