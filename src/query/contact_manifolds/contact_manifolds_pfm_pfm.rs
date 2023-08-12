@@ -1,3 +1,4 @@
+use ad_trait::{AD};
 use crate::math::{Isometry};
 use crate::query::{
     self,
@@ -5,12 +6,11 @@ use crate::query::{
     ContactManifold, TrackedContact,
 };
 use crate::shape::{PackedFeatureId, PolygonalFeature, PolygonalFeatureMap, Shape};
-use na::{ArrayStorage, Const, Unit};
-use ad_trait::{NalgebraMatMulNoRefAD, NalgebraPointMulNoRefAD};
+use na::{Unit};
 
 /// Computes the contact manifold between two convex shapes implementing the `PolygonalSupportMap`
 /// trait, both represented as `Shape` trait-objects.
-pub fn contact_manifold_pfm_pfm_shapes<ManifoldData, ContactData, T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>>(
+pub fn contact_manifold_pfm_pfm_shapes<ManifoldData, ContactData, T: AD>(
     pos12: &Isometry<T>,
     shape1: &dyn Shape<T>,
     shape2: &dyn Shape<T>,
@@ -37,7 +37,7 @@ pub fn contact_manifold_pfm_pfm_shapes<ManifoldData, ContactData, T: NalgebraMat
 }
 
 /// Computes the contact manifold between two convex shapes implementing the `PolygonalSupportMap` trait.
-pub fn contact_manifold_pfm_pfm<ManifoldData, ContactData, S1, S2, T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>>(
+pub fn contact_manifold_pfm_pfm<ManifoldData, ContactData, S1, S2, T: AD>(
     pos12: &Isometry<T>,
     pfm1: &S1,
     border_radius1: T,

@@ -1,4 +1,4 @@
-use ad_trait::{AD, NalgebraMatMulNoRefAD, NalgebraPointMulNoRefAD};
+use ad_trait::{AD};
 use crate::approx::AbsDiffEq;
 use crate::math::{Isometry, Point, Vector};
 #[cfg(feature = "std")]
@@ -6,7 +6,7 @@ use crate::query::{ContactManifold, TrackedContact};
 use crate::shape::{PackedFeatureId, Segment, Triangle};
 use crate::utils::WBasis;
 use na::Point2;
-use nalgebra::{Const, ArrayStorage};
+
 
 /// A polygonal feature representing the local polygonal approximation of
 /// a vertex, face, or edge of a convex shape.
@@ -60,7 +60,7 @@ impl<T: AD> From<Segment<T>> for PolygonalFeature<T> {
     }
 }
 
-impl<T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>> PolygonalFeature<T> {
+impl<T: AD> PolygonalFeature<T> {
     /// Creates a new empty polygonal feature.
     pub fn new() -> Self {
         Self::default()
@@ -158,8 +158,8 @@ impl<T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + Nalge
 
                 let edge1: (Point<T>, Point<T>) = (face1.vertices[0], face1.vertices[1]);
                 let edge2: (Point<T>, Point<T>) = (vertices2_1[0], vertices2_1[1]);
-                let local_p1: Point<T> = bcoords1[0]*edge1.0 + bcoords1[1]*edge1.1.coords;
-                let local_p2_1: Point<T> = bcoords2[0]*edge2.0 + bcoords2[1]*edge2.1.coords;
+                let local_p1: Point<T> = (bcoords1[0].mul_by_nalgebra_matrix_ref(&edge1.0.coords) + bcoords1[1].mul_by_nalgebra_matrix_ref(&edge1.1.coords)).into();
+                let local_p2_1: Point<T> = (bcoords2[0].mul_by_nalgebra_matrix_ref(&edge2.0.coords) + bcoords2[1].mul_by_nalgebra_matrix_ref(&edge2.1.coords)).into();
                 let dist = (local_p2_1 - local_p1).dot(&sep_axis1);
 
                 if dist <= prediction {
@@ -300,7 +300,7 @@ impl<T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + Nalge
                     // Output the contact.
                     let dist = (vertices2_1[0] - face1.vertices[i]).dot(&normal2_1) / denom;
                     let local_p1 = face1.vertices[i];
-                    let local_p2_1 = face1.vertices[i] + dist * *sep_axis1;
+                    let local_p2_1 = face1.vertices[i] + dist.mul_by_nalgebra_matrix_ref(&sep_axis1);
 
                     if dist <= prediction {
                         manifold.points.push(TrackedContact::flipped(
@@ -344,7 +344,7 @@ impl<T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + Nalge
                     // Output the contact.
                     let dist = (face1.vertices[0] - vertices2_1[i]).dot(&normal1) / denom;
                     let local_p2_1 = vertices2_1[i];
-                    let local_p1 = vertices2_1[i] - dist * *sep_axis1;
+                    let local_p1 = vertices2_1[i] - dist.mul_by_nalgebra_matrix_ref(&sep_axis1);
 
                     if true {
                         // dist <= prediction {

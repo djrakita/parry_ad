@@ -9,8 +9,7 @@ use crate::query::{
     ContactManifold,
 };
 use crate::shape::{HalfSpace, Segment, Shape, ShapeType};
-use ad_trait::{AD, NalgebraMatMulNoRefAD, NalgebraPointMulNoRefAD};
-use na::{ArrayStorage, Const};
+use ad_trait::{AD};
 
 /// A dispatcher that exposes built-in queries
 #[derive(Debug, Clone)]
@@ -430,7 +429,7 @@ impl<T: AD> QueryDispatcher<T> for DefaultQueryDispatcher {
 }
 
 #[cfg(feature = "std")]
-impl<T: NalgebraMatMulNoRefAD<Const<3>, Const<1>, ArrayStorage<T, 3, 1>> + NalgebraPointMulNoRefAD<Const<3>>, ManifoldData, ContactData> PersistentQueryDispatcher<T, ManifoldData, ContactData>
+impl<T: AD, ManifoldData, ContactData> PersistentQueryDispatcher<T, ManifoldData, ContactData>
     for DefaultQueryDispatcher
 where
     ManifoldData: Default + Clone,
