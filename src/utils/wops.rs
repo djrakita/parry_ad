@@ -404,13 +404,13 @@ impl WDot<SimdReal> for SimdReal {
 
 
 pub fn copy_sign_to_vector2<T: AD>(from: Vector2<T>, to: Vector2<T>) -> Vector2<T> {
-    Vector2::new(from.x.copy_sign_to(to.x), from.y.copy_sign_to(to.y))
+    Vector2::new(to.x.copy_sign_to(from.x), to.y.copy_sign_to(from.y))
 }
 
 pub fn copy_sign_to_vector3<T: AD>(from: Vector3<T>, to: Vector3<T>) -> Vector3<T> {
     Vector3::new(
-        from.x.copy_sign_to(to.x),
-        from.y.copy_sign_to(to.y),
-        from.z.copy_sign_to(to.z),
+        to.x.copy_sign_to(from.x),
+        to.y.copy_sign_to(from.y),
+        to.z.copy_sign_to(from.z),
     )
 }
