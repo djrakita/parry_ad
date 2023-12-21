@@ -1,7 +1,7 @@
 #[cfg(feature = "std")]
 pub use self::{
     build::{
-        BuilderProxies, CenterDataSplitter, QbvhDataGenerator, QbvhNonOverlappingDataSplitter,
+        CenterDataSplitter, QbvhDataGenerator, QbvhNonOverlappingDataSplitter,
     },
     update::QbvhUpdateWorkspace,
 };

@@ -30,7 +30,7 @@ pub struct Aabb<T: AD> {
     pub maxs: Point<T>,
 }
 
-impl<T: AD> Aabb<T> {
+impl<T: AD + na::ComplexField> Aabb<T> {
     /// The vertex indices of each edge of this Aabb.
     ///
     /// This gives, for each edge of this Aabb, the indices of its
