@@ -61,7 +61,8 @@ cust_core  = { version = "0.1", optional = true }
 spade      = { version = "2", optional = true } # Make this optional?
 rayon      = { version = "1", optional = true }
 bytemuck   = { version = "1", features = [ "derive" ], optional = true }
-ad_trait   = { path = "/Users/djrakita/Documents/ad_trait" }
+# ad_trait = { path = "/Users/djrakita/Documents/ad_trait" }
+ad_trait = { git = "https://github.com/djrakita/ad_trait" }
 
 [target.'cfg(not(target_os = "cuda"))'.dependencies]
 cust       = { version = "0.3", optional = true }
