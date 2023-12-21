@@ -52,7 +52,7 @@ impl<'de, T: AD> serde::Deserialize<'de> for SimdAabb<T> {
     where
         D: serde::Deserializer<'de>,
     {
-        struct Visitor {}
+        struct Visitor<T: AD> {}
 
         #[derive(Deserialize)]
         #[serde(field_identifier, rename_all = "lowercase")]
@@ -61,7 +61,7 @@ impl<'de, T: AD> serde::Deserialize<'de> for SimdAabb<T> {
             Maxs,
         }
 
-        impl<'de, T: AD> serde::de::Visitor<'de> for Visitor {
+        impl<'de, T: AD> serde::de::Visitor<'de> for Visitor<T> {
             type Value = SimdAabb<T>;
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
                 write!(

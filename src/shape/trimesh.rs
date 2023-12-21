@@ -317,9 +317,9 @@ bitflags::bitflags! {
 #[cfg_attr(
     feature = "serde-serialize",
     serde(bound(
-        serialize = "<Storage::QbvhStorage as QbvhStorage<u32>>::Nodes: serde::Serialize, \
-                     <Storage::QbvhStorage as QbvhStorage<u32>>::ArrayU32: serde::Serialize, \
-                     <Storage::QbvhStorage as QbvhStorage<u32>>::ArrayProxies: serde::Serialize,\
+        serialize = "<Storage::QbvhStorage as QbvhStorage<u32, T>>::Nodes: serde::Serialize, \
+                     <Storage::QbvhStorage as QbvhStorage<u32, T>>::ArrayU32: serde::Serialize, \
+                     <Storage::QbvhStorage as QbvhStorage<u32, T>>::ArrayProxies: serde::Serialize,\
                      Storage::ArrayTopoVertex: serde::Serialize,\
                      Storage::ArrayTopoFace: serde::Serialize,\
                      Storage::ArrayTopoHalfEdge: serde::Serialize,\
@@ -329,9 +329,9 @@ bitflags::bitflags! {
                      Storage::ArrayPoint: serde::Serialize,\
                      Storage::ArrayIdx: serde::Serialize,\
                      Storage::ArrayVectorTriple: serde::Serialize",
-        deserialize = "<Storage::QbvhStorage as QbvhStorage<u32>>::Nodes: serde::Deserialize<'de>, \
-                     <Storage::QbvhStorage as QbvhStorage<u32>>::ArrayU32: serde::Deserialize<'de>, \
-                     <Storage::QbvhStorage as QbvhStorage<u32>>::ArrayProxies: serde::Deserialize<'de>,\
+        deserialize = "<Storage::QbvhStorage as QbvhStorage<u32, T>>::Nodes: serde::Deserialize<'de>, \
+                     <Storage::QbvhStorage as QbvhStorage<u32, T>>::ArrayU32: serde::Deserialize<'de>, \
+                     <Storage::QbvhStorage as QbvhStorage<u32, T>>::ArrayProxies: serde::Deserialize<'de>,\
                      Storage::ArrayTopoVertex: serde::Deserialize<'de>,\
                      Storage::ArrayTopoFace: serde::Deserialize<'de>,\
                      Storage::ArrayTopoHalfEdge: serde::Deserialize<'de>,\

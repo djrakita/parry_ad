@@ -49,7 +49,7 @@ enum DeserializableWorkspaceData<T: AD> {
 
 #[cfg(feature = "serde-serialize")]
 impl<T: AD> DeserializableWorkspaceData<T> {
-    pub fn into_contact_manifold_workspace(self) -> Option<ContactManifoldsWorkspace> {
+    pub fn into_contact_manifold_workspace(self) -> Option<ContactManifoldsWorkspace<T>> {
         match self {
             DeserializableWorkspaceData::TriMeshShapeContactManifoldsWorkspace(w) => {
                 Some(ContactManifoldsWorkspace(Box::new(w)))
